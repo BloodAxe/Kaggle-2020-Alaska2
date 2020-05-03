@@ -47,7 +47,7 @@ def get_augmentations(augmentations_level: str):
         return RandomOrder([A.RandomRotate90(), A.Transpose(), A.RandomBrightnessContrast(p=0.3),])
 
     if augmentations_level == "hard":
-        return A.Compose(
+        return RandomOrder(
             [
                 A.RandomRotate90(),
                 A.Transpose(),
