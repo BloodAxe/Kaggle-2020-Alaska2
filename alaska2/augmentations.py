@@ -48,7 +48,16 @@ def get_augmentations(augmentations_level: str):
 
     if augmentations_level == "hard":
         return A.Compose(
-            [A.RandomRotate90(), A.Transpose(), A.RandomBrightnessContrast(p=0.3), A.RandomGridShuffle(grid=(8, 8))]
+            [
+                A.RandomRotate90(),
+                A.Transpose(),
+                A.RandomBrightnessContrast(p=0.3),
+                A.RandomGridShuffle(grid=(8, 8)),
+                A.ImageCompression(quality_lower=70),
+                A.ShiftScaleRotate(
+                    rotate_limit=5, shift_limit=0.05, scale_limit=0.05, border_mode=cv2.BORDER_CONSTANT
+                ),
+            ]
         )
 
     raise KeyError(augmentations_level)

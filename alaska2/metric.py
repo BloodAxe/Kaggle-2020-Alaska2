@@ -60,8 +60,10 @@ class CompetitionMetricCallback(Callback):
         self.pred_labels.extend(to_numpy(state.output[self.output_key].sigmoid()).flatten())
 
     def on_loader_end(self, state: RunnerState):
-        score = alaska_weighted_auc(self.true_labels, self.pred_labels)
+        true_labels = np.array(self.true_labels)
+        pred_labels = np.array(self.pred_labels)
+        score = alaska_weighted_auc(true_labels, pred_labels)
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
 
         logger = get_tensorboard_logger(state)
-        logger.add_pr_curve("auc", self.true_labels, self.pred_labels)
+        logger.add_pr_curve("auc", true_labels, pred_labels)

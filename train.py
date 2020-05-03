@@ -111,7 +111,7 @@ def main():
 
     if fast:
         num_workers = 0
-        verbose = False
+        verbose = True
 
     need_dct = model_name in {"rgb_dct_efficientb3", "rgb_dct_resnet34"}
     model_input_keys = INPUT_IMAGE_KEY
