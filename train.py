@@ -28,7 +28,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--fast", action="store_true")
     parser.add_argument("--cache", action="store_true")
-    parser.add_argument("-dd", "--data-dir", type=str, required=True, default=os.environ.get("KAGGLE_2020_ALASKA2"))
+    parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     parser.add_argument("-m", "--model", type=str, default="resnet34", help="")
     parser.add_argument("-b", "--batch-size", type=int, default=16, help="Batch Size during training, e.g. -b 64")
     parser.add_argument("-e", "--epochs", type=int, default=100, help="Epoch to run")
@@ -218,7 +218,7 @@ def main():
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
-        parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"encoder": 0.1})
+        parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
         optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
 
         print("Train session    :", checkpoint_prefix)
@@ -390,7 +390,7 @@ def main():
 
     if fine_tune:
         train_ds, valid_ds, train_sampler = get_datasets(
-            data_dir=data_dir, image_size=image_size, augmentation="light", fast=fast, fold=fold, need_dct=need_dct
+            data_dir=data_dir, image_size=image_size, augmentation="safe", fast=fast, fold=fold, need_dct=need_dct
         )
 
         if not balance:
