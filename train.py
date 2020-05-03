@@ -187,9 +187,6 @@ def main():
             data_dir=data_dir, image_size=image_size, augmentation="light", fast=fast, fold=fold, need_dct=need_dct
         )
 
-        if not balance:
-            train_sampler = None
-
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
@@ -288,9 +285,6 @@ def main():
             fold=fold,
             need_dct=need_dct,
         )
-
-        if not balance:
-            train_sampler = None
 
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
@@ -392,9 +386,6 @@ def main():
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir, image_size=image_size, augmentation="safe", fast=fast, fold=fold, need_dct=need_dct
         )
-
-        if not balance:
-            train_sampler = None
 
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,

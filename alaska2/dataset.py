@@ -8,7 +8,7 @@ import torch
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, WeightedRandomSampler
 
 from .augmentations import get_augmentations
 
@@ -91,6 +91,8 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
 
         train_x = valid_x = np.array(class_0 + class_1 + class_2 + class_3)
         train_y = valid_y = np.array([0] * len(class_0) + [1] * len(class_1) + [2] * len(class_2) + [3] * len(class_3))
+
+        sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
     elif fold is None:
         train_class_0, test_class_0 = train_test_split(
             fs.find_images_in_dir(os.path.join(data_dir, "Cover")), test_size=1250, shuffle=True, random_state=42
@@ -114,6 +116,7 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
         valid_y = np.array(
             [0] * len(test_class_0) + [1] * len(test_class_1) + [2] * len(test_class_2) + [3] * len(test_class_3)
         )
+        sampler = None
     else:
         raise NotImplementedError
 
@@ -122,7 +125,7 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
 
     train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
     valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
-    return train_ds, valid_ds, None
+    return train_ds, valid_ds, sampler
 
 
 def get_test_dataset(data_dir):
