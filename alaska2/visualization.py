@@ -9,7 +9,7 @@ __all__ = ["draw_predictions"]
 
 
 @torch.no_grad()
-def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=32):
+def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=16):
     images = []
 
     num_images = len(input[INPUT_IMAGE_ID_KEY])
