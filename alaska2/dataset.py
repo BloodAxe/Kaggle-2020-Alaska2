@@ -85,7 +85,7 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
         data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
         class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
-        class_1 = fs.find_images_in_dir(os.path.join(data_dir, "Jimpod"))
+        class_1 = fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
         class_2 = fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
         class_3 = fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
 
@@ -98,7 +98,7 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
             fs.find_images_in_dir(os.path.join(data_dir, "Cover")), test_size=1250, shuffle=True, random_state=42
         )
         train_class_1, test_class_1 = train_test_split(
-            fs.find_images_in_dir(os.path.join(data_dir, "Jimpod")), test_size=1250, shuffle=True, random_state=42
+            fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD")), test_size=1250, shuffle=True, random_state=42
         )
         train_class_2, test_class_2 = train_test_split(
             fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD")), test_size=1250, shuffle=True, random_state=42
