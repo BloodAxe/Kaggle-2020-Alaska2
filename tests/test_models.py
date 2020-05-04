@@ -13,7 +13,11 @@ def test_models_forward(model_name):
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
     dct = compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
 
-    print(count_parameters(model))
+    print(
+        count_parameters(
+            model, keys=["encoder", "rgb_encoder", "dct_encoder", "embedding", "type_classifier", "flag_classifier"]
+        )
+    )
     input = {
         INPUT_IMAGE_KEY: tensor_from_rgb_image(image).unsqueeze(0).cuda().float(),
         INPUT_DCT_KEY: tensor_from_rgb_image(dct).unsqueeze(0).cuda().float(),

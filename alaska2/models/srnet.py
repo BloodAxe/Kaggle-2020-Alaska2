@@ -77,9 +77,10 @@ class Srnet(nn.Module):
         self.bn121 = nn.BatchNorm2d(512)
         self.layer122 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn122 = nn.BatchNorm2d(512)
-        # avgp = torch.mean() in forward before fc
-        # Fully Connected layer
-        self.fc = nn.Linear(512 * 1 * 1, 2)
+
+    @property
+    def channels(self):
+        return [512]
 
     def forward(self, inputs):
         # Layer 1
