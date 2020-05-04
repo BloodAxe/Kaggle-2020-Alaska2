@@ -39,10 +39,10 @@ def main():
     parser.add_argument("-lr", "--learning-rate", type=float, default=3e-4, help="Initial learning rate")
 
     parser.add_argument(
-        "-l", "--modification-flag-loss", type=str, default=None, action="append", nargs="+",  # [["ce", 1.0]],
+        "-l", "--modification-flag-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
     )
     parser.add_argument(
-        "--modification-type-loss", type=str, default=None, action="append", nargs="+",  # [["ce", 1.0]],
+        "--modification-type-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
     )
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -146,8 +146,8 @@ def main():
         freeze_model(model, freeze_bn=True)
         print("Freezing bn params")
 
-    main_metric = "accuracy01"
-    main_metric_minimize = False
+    main_metric = "loss"
+    main_metric_minimize = True
     cmd_args = vars(args)
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
@@ -243,7 +243,7 @@ def main():
         print("  Weight decay   :", weight_decay)
         print("  Scheduler      :", scheduler_name)
         print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ",)
+        print("Losses            ")
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
 
@@ -339,7 +339,7 @@ def main():
         print("  Weight decay   :", weight_decay)
         print("  Scheduler      :", scheduler_name)
         print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ",)
+        print("Losses            ")
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
 
@@ -440,7 +440,7 @@ def main():
         print("  Weight decay   :", weight_decay)
         print("  Scheduler      :", scheduler_name)
         print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ",)
+        print("Losses            ")
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
 

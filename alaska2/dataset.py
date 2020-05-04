@@ -128,7 +128,7 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
     return train_ds, valid_ds, sampler
 
 
-def get_test_dataset(data_dir):
+def get_test_dataset(data_dir, need_dct):
     valid_transform = A.NoOp()
-    images = fs.find_images_in_dir(os.path.join(data_dir, "test"))
-    return TrainingValidationDataset(images, None, valid_transform)
+    images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
+    return TrainingValidationDataset(images, None, valid_transform, need_dct=need_dct)

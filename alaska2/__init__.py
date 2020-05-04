@@ -7,3 +7,4 @@ from .optim import *
 from .scheduler import *
 from .metric import *
 from .tsa import *
+from .predict import *

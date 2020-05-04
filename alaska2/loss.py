@@ -12,6 +12,7 @@ from .dataset import *
 from .cutmix import CutmixCallback
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
+from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback
 
 __all__ = ["OHEMCrossEntropyLoss", "ArcFaceLoss", "get_loss", "get_criterions", "get_criterion_callback"]
 
@@ -179,9 +180,7 @@ def get_criterion_callback(
     return criterions_dict, criterion_callback, prefix
 
 
-def get_criterions(
-    modification_flag, modification_type, num_epochs: int, mixup=False, cutmix=False, tsa=False,
-):
+def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=False, cutmix=False, tsa=False):
     criterions_dict = {}
     callbacks = []
     losses = []
@@ -232,18 +231,20 @@ def get_criterions(
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
     if mixup:
-        callbacks.append(MixupInputCallback(fields=[INPUT_IMAGE_KEY], alpha=0.5, p=0.5),)
+        callbacks.append(MixupInputCallback(fields=[INPUT_IMAGE_KEY], alpha=0.5, p=0.5))
 
     if modification_flag is not None:
-        callbacks.append(
+        callbacks += [
             CompetitionMetricCallback(
                 input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_FLAG, prefix="auc"
-            )
-        )
+            ),
+            BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=5),
+        ]
     if modification_type is not None:
-        callbacks.append(
+        callbacks += [
             AccuracyCallback(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
-            )
-        )
+            ),
+            BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
+        ]
     return criterions_dict, callbacks
