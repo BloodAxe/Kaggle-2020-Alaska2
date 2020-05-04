@@ -87,7 +87,7 @@ def main():
 
     for batch in tqdm(loader):
         batch = any2device(batch, device="cuda")
-        probas = predict_from_type(model, batch)
+        probas = predict_from_flag(model, batch)
 
         for image_id, p in zip(batch[INPUT_IMAGE_ID_KEY], probas):
             proposalcsv["Id"].append(image_id + ".jpg")

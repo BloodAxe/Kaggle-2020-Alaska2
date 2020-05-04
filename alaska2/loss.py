@@ -185,49 +185,51 @@ def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=
     callbacks = []
     losses = []
 
-    for criterion in modification_flag:
-        if isinstance(criterion, (list, tuple)):
-            loss_name, loss_weight = criterion
-        else:
-            loss_name, loss_weight = criterion, 1.0
+    if modification_flag is not None:
+        for criterion in modification_flag:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
 
-        cd, criterion, criterion_name = get_criterion_callback(
-            loss_name,
-            num_epochs=num_epochs,
-            input_key=INPUT_TRUE_MODIFICATION_FLAG,
-            output_key=OUTPUT_PRED_MODIFICATION_FLAG,
-            prefix=f"modification_flag/{loss_name}",
-            loss_weight=float(loss_weight),
-            mixup=mixup,
-            cutmix=cutmix,
-            tsa=tsa,
-        )
-        criterions_dict.update(cd)
-        callbacks.append(criterion)
-        losses.append(criterion_name)
-        print("Using loss", loss_name, loss_weight)
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                prefix=f"modification_flag/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
 
-    for criterion in modification_type:
-        if isinstance(criterion, (list, tuple)):
-            loss_name, loss_weight = criterion
-        else:
-            loss_name, loss_weight = criterion, 1.0
+    if modification_type is not None:
+        for criterion in modification_type:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
 
-        cd, criterion, criterion_name = get_criterion_callback(
-            loss_name,
-            num_epochs=num_epochs,
-            input_key=INPUT_TRUE_MODIFICATION_TYPE,
-            output_key=OUTPUT_PRED_MODIFICATION_TYPE,
-            prefix=f"modification_type/{loss_name}",
-            loss_weight=float(loss_weight),
-            mixup=mixup,
-            cutmix=cutmix,
-            tsa=tsa,
-        )
-        criterions_dict.update(cd)
-        callbacks.append(criterion)
-        losses.append(criterion_name)
-        print("Using loss", loss_name, loss_weight)
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                prefix=f"modification_type/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
     if mixup:

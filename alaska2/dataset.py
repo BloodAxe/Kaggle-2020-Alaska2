@@ -25,6 +25,7 @@ __all__ = [
     "TrainingValidationDataset",
     "get_datasets",
     "compute_dct",
+    "compute_ela",
     "get_test_dataset",
     "INPUT_TRUE_MODIFICATION_TYPE",
     "INPUT_TRUE_MODIFICATION_FLAG",
@@ -50,6 +51,17 @@ def compute_dct(image):
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
     return dct_image
+
+
+def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
+    diff = np.zeros((image.shape[0], image.shape[1], 3 * len(quality_steps)), dtype=np.float32)
+
+    for i, q in enumerate(quality_steps):
+        retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
+        image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        np.subtract(image_lq, image, out=diff[..., i * 3 : i * 3 + 3], dtype=np.float32)
+
+    return diff
 
 
 class TrainingValidationDataset(Dataset):

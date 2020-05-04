@@ -113,7 +113,7 @@ def main():
         num_workers = 0
         verbose = True
 
-    need_dct = model_name in {"rgb_dct_efficientb3", "rgb_dct_resnet34"}
+    need_dct = model_name in {"rgb_dct_efficientb3", "rgb_dct_resnet34", "rgb_dct_b0_srnet"}
     model_input_keys = INPUT_IMAGE_KEY
     if need_dct:
         model_input_keys = [INPUT_IMAGE_KEY, INPUT_DCT_KEY]
