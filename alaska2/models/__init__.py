@@ -6,7 +6,7 @@ from .rgb_dct import *
 from ..dataset import *
 from ..predict import *
 
-MODEL_REGISTRY = {"rgb_dct_efficientb3": rgb_dct_efficientb3, "rgb_dct_resnet34": rgb_dct_resnet34}
+MODEL_REGISTRY = {"rgb_dct_efficientb3": rgb_dct_efficientb3, "rgb_dct_resnet34": rgb_dct_resnet34, "rgb_dct_b0_srnet": rgb_dct_b0_srnet}
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
 

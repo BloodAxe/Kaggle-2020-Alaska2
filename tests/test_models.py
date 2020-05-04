@@ -7,7 +7,7 @@ TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_d
 
 
 @torch.no_grad()
-@pytest.mark.parametrize("model_name", ["rgb_dct_efficientb3"])
+@pytest.mark.parametrize("model_name", MODEL_REGISTRY.keys())
 def test_models_forward(model_name):
     model = get_model(model_name).cuda().eval()
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
@@ -19,6 +19,6 @@ def test_models_forward(model_name):
         INPUT_DCT_KEY: tensor_from_rgb_image(dct).unsqueeze(0).cuda().float(),
     }
 
-    output = model(input)
+    output = model(**input)
     for output_name, output_value in output.items():
         print(output_name, output_value.size())

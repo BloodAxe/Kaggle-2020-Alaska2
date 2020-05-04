@@ -1,8 +1,8 @@
 from pytorch_toolbelt.modules import *
-
-__all__ = ["rgb_dct_efficientb3", "rgb_dct_resnet34"]
-
 from alaska2.dataset import *
+from .srnet import Srnet
+
+__all__ = ["rgb_dct_efficientb3", "rgb_dct_resnet34", "rgb_dct_b0_srnet"]
 
 
 class RGBDCTSiamese(nn.Module):
@@ -51,4 +51,10 @@ def rgb_dct_efficientb3(num_classes=4, dropout=0, pretrained=True):
 def rgb_dct_resnet34(num_classes=4, dropout=0, pretrained=True):
     rgb_encoder = Resnet34Encoder()
     dct_encoder = Resnet34Encoder().change_input_channels(64)
+    return RGBDCTSiamese(rgb_encoder, dct_encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_dct_b0_srnet(num_classes=4, dropout=0, pretrained=True):
+    rgb_encoder = EfficientNetB0Encoder()
+    dct_encoder = Srnet(64)
     return RGBDCTSiamese(rgb_encoder, dct_encoder, num_classes=num_classes, dropout=dropout)
