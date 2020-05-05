@@ -2,15 +2,18 @@ import torch
 from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, ApplySoftmaxTo
 from torch import nn
 
-from .rgb_dct import *
+
+from . import rgb_dct, rgb, dct
 from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
-    "rgb_dct_efficientb3": rgb_dct_efficientb3,
-    "rgb_dct_resnet34": rgb_dct_resnet34,
-    "rgb_dct_seresnext50": rgb_dct_seresnext50,
-    "rgb_dct_b0_srnet": rgb_dct_b0_srnet,
+    "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
+    "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
+    "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
+    "rgb_dct_b0_srnet": rgb_dct.rgb_dct_b0_srnet,
+    "rgb_resnet34": rgb.rgb_resnet34,
+    "dct_resnet34": dct.dct_resnet34,
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]

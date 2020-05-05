@@ -1,4 +1,5 @@
 import os
+from random import random
 from typing import Tuple, Optional
 
 import albumentations as A
@@ -92,52 +93,129 @@ class TrainingValidationDataset(Dataset):
         return sample
 
 
+class BalancedTrainingDataset(Dataset):
+    def __init__(self, images: np.ndarray, targets: Optional[np.ndarray], transform: A.Compose, need_dct=False):
+        self.images = images
+        self.targets = targets
+        self.transform = transform
+        self.need_dct = need_dct
+        self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        # With 50% probability select one of 3 altered images
+        if random.random() > 0.5:
+            target = random.randint(0, len(self.methods) - 1)
+            method = self.methods[target]
+            image = cv2.imread(self.images[index].replace("Cover", method))
+        else:
+            image = cv2.imread(self.images[index])
+            target = 0
+
+        image = self.transform(image=image)["image"]
+
+        sample = {
+            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
+            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
+        }
+
+        if self.targets is not None:
+            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(target)
+            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([target > 0]).float()
+
+        if self.need_dct:
+            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+        return sample
+
+
 def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmentation: str, fast: bool, need_dct=False):
-    if fast:
-        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
-
-        class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
-        class_1 = fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
-        class_2 = fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
-        class_3 = fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
-
-        train_x = valid_x = np.array(class_0 + class_1 + class_2 + class_3)
-        train_y = valid_y = np.array([0] * len(class_0) + [1] * len(class_1) + [2] * len(class_2) + [3] * len(class_3))
-
-        sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
-    elif fold is None:
-        train_class_0, test_class_0 = train_test_split(
-            fs.find_images_in_dir(os.path.join(data_dir, "Cover")), test_size=1250, shuffle=True, random_state=42
-        )
-        train_class_1, test_class_1 = train_test_split(
-            fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD")), test_size=1250, shuffle=True, random_state=42
-        )
-        train_class_2, test_class_2 = train_test_split(
-            fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD")), test_size=1250, shuffle=True, random_state=42
-        )
-        train_class_3, test_class_3 = train_test_split(
-            fs.find_images_in_dir(os.path.join(data_dir, "UERD")), test_size=1250, shuffle=True, random_state=42
-        )
-
-        train_x = np.array(train_class_0 + train_class_1 + train_class_2 + train_class_3)
-        train_y = np.array(
-            [0] * len(train_class_0) + [1] * len(train_class_1) + [2] * len(train_class_2) + [3] * len(train_class_3)
-        )
-
-        valid_x = np.array(test_class_0 + test_class_1 + test_class_2 + test_class_3)
-        valid_y = np.array(
-            [0] * len(test_class_0) + [1] * len(test_class_1) + [2] * len(test_class_2) + [3] * len(test_class_3)
-        )
-        sampler = None
-    else:
-        raise NotImplementedError
-
     train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
 
-    train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
-    valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
-    return train_ds, valid_ds, sampler
+    if fold is None:
+        if fast:
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+            class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
+            class_1 = fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
+            class_2 = fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
+            class_3 = fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
+
+            train_x = valid_x = np.array(class_0 + class_1 + class_2 + class_3)
+            train_y = valid_y = np.array(
+                [0] * len(class_0) + [1] * len(class_1) + [2] * len(class_2) + [3] * len(class_3)
+            )
+
+            sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
+
+            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
+            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+            return train_ds, valid_ds, sampler
+        else:
+            train_class_0, test_class_0 = train_test_split(
+                fs.find_images_in_dir(os.path.join(data_dir, "Cover")), test_size=1250, shuffle=True, random_state=42
+            )
+            train_class_1, test_class_1 = train_test_split(
+                fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD")), test_size=1250, shuffle=True, random_state=42
+            )
+            train_class_2, test_class_2 = train_test_split(
+                fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD")),
+                test_size=1250,
+                shuffle=True,
+                random_state=42,
+            )
+            train_class_3, test_class_3 = train_test_split(
+                fs.find_images_in_dir(os.path.join(data_dir, "UERD")), test_size=1250, shuffle=True, random_state=42
+            )
+
+            train_x = np.array(train_class_0 + train_class_1 + train_class_2 + train_class_3)
+            train_y = np.array(
+                [0] * len(train_class_0)
+                + [1] * len(train_class_1)
+                + [2] * len(train_class_2)
+                + [3] * len(train_class_3)
+            )
+
+            valid_x = np.array(test_class_0 + test_class_1 + test_class_2 + test_class_3)
+            valid_y = np.array(
+                [0] * len(test_class_0) + [1] * len(test_class_1) + [2] * len(test_class_2) + [3] * len(test_class_3)
+            )
+            sampler = None
+
+            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
+            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+            return train_ds, valid_ds, sampler
+    else:
+        if fast:
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+        original_images = np.array(fs.find_images_in_dir(os.path.join(data_dir, "Cover")))
+        image_sizes = np.array([os.stat(fname).st_size for fname in original_images])
+        order = np.argsort(image_sizes)
+        original_images = original_images[order]
+        num_folds = 4
+        num_images = len(original_images)
+
+        folds_lut = (list(range(num_folds)) * num_images)[:num_images]
+        folds_lut = np.array(folds_lut)
+
+        train_x = original_images[folds_lut != fold]
+        train_y = np.array([0] * len(train_x))
+
+        valid_images = original_images[folds_lut == fold].tolist()
+        valid_x = valid_images.copy()
+        valid_y = [0] * len(valid_images)
+
+        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            valid_x += [fname.replace("Cover", method) for fname in valid_images]
+            valid_y += [i+1] * len(valid_images)
+
+        train_ds = BalancedTrainingDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
+        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+        sampler = None
+        return train_ds, valid_ds, sampler
 
 
 def get_test_dataset(data_dir, need_dct):

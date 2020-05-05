@@ -2,12 +2,10 @@ import torch
 from catalyst.dl import Callback, RunnerState, CallbackOrder
 from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
 from pytorch_toolbelt.utils.torch_utils import to_numpy
-
-
-__all__ = ["CompetitionMetricCallback"]
-
 from sklearn import metrics
 import numpy as np
+
+__all__ = ["CompetitionMetricCallback", "alaska_weighted_auc"]
 
 
 def alaska_weighted_auc(y_true, y_valid):

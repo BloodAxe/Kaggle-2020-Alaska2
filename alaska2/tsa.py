@@ -64,9 +64,7 @@ class TSACriterionCallback(CriterionCallback):
             # self.tsa_threshold = self.get_tsa_threshold(
             #     state.epoch, self.schedule, start=1.0 / self.num_classes, end=1.0
             # )
-            self.tsa_threshold = self.get_tsa_threshold(
-                state.epoch, self.schedule, start=0.5, end=1.0
-            )
+            self.tsa_threshold = self.get_tsa_threshold(state.epoch, self.schedule, start=0.5, end=1.0)
             state.metrics.epoch_values[state.loader_name][f"{self.prefix}/tsa_threshold"] = self.tsa_threshold
 
     def _compute_loss_value(self, state: RunnerState, criterion):
