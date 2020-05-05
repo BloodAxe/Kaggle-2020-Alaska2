@@ -110,6 +110,7 @@ class BalancedTrainingDataset(Dataset):
             target = random.randint(0, len(self.methods) - 1)
             method = self.methods[target]
             image = cv2.imread(self.images[index].replace("Cover", method))
+            target = target + 1
         else:
             image = cv2.imread(self.images[index])
             target = 0
