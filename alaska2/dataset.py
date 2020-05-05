@@ -199,12 +199,18 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
         num_images = len(original_images)
 
         folds_lut = (list(range(num_folds)) * num_images)[:num_images]
+        folds_lut = np.array(folds_lut)
 
         train_x = original_images[folds_lut != fold]
-        valid_x = original_images[folds_lut == fold]
-
         train_y = np.array([0] * len(train_x))
-        valid_y = np.array([0] * len(valid_x))
+
+        valid_images = original_images[folds_lut == fold].tolist()
+        valid_x = valid_images.copy()
+        valid_y = [0] * len(valid_images)
+
+        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            valid_x += [fname.replace("Cover", method) for fname in valid_images]
+            valid_y += [i+1] * len(valid_images)
 
         train_ds = BalancedTrainingDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
         valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
