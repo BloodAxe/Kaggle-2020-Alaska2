@@ -86,7 +86,7 @@ def main():
     num_workers = args.workers
     num_epochs = args.epochs
     learning_rate = args.learning_rate
-    model_name = args.model
+    model_name:str = args.model
     optimizer_name = args.optimizer
     image_size = (args.size, args.size) if args.size is not None else (512, 512)
     fast = args.fast
@@ -113,10 +113,17 @@ def main():
         num_workers = 0
         verbose = True
 
-    need_dct = model_name in {"rgb_dct_efficientb3", "rgb_dct_resnet34", "rgb_dct_b0_srnet"}
-    model_input_keys = INPUT_IMAGE_KEY
-    if need_dct:
+    if model_name.startswith("rgb_dct_"):
         model_input_keys = [INPUT_IMAGE_KEY, INPUT_DCT_KEY]
+        need_dct = True
+    elif model_name.startswith("dct_"):
+        model_input_keys = [INPUT_DCT_KEY]
+        need_dct = True
+    elif model_name.startswith("rgb_"):
+        model_input_keys = [INPUT_IMAGE_KEY]
+        need_dct = False
+    else:
+        raise KeyError(model_name)
 
     # Compute batch size for validation
     valid_batch_size = train_batch_size

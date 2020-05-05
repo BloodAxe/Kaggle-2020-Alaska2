@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from catalyst.dl import AccuracyCallback
 from catalyst.dl.callbacks import CriterionAggregatorCallback
-from pytorch_toolbelt.losses import FocalLoss
+from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
 from torch import nn
 
 from .metric import CompetitionMetricCallback
@@ -12,7 +12,7 @@ from .dataset import *
 from .cutmix import CutmixCallback
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
-from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback
+from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback, ConfusionMatrixCallback
 
 __all__ = ["OHEMCrossEntropyLoss", "ArcFaceLoss", "get_loss", "get_criterions", "get_criterion_callback"]
 
@@ -106,6 +106,9 @@ def get_loss(loss_name: str, tsa=False):
 
     if loss_name.lower() == "focal":
         return FocalLoss(alpha=None, gamma=2, reduction="none" if tsa else "mean")
+
+    if loss_name.lower() == "binary_focal":
+        return BinaryFocalLoss(alpha=None, gamma=2, reduction="none" if tsa else "mean")
 
     if loss_name.lower() == "nfl":
         return FocalLoss(alpha=None, gamma=2, normalized=True, reduction="sum" if tsa else "mean")
@@ -237,6 +240,13 @@ def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=
 
     if modification_flag is not None:
         callbacks += [
+            ConfusionMatrixCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                prefix="flag",
+                activation_fn=lambda x: x.sigmoid() > 0.5,
+                class_names=["Original", "Modified"],
+            ),
             CompetitionMetricCallback(
                 input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_FLAG, prefix="auc"
             ),
@@ -244,6 +254,12 @@ def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=
         ]
     if modification_type is not None:
         callbacks += [
+            ConfusionMatrixCallback(
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                prefix="type",
+                class_names=["Cover", "JMiPOD", "JUNIWARD", "UERD"],
+            ),
             AccuracyCallback(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
             ),
