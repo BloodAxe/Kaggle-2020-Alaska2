@@ -36,7 +36,7 @@ def main():
         "-es", "--early-stopping", type=int, default=None, help="Maximum number of epochs without improvement"
     )
     parser.add_argument("-fe", "--freeze-encoder", type=int, default=0, help="Freeze encoder parameters for N epochs")
-    parser.add_argument("-lr", "--learning-rate", type=float, default=3e-4, help="Initial learning rate")
+    parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3, help="Initial learning rate")
 
     parser.add_argument(
         "-l", "--modification-flag-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],

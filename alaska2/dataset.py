@@ -135,7 +135,6 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
     valid_transform = A.NoOp()
 
     if fold is None:
-
         if fast:
             data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
