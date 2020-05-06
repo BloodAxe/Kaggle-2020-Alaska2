@@ -15,6 +15,7 @@ from .augmentations import get_augmentations
 
 INPUT_IMAGE_KEY = "input_image"
 INPUT_DCT_KEY = "input_dct"
+INPUT_ELA_KEY = "input_ela"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_true"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
@@ -31,6 +32,7 @@ __all__ = [
     "INPUT_TRUE_MODIFICATION_TYPE",
     "INPUT_TRUE_MODIFICATION_FLAG",
     "INPUT_DCT_KEY",
+    "INPUT_ELA_KEY",
     "INPUT_IMAGE_KEY",
     "INPUT_IMAGE_ID_KEY",
     "OUTPUT_PRED_MODIFICATION_FLAG",
@@ -66,11 +68,14 @@ def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
 
 
 class TrainingValidationDataset(Dataset):
-    def __init__(self, images: np.ndarray, targets: Optional[np.ndarray], transform: A.Compose, need_dct=False):
+    def __init__(
+        self, images: np.ndarray, targets: Optional[np.ndarray], transform: A.Compose, need_dct=False, need_ela=False
+    ):
         self.images = images
         self.targets = targets
         self.transform = transform
         self.need_dct = need_dct
+        self.need_ela = need_ela
 
     def __len__(self):
         return len(self.images)
@@ -90,15 +95,19 @@ class TrainingValidationDataset(Dataset):
 
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+
+        if self.need_ela:
+            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
         return sample
 
 
 class BalancedTrainingDataset(Dataset):
-    def __init__(self, images: np.ndarray, targets: Optional[np.ndarray], transform: A.Compose, need_dct=False):
+    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
         self.images = images
-        self.targets = targets
         self.transform = transform
         self.need_dct = need_dct
+        self.need_ela = need_ela
         self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
 
     def __len__(self):
@@ -128,10 +137,21 @@ class BalancedTrainingDataset(Dataset):
 
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+        if self.need_ela:
+            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
         return sample
 
 
-def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmentation: str, fast: bool, need_dct=False):
+def get_datasets(
+    data_dir: str,
+    fold: int,
+    image_size: Tuple[int, int],
+    augmentation: str,
+    fast: bool,
+    need_dct=False,
+    need_ela=False,
+):
     train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
 
@@ -151,8 +171,12 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
 
             sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
 
-            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
-            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+            train_ds = TrainingValidationDataset(
+                train_x, train_y, transform=train_transform, need_dct=need_dct, need_ela=need_ela
+            )
+            valid_ds = TrainingValidationDataset(
+                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+            )
             return train_ds, valid_ds, sampler
         else:
             train_class_0, test_class_0 = train_test_split(
@@ -185,8 +209,12 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
             )
             sampler = None
 
-            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
-            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+            train_ds = TrainingValidationDataset(
+                train_x, train_y, transform=train_transform, need_dct=need_dct, need_ela=need_ela
+            )
+            valid_ds = TrainingValidationDataset(
+                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+            )
             return train_ds, valid_ds, sampler
     else:
         if fast:
@@ -203,7 +231,6 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
         folds_lut = np.array(folds_lut)
 
         train_x = original_images[folds_lut != fold]
-        train_y = np.array([0] * len(train_x))
 
         valid_images = original_images[folds_lut == fold].tolist()
         valid_x = valid_images.copy()
@@ -211,10 +238,12 @@ def get_datasets(data_dir: str, fold: int, image_size: Tuple[int, int], augmenta
 
         for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
-            valid_y += [i+1] * len(valid_images)
+            valid_y += [i + 1] * len(valid_images)
 
-        train_ds = BalancedTrainingDataset(train_x, train_y, transform=train_transform, need_dct=need_dct)
-        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, need_dct=need_dct)
+        train_ds = BalancedTrainingDataset(train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela)
+        valid_ds = TrainingValidationDataset(
+            valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+        )
         sampler = None
         return train_ds, valid_ds, sampler
 

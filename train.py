@@ -86,7 +86,7 @@ def main():
     num_workers = args.workers
     num_epochs = args.epochs
     learning_rate = args.learning_rate
-    model_name:str = args.model
+    model_name: str = args.model
     optimizer_name = args.optimizer
     image_size = (args.size, args.size) if args.size is not None else (512, 512)
     fast = args.fast
@@ -113,6 +113,9 @@ def main():
         num_workers = 0
         verbose = True
 
+    need_dct = False
+    need_ela = False
+
     if model_name.startswith("rgb_dct_"):
         model_input_keys = [INPUT_IMAGE_KEY, INPUT_DCT_KEY]
         need_dct = True
@@ -121,7 +124,9 @@ def main():
         need_dct = True
     elif model_name.startswith("rgb_"):
         model_input_keys = [INPUT_IMAGE_KEY]
-        need_dct = False
+    elif model_name.startswith("ela_"):
+        model_input_keys = [INPUT_ELA_KEY]
+        need_ela = True
     else:
         raise KeyError(model_name)
 
@@ -191,7 +196,13 @@ def main():
     # Pretrain/warmup
     if warmup:
         train_ds, valid_ds, train_sampler = get_datasets(
-            data_dir=data_dir, image_size=image_size, augmentation="light", fast=fast, fold=fold, need_dct=need_dct
+            data_dir=data_dir,
+            image_size=image_size,
+            augmentation="light",
+            fast=fast,
+            fold=fold,
+            need_dct=need_dct,
+            need_ela=need_ela,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -291,6 +302,7 @@ def main():
             fast=fast,
             fold=fold,
             need_dct=need_dct,
+            need_ela=need_ela,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -391,7 +403,13 @@ def main():
 
     if fine_tune:
         train_ds, valid_ds, train_sampler = get_datasets(
-            data_dir=data_dir, image_size=image_size, augmentation="safe", fast=fast, fold=fold, need_dct=need_dct
+            data_dir=data_dir,
+            image_size=image_size,
+            augmentation="safe",
+            fast=fast,
+            fold=fold,
+            need_dct=need_dct,
+            need_ela=need_ela,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
