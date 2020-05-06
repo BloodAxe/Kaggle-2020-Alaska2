@@ -1,6 +1,6 @@
 import os
 import random
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, List
 
 import albumentations as A
 import cv2
@@ -50,7 +50,7 @@ def compute_dct(image):
     image = image * one_over_255
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
-            dct = cv2.dct(image[i : i + 8, j : j + 8])
+            dct = cv2.dct(image[i: i + 8, j: j + 8])
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
     return dct_image
@@ -62,14 +62,15 @@ def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
     for i, q in enumerate(quality_steps):
         retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
         image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        np.subtract(image_lq, image, out=diff[..., i * 3 : i * 3 + 3], dtype=np.float32)
+        np.subtract(image_lq, image, out=diff[..., i * 3: i * 3 + 3], dtype=np.float32)
 
     return diff
 
 
 class TrainingValidationDataset(Dataset):
     def __init__(
-        self, images: np.ndarray, targets: Optional[np.ndarray], transform: A.Compose, need_dct=False, need_ela=False
+            self, images: np.ndarray, targets: Optional[Union[List, np.ndarray]], transform: A.Compose, need_dct=False,
+            need_ela=False
     ):
         self.images = images
         self.targets = targets
@@ -129,11 +130,9 @@ class BalancedTrainingDataset(Dataset):
         sample = {
             INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
             INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
+            INPUT_TRUE_MODIFICATION_TYPE: int(target),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float()
         }
-
-        if self.targets is not None:
-            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(target)
-            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([target > 0]).float()
 
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
@@ -144,13 +143,13 @@ class BalancedTrainingDataset(Dataset):
 
 
 def get_datasets(
-    data_dir: str,
-    fold: int,
-    image_size: Tuple[int, int],
-    augmentation: str,
-    fast: bool,
-    need_dct=False,
-    need_ela=False,
+        data_dir: str,
+        fold: int,
+        image_size: Tuple[int, int],
+        augmentation: str,
+        fast: bool,
+        need_dct=False,
+        need_ela=False,
 ):
     train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
@@ -230,17 +229,24 @@ def get_datasets(
         folds_lut = (list(range(num_folds)) * num_images)[:num_images]
         folds_lut = np.array(folds_lut)
 
-        train_x = original_images[folds_lut != fold]
+        train_images = original_images[folds_lut != fold].tolist()
+        train_x = train_images.copy()
+        train_y = [0] * len(train_images)
 
         valid_images = original_images[folds_lut == fold].tolist()
         valid_x = valid_images.copy()
         valid_y = [0] * len(valid_images)
 
         for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            train_x += [fname.replace("Cover", method) for fname in train_images]
+            train_y += [i + 1] * len(valid_images)
+
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
             valid_y += [i + 1] * len(valid_images)
 
-        train_ds = BalancedTrainingDataset(train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela)
+        train_ds = TrainingValidationDataset(
+            train_x, train_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+        )
         valid_ds = TrainingValidationDataset(
             valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
         )

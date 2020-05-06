@@ -24,10 +24,10 @@ class ELAModel(nn.Module):
         self.flag_classifier = nn.Linear(128, 1)
 
     def forward(self, **kwargs):
-        dct = self.ela_bn(kwargs[INPUT_DCT_KEY].float())
+        ela = self.ela_bn(kwargs[INPUT_ELA_KEY].float())
 
-        dct_featues = self.pool(self.ela_encoder(dct)[-1])
-        x = self.embedding(dct_featues)
+        ela_features = self.pool(self.ela_encoder(ela)[-1])
+        x = self.embedding(ela_features)
 
         return {
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
