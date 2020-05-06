@@ -72,6 +72,10 @@ class TrainingValidationDataset(Dataset):
             self, images: np.ndarray, targets: Optional[Union[List, np.ndarray]], transform: A.Compose, need_dct=False,
             need_ela=False
     ):
+        if targets is not None:
+            if len(images) != len(targets):
+                raise ValueError(f"Size of images and targets does not match: {len(images)} {len(targets)}")
+
         self.images = images
         self.targets = targets
         self.transform = transform
@@ -239,7 +243,7 @@ def get_datasets(
 
         for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
             train_x += [fname.replace("Cover", method) for fname in train_images]
-            train_y += [i + 1] * len(valid_images)
+            train_y += [i + 1] * len(train_images)
 
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
             valid_y += [i + 1] * len(valid_images)
