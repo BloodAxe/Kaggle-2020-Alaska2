@@ -49,7 +49,7 @@ def main():
         "-c", "--checkpoint", type=str, default=None, help="Checkpoint filename to use as initial model weights"
     )
     parser.add_argument("-w", "--workers", default=8, type=int, help="Num workers")
-    parser.add_argument("-a", "--augmentations", default="light", type=str, help="Level of image augmentations")
+    parser.add_argument("-a", "--augmentations", default="safe", type=str, help="Level of image augmentations")
     parser.add_argument("--transfer", default=None, type=str, help="")
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--mixup", action="store_true")
@@ -236,6 +236,11 @@ def main():
 
         parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
         optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
+        scheduler = get_scheduler(
+            "poly_up", optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
+        )
+        if isinstance(scheduler, CyclicLR):
+            callbacks += [SchedulerCallback(mode="batch")]
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)
@@ -272,7 +277,7 @@ def main():
             model=model,
             criterion=criterions_dict,
             optimizer=optimizer,
-            scheduler=None,
+            scheduler=scheduler,
             callbacks=callbacks,
             loaders=loaders,
             logdir=os.path.join(log_dir, "warmup"),
@@ -290,7 +295,7 @@ def main():
         clean_checkpoint(best_checkpoint, model_checkpoint)
 
         # Restore state of best model
-        unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
+        # unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
 
         torch.cuda.empty_cache()
         gc.collect()
@@ -398,7 +403,7 @@ def main():
 
         # Restore state of best model
         clean_checkpoint(best_checkpoint, model_checkpoint)
-        unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
+        # unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
 
         torch.cuda.empty_cache()
         gc.collect()

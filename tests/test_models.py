@@ -26,3 +26,40 @@ def test_models_forward(model_name):
     output = model(**input)
     for output_name, output_value in output.items():
         print(output_name, output_value.size())
+
+
+from pytorch_toolbelt.optimization.lr_schedules import CosineAnnealingLRWithDecay, OnceCycleLR, PolyLR
+from torch import nn
+import matplotlib.pyplot as plt
+from torch.optim import SGD, Optimizer
+
+
+def test_plot_lr():
+
+    plt.figure(figsize=(16, 20))
+
+    epochs = 100
+    schedulers = [
+        # "cosd",
+        # "cosr",
+        # "cosrd",
+        "poly_up",
+        # "exp",
+        # "poly"
+    ]
+
+    for name in schedulers:
+        lr = 1e-4
+        net = nn.Conv2d(1, 1, 1)
+        opt = SGD(net.parameters(), lr=lr)
+
+        lrs = []
+        scheduler = get_scheduler(name, opt, lr, epochs, batches_in_epoch=10000)
+        for epoch in range(epochs):
+            lrs.append(scheduler.get_lr()[0])
+            scheduler.step(epoch)
+        plt.plot(range(epochs), lrs, label=name)
+
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
