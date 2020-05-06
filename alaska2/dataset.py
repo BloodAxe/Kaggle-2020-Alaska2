@@ -120,7 +120,7 @@ class BalancedTrainingDataset(Dataset):
 
     def __getitem__(self, index):
         # With 50% probability select one of 3 altered images
-        if random.random() > 0.5:
+        if random.random() >= 0.5:
             target = random.randint(0, len(self.methods) - 1)
             method = self.methods[target]
             image = cv2.imread(self.images[index].replace("Cover", method))
