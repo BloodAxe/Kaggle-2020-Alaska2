@@ -37,21 +37,26 @@ def get_augmentations(augmentations_level: str):
         return A.NoOp()
 
     if augmentations_level == "safe":
-        return A.Compose([A.HorizontalFlip(), A.VerticalFlip(), ])
+        return A.Compose([A.HorizontalFlip(), A.VerticalFlip()])
 
     if augmentations_level == "light":
-        return RandomOrder([A.RandomRotate90(), A.Transpose(), ])
+        return A.Compose([A.RandomRotate90(), A.Transpose()])
 
     if augmentations_level == "medium":
-        return RandomOrder([A.RandomRotate90(),
-                            A.Transpose(),
-                            A.OneOf([
-                                A.RandomGridShuffle(grid=(2, 2)),
-                                A.RandomGridShuffle(grid=(3, 3)),
-                                A.RandomGridShuffle(grid=(4, 4)),
-                            ]),
-                            A.CoarseDropout(min_width=8, min_height=8, max_width=256, max_height=256, max_holes=3)
-                            ])
+        return RandomOrder(
+            [
+                A.RandomRotate90(),
+                A.Transpose(),
+                A.OneOf(
+                    [
+                        A.RandomGridShuffle(grid=(2, 2)),
+                        A.RandomGridShuffle(grid=(3, 3)),
+                        A.RandomGridShuffle(grid=(4, 4)),
+                    ]
+                ),
+                A.CoarseDropout(min_width=8, min_height=8, max_width=256, max_height=256, max_holes=3),
+            ]
+        )
 
     if augmentations_level == "hard":
         return RandomOrder(

@@ -152,6 +152,7 @@ def get_datasets(
         image_size: Tuple[int, int],
         augmentation: str,
         fast: bool,
+        balance=False,
         need_dct=False,
         need_ela=False,
 ):
@@ -233,27 +234,47 @@ def get_datasets(
         folds_lut = (list(range(num_folds)) * num_images)[:num_images]
         folds_lut = np.array(folds_lut)
 
-        train_images = original_images[folds_lut != fold].tolist()
-        train_x = train_images.copy()
-        train_y = [0] * len(train_images)
+        if balance:
+            train_images = original_images[folds_lut != fold].tolist()
+            train_x = train_images.copy()
 
-        valid_images = original_images[folds_lut == fold].tolist()
-        valid_x = valid_images.copy()
-        valid_y = [0] * len(valid_images)
+            valid_images = original_images[folds_lut == fold].tolist()
+            valid_x = valid_images.copy()
+            valid_y = [0] * len(valid_images)
 
-        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-            train_x += [fname.replace("Cover", method) for fname in train_images]
-            train_y += [i + 1] * len(train_images)
+            for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+                valid_x += [fname.replace("Cover", method) for fname in valid_images]
+                valid_y += [i + 1] * len(valid_images)
 
-            valid_x += [fname.replace("Cover", method) for fname in valid_images]
-            valid_y += [i + 1] * len(valid_images)
+            train_ds = BalancedTrainingDataset(
+                train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela
+            )
+            valid_ds = TrainingValidationDataset(
+                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+            )
+        else:
+            train_images = original_images[folds_lut != fold].tolist()
+            train_x = train_images.copy()
+            train_y = [0] * len(train_images)
 
-        train_ds = TrainingValidationDataset(
-            train_x, train_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
-        )
-        valid_ds = TrainingValidationDataset(
-            valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
-        )
+            valid_images = original_images[folds_lut == fold].tolist()
+            valid_x = valid_images.copy()
+            valid_y = [0] * len(valid_images)
+
+            for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+                train_x += [fname.replace("Cover", method) for fname in train_images]
+                train_y += [i + 1] * len(train_images)
+
+                valid_x += [fname.replace("Cover", method) for fname in valid_images]
+                valid_y += [i + 1] * len(valid_images)
+
+            train_ds = TrainingValidationDataset(
+                train_x, train_y, transform=train_transform, need_dct=need_dct, need_ela=need_ela
+            )
+            valid_ds = TrainingValidationDataset(
+                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
+            )
+
         sampler = None
         return train_ds, valid_ds, sampler
 
