@@ -44,6 +44,10 @@ def main():
     parser.add_argument(
         "--modification-type-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
     )
+    parser.add_argument(
+        "--embedding-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
+    )
+
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
         "-c", "--checkpoint", type=str, default=None, help="Checkpoint filename to use as initial model weights"
@@ -80,6 +84,7 @@ def main():
 
     modification_flag_loss = args.modification_flag_loss
     modification_type_loss = args.modification_type_loss
+    embedding_loss = args.embedding_loss
 
     data_dir = args.data_dir
     cache = args.cache
@@ -209,6 +214,7 @@ def main():
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
+            embedding_loss=embedding_loss,
             num_epochs=warmup,
             mixup=False,
             cutmix=False,
@@ -315,6 +321,7 @@ def main():
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
+            embedding_loss=embedding_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -423,6 +430,7 @@ def main():
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
+            embedding_loss=embedding_loss,
             num_epochs=fine_tune,
             mixup=False,
             cutmix=False,

@@ -8,10 +8,11 @@ from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
-    "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
+    "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
     "rgb_dct_b0_srnet": rgb_dct.rgb_dct_b0_srnet,
+    "rgb_resnet18": rgb.rgb_resnet18,
     "rgb_resnet34": rgb.rgb_resnet34,
     "dct_resnet34": dct.dct_resnet34,
     "ela_resnet34": ela.ela_resnet34,

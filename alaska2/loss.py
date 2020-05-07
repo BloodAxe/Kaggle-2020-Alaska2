@@ -97,7 +97,43 @@ class ArcFaceLoss(nn.modules.Module):
         return loss
 
 
+class ContrastiveCosineEmbeddingLoss(nn.Module):
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
+        """
+        input: [N,E]
+        """
+        batch_size, embedding_size = input.size()
+
+        target = target > 0  # So far ignore particular type
+
+        target_a = target.view(batch_size, 1)
+        target_b = target.view(1, batch_size)
+
+        same_class_mask = target_a == target_b
+
+        input_a = input.view(batch_size, 1, embedding_size)
+        input_b = input.view(1, batch_size, embedding_size)
+
+        # Compute pairwise cosine similarity
+        cossim = F.cosine_similarity(input_a, input_b, dim=2)
+
+        # Two terms:
+        # Inter-class variance should be minimized
+        same_class_loss: torch.Tensor = (1 - cossim) * same_class_mask.to(input.dtype)
+        same_class_loss = same_class_loss.triu_(diagonal=1).sum()
+
+        # Distance between different classes should be maximized
+        margin = 0.5
+        diff_class_loss = F.relu(cossim * (~same_class_mask).to(input.dtype) - margin)
+        diff_class_loss = diff_class_loss.triu_(diagonal=1).sum()
+
+        return (same_class_loss + diff_class_loss) / batch_size
+
+
 def get_loss(loss_name: str, tsa=False):
+    if loss_name.lower() == "ccos":
+        return ContrastiveCosineEmbeddingLoss()
+
     if loss_name.lower() == "bce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean")
 
@@ -183,7 +219,9 @@ def get_criterion_callback(
     return criterions_dict, criterion_callback, prefix
 
 
-def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=False, cutmix=False, tsa=False):
+def get_criterions(
+    modification_flag, modification_type, embedding_loss, num_epochs: int, mixup=False, cutmix=False, tsa=False
+):
     criterions_dict = {}
     callbacks = []
     losses = []
@@ -224,6 +262,29 @@ def get_criterions(modification_flag, modification_type, num_epochs: int, mixup=
                 input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_MODIFICATION_TYPE,
                 prefix=f"modification_type/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
+
+    if embedding_loss is not None:
+        for criterion in embedding_loss:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
+
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_EMBEDDING,
+                prefix=f"embedding/{loss_name}",
                 loss_weight=float(loss_weight),
                 mixup=mixup,
                 cutmix=cutmix,

@@ -22,6 +22,7 @@ INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
 
 OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
 OUTPUT_PRED_MODIFICATION_TYPE = "pred_modification_type"
+OUTPUT_PRED_EMBEDDING = "pred_embedding"
 
 __all__ = [
     "TrainingValidationDataset",
@@ -37,6 +38,7 @@ __all__ = [
     "INPUT_IMAGE_ID_KEY",
     "OUTPUT_PRED_MODIFICATION_FLAG",
     "OUTPUT_PRED_MODIFICATION_TYPE",
+    "OUTPUT_PRED_EMBEDDING",
 ]
 
 
@@ -153,6 +155,72 @@ class BalancedTrainingDataset(Dataset):
         return sample
 
 
+class CoverImageDataset(Dataset):
+    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
+        self.images = images
+        self.transform = transform
+        self.need_dct = need_dct
+        self.need_ela = need_ela
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        image = cv2.imread(self.images[index])
+        target = 0
+
+        image = self.transform(image=image)["image"]
+
+        sample = {
+            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
+            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
+            INPUT_TRUE_MODIFICATION_TYPE: int(target),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
+        }
+
+        if self.need_dct:
+            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+        if self.need_ela:
+            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
+        return sample
+
+
+class ModifiedImageDataset(Dataset):
+    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
+        self.images = images
+        self.transform = transform
+        self.need_dct = need_dct
+        self.need_ela = need_ela
+        self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        # Select one of 3 altered images
+        target = random.randint(0, len(self.methods) - 1)
+        method = self.methods[target]
+        image = cv2.imread(self.images[index].replace("Cover", method))
+        target = target + 1
+
+        image = self.transform(image=image)["image"]
+
+        sample = {
+            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
+            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
+            INPUT_TRUE_MODIFICATION_TYPE: int(target),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
+        }
+
+        if self.need_dct:
+            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+        if self.need_ela:
+            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
+        return sample
+
+
 def get_datasets(
     data_dir: str,
     fold: int,
@@ -221,9 +289,12 @@ def get_datasets(
                 valid_x += [fname.replace("Cover", method) for fname in valid_images]
                 valid_y += [i + 1] * len(valid_images)
 
-            train_ds = BalancedTrainingDataset(
+            cover_ds = CoverImageDataset(train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela)
+            modified_ds = ModifiedImageDataset(
                 train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela
             )
+
+            train_ds = cover_ds + modified_ds
             valid_ds = TrainingValidationDataset(
                 valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
             )

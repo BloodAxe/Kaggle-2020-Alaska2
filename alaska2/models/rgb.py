@@ -1,14 +1,13 @@
 from pytorch_toolbelt.modules import *
 from alaska2.dataset import *
 
-__all__ = ["rgb_resnet34"]
+__all__ = ["rgb_resnet34", "rgb_resnet18"]
 
 
 class RGBModel(nn.Module):
     def __init__(self, rgb_encoder: EncoderModule, num_classes, dropout=0):
         super().__init__()
-        self.rgb_bn = nn.BatchNorm2d(3)
-        self.dct_bn = nn.BatchNorm2d(64)
+        self.rgb_bn = Normalize([0.3914976, 0.44266784, 0.46043398], [0.17819773, 0.17319807, 0.18128773])
         self.rgb_encoder = rgb_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.embedding = nn.Sequential(
@@ -25,17 +24,22 @@ class RGBModel(nn.Module):
         self.flag_classifier = nn.Linear(128, 1)
 
     def forward(self, **kwargs):
-        rgb = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())
+        image = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())
+        features = self.rgb_encoder(image)
+        embedding = self.pool(features[-1])
 
-        rgb_features = self.pool(self.rgb_encoder(rgb)[-1])
-
-        x = rgb_features
-        x = self.embedding(x)
+        x = self.embedding(embedding)
 
         return {
+            OUTPUT_PRED_EMBEDDING: embedding,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
         }
+
+
+def rgb_resnet18(num_classes=4, dropout=0, pretrained=True):
+    rgb_encoder = Resnet18Encoder(pretrained=pretrained)
+    return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
 
 
 def rgb_resnet34(num_classes=4, dropout=0, pretrained=True):
