@@ -15,7 +15,8 @@ from .augmentations import get_augmentations
 
 INPUT_IMAGE_KEY = "input_image"
 INPUT_DCT_KEY = "input_dct"
-INPUT_ELA_KEY = "input_ela"
+INPUT_FEATURES_ELA_KEY = "input_ela"
+INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_true"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
@@ -32,8 +33,9 @@ __all__ = [
     "get_test_dataset",
     "INPUT_TRUE_MODIFICATION_TYPE",
     "INPUT_TRUE_MODIFICATION_FLAG",
+    "INPUT_FEATURES_BLUR_KEY",
     "INPUT_DCT_KEY",
-    "INPUT_ELA_KEY",
+    "INPUT_FEATURES_ELA_KEY",
     "INPUT_IMAGE_KEY",
     "INPUT_IMAGE_ID_KEY",
     "OUTPUT_PRED_MODIFICATION_FLAG",
@@ -69,14 +71,27 @@ def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
     return diff
 
 
+def compute_blur_features(image):
+    image2 = cv2.pyrDown(image)
+    image4 = cv2.pyrDown(image2)
+    image8 = cv2.pyrDown(image4)
+    image_size = image.shape[1], image.shape[0]
+
+    image8 = cv2.resize(image8, image_size, interpolation=cv2.INTER_LINEAR)
+    image4 = cv2.resize(image4, image_size, interpolation=cv2.INTER_LINEAR)
+    image2 = cv2.resize(image2, image_size, interpolation=cv2.INTER_LINEAR)
+
+    diff = np.zeros((image.shape[0], image.shape[1], 3 * 3), dtype=np.float32)
+
+    np.subtract(image2, image, out=diff[..., 0:3], dtype=np.float32)
+    np.subtract(image4, image, out=diff[..., 3:6], dtype=np.float32)
+    np.subtract(image8, image, out=diff[..., 6:9], dtype=np.float32)
+    return diff
+
+
 class TrainingValidationDataset(Dataset):
     def __init__(
-        self,
-        images: np.ndarray,
-        targets: Optional[Union[List, np.ndarray]],
-        transform: A.Compose,
-        need_dct=False,
-        need_ela=False,
+        self, images: np.ndarray, targets: Optional[Union[List, np.ndarray]], transform: A.Compose, features: List[str]
     ):
         if targets is not None:
             if len(images) != len(targets):
@@ -85,8 +100,9 @@ class TrainingValidationDataset(Dataset):
         self.images = images
         self.targets = targets
         self.transform = transform
-        self.need_dct = need_dct
-        self.need_ela = need_ela
+        self.need_dct = "dct" in features
+        self.need_ela = "ela" in features
+        self.need_blur = "blur" in features
 
     def __len__(self):
         return len(self.images)
@@ -111,18 +127,22 @@ class TrainingValidationDataset(Dataset):
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
 
         if self.need_ela:
-            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
+        if self.need_blur:
+            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
 
         return sample
 
 
 class BalancedTrainingDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
+    def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
         self.transform = transform
-        self.need_dct = need_dct
-        self.need_ela = need_ela
         self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
+        self.need_dct = "dct" in features
+        self.need_ela = "ela" in features
+        self.need_blur = "blur" in features
 
     def __len__(self):
         return len(self.images)
@@ -150,17 +170,20 @@ class BalancedTrainingDataset(Dataset):
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
         if self.need_ela:
-            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+        if self.need_blur:
+            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
 
         return sample
 
 
 class CoverImageDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
+    def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
         self.transform = transform
-        self.need_dct = need_dct
-        self.need_ela = need_ela
+        self.need_dct = "dct" in features
+        self.need_ela = "ela" in features
+        self.need_blur = "blur" in features
 
     def __len__(self):
         return len(self.images)
@@ -181,18 +204,21 @@ class CoverImageDataset(Dataset):
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
         if self.need_ela:
-            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+        if self.need_blur:
+            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
 
         return sample
 
 
 class ModifiedImageDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, need_dct=False, need_ela=False):
+    def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
         self.transform = transform
-        self.need_dct = need_dct
-        self.need_ela = need_ela
         self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
+        self.need_dct = "dct" in features
+        self.need_ela = "ela" in features
+        self.need_blur = "blur" in features
 
     def __len__(self):
         return len(self.images)
@@ -216,20 +242,15 @@ class ModifiedImageDataset(Dataset):
         if self.need_dct:
             sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
         if self.need_ela:
-            sample[INPUT_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+        if self.need_blur:
+            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
 
         return sample
 
 
 def get_datasets(
-    data_dir: str,
-    fold: int,
-    image_size: Tuple[int, int],
-    augmentation: str,
-    fast: bool,
-    balance=False,
-    need_dct=False,
-    need_ela=False,
+    data_dir: str, fold: int, image_size: Tuple[int, int], augmentation: str, fast: bool, balance=False, features=None
 ):
     train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
@@ -250,12 +271,8 @@ def get_datasets(
 
             sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
 
-            train_ds = TrainingValidationDataset(
-                train_x, train_y, transform=train_transform, need_dct=need_dct, need_ela=need_ela
-            )
-            valid_ds = TrainingValidationDataset(
-                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
-            )
+            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
+            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
             print("Train", train_ds)
             print("Valid", valid_ds)
@@ -289,15 +306,11 @@ def get_datasets(
                 valid_x += [fname.replace("Cover", method) for fname in valid_images]
                 valid_y += [i + 1] * len(valid_images)
 
-            cover_ds = CoverImageDataset(train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela)
-            modified_ds = ModifiedImageDataset(
-                train_x, transform=train_transform, need_dct=need_dct, need_ela=need_ela
-            )
+            cover_ds = CoverImageDataset(train_x, transform=train_transform, features=features)
+            modified_ds = ModifiedImageDataset(train_x, transform=train_transform, features=features)
 
             train_ds = cover_ds + modified_ds
-            valid_ds = TrainingValidationDataset(
-                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
-            )
+            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
         else:
             train_images = original_images[folds_lut != fold].tolist()
             train_x = train_images.copy()
@@ -314,12 +327,8 @@ def get_datasets(
                 valid_x += [fname.replace("Cover", method) for fname in valid_images]
                 valid_y += [i + 1] * len(valid_images)
 
-            train_ds = TrainingValidationDataset(
-                train_x, train_y, transform=train_transform, need_dct=need_dct, need_ela=need_ela
-            )
-            valid_ds = TrainingValidationDataset(
-                valid_x, valid_y, transform=valid_transform, need_dct=need_dct, need_ela=need_ela
-            )
+            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
+            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
         sampler = None
         print("Train", train_ds)
@@ -327,7 +336,7 @@ def get_datasets(
         return train_ds, valid_ds, sampler
 
 
-def get_test_dataset(data_dir, need_dct):
+def get_test_dataset(data_dir, need_dct, features):
     valid_transform = A.NoOp()
     images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
-    return TrainingValidationDataset(images, None, valid_transform, need_dct=need_dct)
+    return TrainingValidationDataset(images, None, valid_transform, features=features)

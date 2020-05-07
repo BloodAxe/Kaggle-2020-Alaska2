@@ -21,7 +21,6 @@ from alaska2 import *
 
 
 def main():
-
     parser = argparse.ArgumentParser()
     parser.add_argument("-acc", "--accumulation-steps", type=int, default=1, help="Number of batches to process")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
@@ -44,9 +43,7 @@ def main():
     parser.add_argument(
         "--modification-type-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
     )
-    parser.add_argument(
-        "--embedding-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
-    )
+    parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -118,20 +115,23 @@ def main():
         num_workers = 0
         verbose = True
 
-    need_dct = False
+    features = ["rgb"]
     need_ela = False
 
     if model_name.startswith("rgb_dct_"):
         model_input_keys = [INPUT_IMAGE_KEY, INPUT_DCT_KEY]
-        need_dct = True
+        features += ["dct"]
+    elif model_name.startswith("rgb_ela_blur_"):
+        model_input_keys = [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_KEY, INPUT_FEATURES_BLUR_KEY]
+        features += ["ela", "blur"]
     elif model_name.startswith("dct_"):
         model_input_keys = [INPUT_DCT_KEY]
-        need_dct = True
+        features += ["dct"]
     elif model_name.startswith("rgb_"):
         model_input_keys = [INPUT_IMAGE_KEY]
     elif model_name.startswith("ela_"):
-        model_input_keys = [INPUT_ELA_KEY]
-        need_ela = True
+        model_input_keys = [INPUT_FEATURES_ELA_KEY]
+        features += ["ela"]
     else:
         raise KeyError(model_name)
 
@@ -207,8 +207,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            need_dct=need_dct,
-            need_ela=need_ela,
+            features=features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -314,8 +313,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            need_dct=need_dct,
-            need_ela=need_ela,
+            features=features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -423,8 +421,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            need_dct=need_dct,
-            need_ela=need_ela,
+            features=features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(

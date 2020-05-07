@@ -24,7 +24,7 @@ class ELAModel(nn.Module):
         self.flag_classifier = nn.Linear(128, 1)
 
     def forward(self, **kwargs):
-        ela = self.ela_bn(kwargs[INPUT_ELA_KEY].float())
+        ela = self.ela_bn(kwargs[INPUT_FEATURES_ELA_KEY].float())
 
         ela_features = self.pool(self.ela_encoder(ela)[-1])
         x = self.embedding(ela_features)

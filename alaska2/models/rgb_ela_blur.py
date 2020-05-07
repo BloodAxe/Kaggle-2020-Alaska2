@@ -1,21 +1,22 @@
 from pytorch_toolbelt.modules import *
 from alaska2.dataset import *
 
-__all__ = ["rgb_resnet34", "rgb_resnet18"]
+__all__ = ["rgb_ela_blur_resnet18"]
 
 
-class RGBModel(nn.Module):
-    def __init__(self, rgb_encoder: EncoderModule, num_classes, dropout=0):
+class RGB_ELA_Blur_Model(nn.Module):
+    def __init__(self, encoder: EncoderModule, num_classes, dropout=0):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(
             [0.3914976 * max_pixel_value, 0.44266784 * max_pixel_value, 0.46043398 * max_pixel_value],
             [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
         )
-        self.rgb_encoder = rgb_encoder
+
+        self.encoder = encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.embedding = nn.Sequential(
-            nn.Linear(self.rgb_encoder.channels[-1], 128),
+            nn.Linear(self.encoder.channels[-1], 128),
             nn.BatchNorm1d(128),
             nn.AlphaDropout(dropout),
             nn.ReLU(True),
@@ -28,10 +29,18 @@ class RGBModel(nn.Module):
         self.flag_classifier = nn.Linear(128, 1)
 
     def forward(self, **kwargs):
-        image = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())
-        features = self.rgb_encoder(image)
-        embedding = self.pool(features[-1])
 
+        x = torch.cat(
+            [
+                self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float()),
+                kwargs[INPUT_FEATURES_ELA_KEY].float(),
+                kwargs[INPUT_FEATURES_BLUR_KEY].float(),
+            ],
+            dim=1,
+        )
+
+        features = self.encoder(x)
+        embedding = self.pool(features[-1])
         x = self.embedding(embedding)
 
         return {
@@ -41,11 +50,6 @@ class RGBModel(nn.Module):
         }
 
 
-def rgb_resnet18(num_classes=4, dropout=0, pretrained=True):
-    rgb_encoder = Resnet18Encoder(pretrained=pretrained)
-    return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
-
-
-def rgb_resnet34(num_classes=4, dropout=0, pretrained=True):
-    rgb_encoder = Resnet34Encoder(pretrained=pretrained)
-    return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
+def rgb_ela_blur_resnet18(num_classes=4, dropout=0, pretrained=True):
+    dct_encoder = Resnet18Encoder(pretrained=pretrained).change_input_channels(3 + 15 + 9)
+    return RGB_ELA_Blur_Model(dct_encoder, num_classes=num_classes, dropout=dropout)
