@@ -7,7 +7,12 @@ __all__ = ["rgb_resnet34", "rgb_resnet18"]
 class RGBModel(nn.Module):
     def __init__(self, rgb_encoder: EncoderModule, num_classes, dropout=0):
         super().__init__()
-        self.rgb_bn = Normalize([0.3914976, 0.44266784, 0.46043398], [0.17819773, 0.17319807, 0.18128773])
+        max_pixel_value = 255
+
+        self.rgb_bn = Normalize(
+            [0.3914976 * max_pixel_value, 0.44266784 * max_pixel_value, 0.46043398 * max_pixel_value],
+            [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
+        )
         self.rgb_encoder = rgb_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.embedding = nn.Sequential(
