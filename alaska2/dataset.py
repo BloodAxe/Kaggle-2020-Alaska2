@@ -336,7 +336,7 @@ def get_datasets(
         return train_ds, valid_ds, sampler
 
 
-def get_test_dataset(data_dir, need_dct, features):
+def get_test_dataset(data_dir, features):
     valid_transform = A.NoOp()
     images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
     return TrainingValidationDataset(images, None, valid_transform, features=features)

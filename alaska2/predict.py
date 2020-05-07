@@ -8,17 +8,16 @@ from torch import nn
 from .dataset import *
 
 __all__ = [
-    "HFlipTTA",
+    "HVFlipTTA",
     "Rot180TTA",
     "D4TTA",
-    "MultiscaleTTA",
     "predict_from_flag",
     "predict_from_flag_and_type_sum",
     "predict_from_type",
 ]
 
 
-class HFlipTTA(nn.Module):
+class HVFlipTTA(nn.Module):
     def __init__(self, model, outputs, average=True):
         super().__init__()
         self.model = model
@@ -26,16 +25,23 @@ class HFlipTTA(nn.Module):
         self.average = average
 
     def forward(self, image):
+        image_h = AF.torch_fliplr(image)
+        image_v = AF.torch_flipud(image)
+        image_hv = AF.torch_flipud(image_h)
+
         outputs = self.model(image)
-        outputs_flip = self.model(AF.torch_fliplr(image))
+        outputs_h = self.model(image_h)
+        outputs_v = self.model(image_v)
+        outputs_hv = self.model(image_hv)
 
         for output_key in self.outputs:
-            outputs[output_key] += AF.torch_fliplr(outputs_flip[output_key])
+            outputs[output_key] += outputs_h[output_key]
+            outputs[output_key] += outputs_v[output_key]
+            outputs[output_key] += outputs_hv[output_key]
 
-        if self.average:
-            averaging_scale = 0.5
-            for output_key in self.outputs:
-                outputs[output_key] *= averaging_scale
+        scale = 0.25
+        for output_key in self.outputs:
+            outputs[output_key] *= scale
 
         return outputs
 
@@ -106,41 +112,6 @@ class D4TTA(nn.Module):
             for output_key in self.outputs:
                 outputs[output_key] *= averaging_scale
 
-        return outputs
-
-
-class MultiscaleTTA(nn.Module):
-    def __init__(self, model, outputs, size_offsets: List[int], average=True):
-        super().__init__()
-        self.model = model
-        self.outputs = outputs
-        self.size_offsets = size_offsets
-        self.average = average
-
-    def integrate(self, outputs, input, augment, deaugment):
-        aug_input = augment(input)
-        aug_output = self.model(aug_input)
-
-        for output_key in self.outputs:
-            outputs[output_key] += deaugment(aug_output[output_key])
-
-    def forward(self, image):
-        outputs = self.model(image)
-        x_size_orig = image.size()[2:]
-
-        for image_size_offset in self.size_offsets:
-            x_size_modified = x_size_orig[0] + image_size_offset, x_size_orig[1] + image_size_offset
-            self.integrate(
-                outputs,
-                image,
-                lambda x: F.interpolate(x, size=x_size_modified, mode="bilinear", align_corners=False),
-                lambda x: F.interpolate(x, size=x_size_orig, mode="bilinear", align_corners=False),
-            )
-
-        if self.average:
-            averaging_scale = 1.0 / (len(self.size_offsets) + 1)
-            for output_key in self.outputs:
-                outputs[output_key] *= averaging_scale
         return outputs
 
 

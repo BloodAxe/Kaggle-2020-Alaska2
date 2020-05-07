@@ -1,3 +1,5 @@
+from typing import Tuple, Dict
+
 import torch
 from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, ApplySoftmaxTo
 from torch import nn
@@ -28,7 +30,7 @@ def get_model(model_name, num_classes=4, dropout=0, pretrained=True):
     return MODEL_REGISTRY[model_name](num_classes=num_classes, dropout=dropout, pretrained=pretrained)
 
 
-def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, strict=True) -> nn.Module:
+def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, strict=True) -> Tuple[nn.Module, Dict]:
     checkpoint = torch.load(model_checkpoint, map_location="cpu")
     model_name = model_name or checkpoint["checkpoint_data"]["cmd_args"]["model"]
 
@@ -38,57 +40,8 @@ def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, s
 
 
 def wrap_model_with_tta(model, tta_mode, outputs):
-    if tta_mode == "d4":
-        model = D4TTA(model, outputs, average=False)
-
-    if tta_mode == "d4-avg":
-        model = D4TTA(model, outputs, average=True)
-
-    if tta_mode == "ms":
-        model = MultiscaleTTA(model, outputs, size_offsets=[-64, 64], average=False)
-
-    if tta_mode == "rot-avg":
-        model = Rot180TTA(model, outputs, average=True)
-
-    if tta_mode == "ms-avg":
-        model = MultiscaleTTA(model, outputs, size_offsets=[-64, 64], average=True)
-
-    if tta_mode == "zoom-in-avg":
-        model = MultiscaleTTA(model, outputs, size_offsets=[-64, -128], average=True)
-
-    if tta_mode == "zoom-out-avg":
-        model = MultiscaleTTA(model, outputs, size_offsets=[+64, +128], average=True)
-
-    if tta_mode == "rot-flip-avg":
-        model = HFlipTTA(model, outputs, average=True)
-        model = Rot180TTA(model, outputs, average=True)
-
-    if tta_mode == "ms-rot-avg":
-        model = Rot180TTA(model, outputs, average=True)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-128, -64, 64, +128], average=True)
-
-    if tta_mode == "ms-rot-flip-avg":
-        model = HFlipTTA(model, outputs, average=True)
-        model = Rot180TTA(model, outputs, average=True)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-128, -64, 64, +128], average=True)
-
-    if tta_mode == "ms2-rot-flip-avg":
-        model = HFlipTTA(model, outputs, average=True)
-        model = Rot180TTA(model, outputs, average=True)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-128, -64, 64, +128, +192], average=True)
-
-    if tta_mode == "ms-rot-flip":
-        model = HFlipTTA(model, outputs, average=False)
-        model = Rot180TTA(model, outputs, average=False)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-128, -64, 64, +128], average=True)
-
-    if tta_mode == "ms-d4":
-        model = D4TTA(model, outputs, average=False)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-64, 64], average=False)
-
-    if tta_mode == "ms-d4-avg":
-        model = D4TTA(model, outputs, average=True)
-        model = MultiscaleTTA(model, outputs, size_offsets=[-64, 64], average=True)
+    if tta_mode == "flip-hv":
+        model = HVFlipTTA(model, outputs, average=True)
 
     return model
 
@@ -119,8 +72,8 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
         print("Wrapping models with TTA", tta)
 
     if activation == "after_tta":
-        models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG) for m in models]
-        models = [ApplySoftmaxTo(m, output_key=OUTPUT_PRED_MODIFICATION_TYPE) for m in models]
+        model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG)
+        model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE)
         print("Applying sigmoid activation to outputs", outputs, "after TTA")
 
     return model.eval(), loaded_checkpoints
