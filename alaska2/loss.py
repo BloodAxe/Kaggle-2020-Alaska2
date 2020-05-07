@@ -104,10 +104,10 @@ class ContrastiveCosineEmbeddingLoss(nn.Module):
         """
         batch_size, embedding_size = input.size()
 
-        target = target > 0  # So far ignore particular type
+        binary_target = target > 0  # So far ignore particular type
 
-        target_a = target.view(batch_size, 1)
-        target_b = target.view(1, batch_size)
+        target_a = binary_target.view(batch_size, 1)
+        target_b = binary_target.view(1, batch_size)
 
         same_class_mask = target_a == target_b
 
@@ -119,8 +119,20 @@ class ContrastiveCosineEmbeddingLoss(nn.Module):
 
         # Two terms:
         # Inter-class variance should be minimized
-        same_class_loss: torch.Tensor = (1 - cossim) * same_class_mask.to(input.dtype)
-        same_class_loss = same_class_loss.triu_(diagonal=1).sum()
+        class_counts = torch.histc(target, 4)
+        same_class_loss = 0
+
+        for i, counts in enumerate(class_counts):
+            if counts == 0:
+                continue
+            target_a = (target == i).view(batch_size, 1)
+            target_b = (target == i).view(1, batch_size)
+            same_class_mask = target_a == target_b
+
+            single_class_loss: torch.Tensor = (1 - cossim) * same_class_mask.to(input.dtype)
+            single_class_loss = single_class_loss.triu_(diagonal=1).sum() / counts
+
+            same_class_loss = same_class_loss + single_class_loss
 
         # Distance between different classes should be maximized
         margin = 0.5
