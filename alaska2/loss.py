@@ -151,8 +151,9 @@ class EmbeddingLoss(nn.Module):
         """
         input: [N,E]
         """
-        batch_size, embedding_size = input.size()
+        batch_size, embedding_size = input.size(0), input.size(1)
         num_unique_images = batch_size // 4
+        is_image = len(input.size()) == 4
 
         loss = 0
         for i in range(num_unique_images):
@@ -164,6 +165,11 @@ class EmbeddingLoss(nn.Module):
             jmipod_loss = F.cosine_similarity(cover, jmipod, dim=0).pow_(2)
             juniward_loss = F.cosine_similarity(cover, juniward, dim=0).pow_(2)
             uerd_loss = F.cosine_similarity(cover, uerd, dim=0).pow_(2)
+
+            if is_image:
+                jmipod_loss = jmipod_loss.mean()
+                juniward_loss = juniward_loss.mean()
+                uerd_loss = uerd_loss.mean()
 
             sample_loss = jmipod_loss + juniward_loss + uerd_loss
             loss += sample_loss
@@ -272,7 +278,7 @@ def get_criterion_callback(
 
 
 def get_criterions(
-    modification_flag, modification_type, embedding_loss, num_epochs: int, mixup=False, cutmix=False, tsa=False
+    modification_flag, modification_type, embedding_loss, feature_maps_loss, num_epochs: int, mixup=False, cutmix=False, tsa=False
 ):
     criterions_dict = {}
     callbacks = []
@@ -346,6 +352,31 @@ def get_criterions(
             callbacks.append(criterion)
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
+
+    if feature_maps_loss is not None:
+        for criterion in feature_maps_loss:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
+
+            for fm in {OUTPUT_FEATURE_MAP_4, OUTPUT_FEATURE_MAP_8, OUTPUT_FEATURE_MAP_16, OUTPUT_FEATURE_MAP_32}:
+                cd, criterion, criterion_name = get_criterion_callback(
+                    loss_name,
+                    num_epochs=num_epochs,
+                    input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                    output_key=fm,
+                    prefix=f"{fm}/{loss_name}",
+                    loss_weight=float(loss_weight),
+                    mixup=mixup,
+                    cutmix=cutmix,
+                    tsa=tsa,
+                )
+
+                criterions_dict.update(cd)
+                callbacks.append(criterion)
+                losses.append(criterion_name)
+                print("Using loss", fm, loss_name, loss_weight)
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
     if mixup:
