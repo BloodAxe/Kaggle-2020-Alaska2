@@ -417,7 +417,7 @@ def main():
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
             image_size=image_size,
-            augmentation="safe",
+            augmentation="medium",
             balance=balance,
             fast=fast,
             fold=fold,

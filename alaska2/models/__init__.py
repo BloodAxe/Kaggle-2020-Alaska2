@@ -52,8 +52,8 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
 
     models, loaded_checkpoints = zip(*[model_from_checkpoint(ck, strict=strict) for ck in checkpoints])
 
-    inputs = itertools.chain(*[m.required_features for m in models])
-    inputs = list(set(list(inputs)))
+    required_features = itertools.chain(*[m.required_features for m in models])
+    required_features = list(set(list(required_features)))
 
     if activation == "after_model":
         models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG) for m in models]
@@ -72,7 +72,7 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
         model = models[0]
 
     if tta is not None:
-        model = wrap_model_with_tta(model, tta, inputs=inputs, outputs=outputs)
+        model = wrap_model_with_tta(model, tta, inputs=required_features, outputs=outputs)
         print("Wrapping models with TTA", tta)
 
     if activation == "after_tta":
@@ -80,4 +80,4 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
         model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE)
         print("Applying sigmoid activation to outputs", outputs, "after TTA")
 
-    return model.eval(), loaded_checkpoints
+    return model.eval(), loaded_checkpoints, required_features

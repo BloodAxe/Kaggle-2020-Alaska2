@@ -25,6 +25,7 @@ from sklearn.linear_model import LogisticRegression as LR
 from sklearn.isotonic import IsotonicRegression as IR
 
 
+@torch.no_grad()
 def compute_oof_predictions(model, dataset, batch_size=1) -> pd.DataFrame:
     df = defaultdict(list)
     for batch in tqdm(DataLoader(dataset, batch_size=batch_size, pin_memory=True)):
@@ -84,7 +85,7 @@ def main():
     test_ds = get_test_dataset(data_dir, features=features)
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
-    model, checkpoints = ensemble_from_checkpoints(
+    model, checkpoints, required_features = ensemble_from_checkpoints(
         checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta
     )
 
@@ -98,8 +99,8 @@ def main():
 
     model = model.eval()
 
-    fold = checkpoints[0]["cmd_args"]["fold"]
-    _, valid_ds = get_datasets(data_dir, fold=fold, features=model.required_features)
+    fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
+    _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
     oof_predictions = compute_oof_predictions(model, valid_ds)
     oof_predictions.to_csv(os.path.join(output_dir, "oof_predictions.csv"), index=False)
 
