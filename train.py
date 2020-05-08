@@ -116,7 +116,7 @@ def main():
         verbose = True
 
     # Compute batch size for validation
-    valid_batch_size = train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1]))
+    valid_batch_size = int(train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1])))
 
     run_train = num_epochs > 0
 
