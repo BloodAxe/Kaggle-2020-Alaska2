@@ -1,3 +1,4 @@
+import itertools
 from typing import Tuple, Dict
 
 import torch
@@ -10,6 +11,7 @@ from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
+    "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
@@ -19,8 +21,6 @@ MODEL_REGISTRY = {
     "rgb_resnet34": rgb.rgb_resnet34,
     "dct_resnet34": dct.dct_resnet34,
     "ela_resnet34": ela.ela_resnet34,
-    # RGB + ELA + BLUR
-    "rgb_ela_blur_resnet18": rgb_ela_blur.rgb_ela_blur_resnet18,
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
@@ -39,9 +39,9 @@ def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, s
     return model.eval(), checkpoint
 
 
-def wrap_model_with_tta(model, tta_mode, outputs):
+def wrap_model_with_tta(model, tta_mode, inputs, outputs):
     if tta_mode == "flip-hv":
-        model = HVFlipTTA(model, outputs, average=True)
+        model = HVFlipTTA(model, inputs=inputs, outputs=outputs, average=True)
 
     return model
 
@@ -52,12 +52,16 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
 
     models, loaded_checkpoints = zip(*[model_from_checkpoint(ck, strict=strict) for ck in checkpoints])
 
+    inputs = itertools.chain(*[m.required_features for m in models])
+    inputs = list(set(list(inputs)))
+
     if activation == "after_model":
         models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG) for m in models]
         models = [ApplySoftmaxTo(m, output_key=OUTPUT_PRED_MODIFICATION_TYPE) for m in models]
         print("Applying sigmoid activation to outputs", outputs, "after model")
 
     if len(models) > 1:
+
         model = Ensembler(models, outputs=outputs)
         if activation == "after_ensemble":
             model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG)
@@ -68,7 +72,7 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
         model = models[0]
 
     if tta is not None:
-        model = wrap_model_with_tta(model, tta, outputs=outputs)
+        model = wrap_model_with_tta(model, tta, inputs=inputs, outputs=outputs)
         print("Wrapping models with TTA", tta)
 
     if activation == "after_tta":

@@ -58,11 +58,8 @@ def main():
                 "A submission csv file must be specified explicitly since checkpoints exists in various folders"
             )
 
-    submission_csv = os.path.join(output_dir, "submission.csv")
-
-    print("Submission will be saved to ", submission_csv)
-
-    os.makedirs(os.path.dirname(submission_csv), exist_ok=True)
+    print("Submissions will be saved to ", output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     test_ds = get_test_dataset(data_dir, features=features)
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]

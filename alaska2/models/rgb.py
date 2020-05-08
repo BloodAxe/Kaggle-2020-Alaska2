@@ -40,6 +40,10 @@ class RGBModel(nn.Module):
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
         }
 
+    @property
+    def required_features(self):
+        return [INPUT_IMAGE_KEY]
+
 
 def rgb_resnet18(num_classes=4, dropout=0, pretrained=True):
     rgb_encoder = Resnet18Encoder(pretrained=pretrained)

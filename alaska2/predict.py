@@ -16,27 +16,37 @@ __all__ = [
     "predict_from_type",
 ]
 
+def torch_flip_ud_lr(x: torch.Tensor):
+    """
+    Flip 4D image tensor vertically
+    :param x:
+    :return:
+    """
+    return x.flip(2).flip(3)
 
 class HVFlipTTA(nn.Module):
-    def __init__(self, model, outputs, average=True):
+    def __init__(self, model, inputs, outputs, average=True):
         super().__init__()
         self.model = model
+        self.inputs = inputs
         self.outputs = outputs
         self.average = average
 
-    def forward(self, image):
-        image_h = AF.torch_fliplr(image)
-        image_v = AF.torch_flipud(image)
-        image_hv = AF.torch_flipud(image_h)
+    def augment_inputs(self, augment_fn, kwargs):
+        augmented_inputs = dict(
+            (key, augment_fn(value) if key in self.inputs else value) for key, value in kwargs.items()
+        )
+        return augmented_inputs
 
-        outputs = self.model(image)
-        outputs_h = self.model(image_h)
-        outputs_v = self.model(image_v)
-        outputs_hv = self.model(image_hv)
+    def forward(self, **kwargs):
+        outputs = self.model(**kwargs)
+        outputs_lr = self.model(**self.augment_inputs(AF.torch_fliplr, kwargs))
+        outputs_ud = self.model(**self.augment_inputs(AF.torch_flipud, kwargs))
+        outputs_hv = self.model(**self.augment_inputs(torch_flip_ud_lr, kwargs))
 
         for output_key in self.outputs:
-            outputs[output_key] += outputs_h[output_key]
-            outputs[output_key] += outputs_v[output_key]
+            outputs[output_key] += outputs_lr[output_key]
+            outputs[output_key] += outputs_ud[output_key]
             outputs[output_key] += outputs_hv[output_key]
 
         scale = 0.25

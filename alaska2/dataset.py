@@ -8,13 +8,12 @@ import numpy as np
 import torch
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, WeightedRandomSampler
 
 from .augmentations import get_augmentations
 
 INPUT_IMAGE_KEY = "input_image"
-INPUT_DCT_KEY = "input_dct"
+INPUT_FEATURES_DCT_KEY = "input_dct"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
@@ -30,11 +29,12 @@ __all__ = [
     "get_datasets",
     "compute_dct",
     "compute_ela",
+    "compute_blur_features",
     "get_test_dataset",
     "INPUT_TRUE_MODIFICATION_TYPE",
     "INPUT_TRUE_MODIFICATION_FLAG",
     "INPUT_FEATURES_BLUR_KEY",
-    "INPUT_DCT_KEY",
+    "INPUT_FEATURES_DCT_KEY",
     "INPUT_FEATURES_ELA_KEY",
     "INPUT_IMAGE_KEY",
     "INPUT_IMAGE_ID_KEY",
@@ -89,6 +89,20 @@ def compute_blur_features(image):
     return diff
 
 
+def compute_features(image, features):
+    sample = {}
+    if INPUT_FEATURES_DCT_KEY in features:
+        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+
+    if INPUT_FEATURES_ELA_KEY in features:
+        sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+
+    if INPUT_FEATURES_BLUR_KEY in features:
+        sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
+
+    return sample
+
+
 class TrainingValidationDataset(Dataset):
     def __init__(
         self, images: np.ndarray, targets: Optional[Union[List, np.ndarray]], transform: A.Compose, features: List[str]
@@ -100,15 +114,13 @@ class TrainingValidationDataset(Dataset):
         self.images = images
         self.targets = targets
         self.transform = transform
-        self.need_dct = "dct" in features
-        self.need_ela = "ela" in features
-        self.need_blur = "blur" in features
+        self.features = features
 
     def __len__(self):
         return len(self.images)
 
     def __repr__(self):
-        return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, need_dct={self.need_dct}, need_ela={self.need_ela})"
+        return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, features={self.features})"
 
     def __getitem__(self, index):
         image = cv2.imread(self.images[index])
@@ -123,15 +135,7 @@ class TrainingValidationDataset(Dataset):
             sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
             sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
 
-        if self.need_dct:
-            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
-
-        if self.need_ela:
-            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
-
-        if self.need_blur:
-            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
-
+        sample.update(compute_features(image, self.features))
         return sample
 
 
@@ -140,9 +144,7 @@ class BalancedTrainingDataset(Dataset):
         self.images = images
         self.transform = transform
         self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
-        self.need_dct = "dct" in features
-        self.need_ela = "ela" in features
-        self.need_blur = "blur" in features
+        self.features = features
 
     def __len__(self):
         return len(self.images)
@@ -167,13 +169,7 @@ class BalancedTrainingDataset(Dataset):
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
 
-        if self.need_dct:
-            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
-        if self.need_ela:
-            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
-        if self.need_blur:
-            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
-
+        sample.update(compute_features(image, self.features))
         return sample
 
 
@@ -181,9 +177,7 @@ class CoverImageDataset(Dataset):
     def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
         self.transform = transform
-        self.need_dct = "dct" in features
-        self.need_ela = "ela" in features
-        self.need_blur = "blur" in features
+        self.features = features
 
     def __len__(self):
         return len(self.images)
@@ -201,13 +195,7 @@ class CoverImageDataset(Dataset):
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
 
-        if self.need_dct:
-            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
-        if self.need_ela:
-            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
-        if self.need_blur:
-            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
-
+        sample.update(compute_features(image, self.features))
         return sample
 
 
@@ -216,9 +204,7 @@ class ModifiedImageDataset(Dataset):
         self.images = images
         self.transform = transform
         self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
-        self.need_dct = "dct" in features
-        self.need_ela = "ela" in features
-        self.need_blur = "blur" in features
+        self.features = features
 
     def __len__(self):
         return len(self.images)
@@ -239,13 +225,7 @@ class ModifiedImageDataset(Dataset):
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
 
-        if self.need_dct:
-            sample[INPUT_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
-        if self.need_ela:
-            sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
-        if self.need_blur:
-            sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
-
+        sample.update(compute_features(image, self.features))
         return sample
 
 

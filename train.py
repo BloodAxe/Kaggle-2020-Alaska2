@@ -119,13 +119,13 @@ def main():
     need_ela = False
 
     if model_name.startswith("rgb_dct_"):
-        model_input_keys = [INPUT_IMAGE_KEY, INPUT_DCT_KEY]
+        model_input_keys = [INPUT_IMAGE_KEY, INPUT_FEATURES_DCT_KEY]
         features += ["dct"]
     elif model_name.startswith("rgb_ela_blur_"):
         model_input_keys = [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_KEY, INPUT_FEATURES_BLUR_KEY]
         features += ["ela", "blur"]
     elif model_name.startswith("dct_"):
-        model_input_keys = [INPUT_DCT_KEY]
+        model_input_keys = [INPUT_FEATURES_DCT_KEY]
         features += ["dct"]
     elif model_name.startswith("rgb_"):
         model_input_keys = [INPUT_IMAGE_KEY]
