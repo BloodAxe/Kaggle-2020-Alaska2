@@ -149,8 +149,14 @@ def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "bce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean")
 
+    if loss_name.lower() == "wbce":
+        return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean", pos_weight=torch.tensor(0.33).float()).cuda()
+
     if loss_name.lower() == "ce":
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
+
+    if loss_name.lower() == "wce":
+        return nn.CrossEntropyLoss(reduction="none" if tsa else "mean", weight=torch.tensor([2,1,2,1]).float()).cuda()
 
     if loss_name.lower() == "focal":
         return FocalLoss(alpha=None, gamma=2, reduction="none" if tsa else "mean")
