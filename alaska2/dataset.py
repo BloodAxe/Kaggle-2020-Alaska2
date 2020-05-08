@@ -27,6 +27,7 @@ OUTPUT_PRED_EMBEDDING = "pred_embedding"
 __all__ = [
     "TrainingValidationDataset",
     "get_datasets",
+    "get_datasets_batched",
     "compute_dct",
     "compute_ela",
     "compute_blur_features",
@@ -229,6 +230,47 @@ class ModifiedImageDataset(Dataset):
         return sample
 
 
+class BatchedImageDataset(Dataset):
+    def __init__(self, images: np.ndarray, transform: A.Compose, features):
+        self.images = images
+        self.transform = A.ReplayCompose([transform])
+        self.features = features
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        # Select one of 3 altered images
+        image0 = cv2.imread(self.images[index])
+        image1 = cv2.imread(self.images[index].replace("Cover", "JMiPOD"))
+        image2 = cv2.imread(self.images[index].replace("Cover", "JUNIWARD"))
+        image3 = cv2.imread(self.images[index].replace("Cover", "UERD"))
+
+        data = self.transform(image=image0)
+
+        image0 = data["image"]
+        image1 = self.transform.replay(data["replay"], image=image1)["image"]
+        image2 = self.transform.replay(data["replay"], image=image2)["image"]
+        image3 = self.transform.replay(data["replay"], image=image3)["image"]
+
+        sample = {
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(self.images[index])] * 4,
+            INPUT_IMAGE_KEY: torch.stack(
+                [
+                    tensor_from_rgb_image(image0),
+                    tensor_from_rgb_image(image1),
+                    tensor_from_rgb_image(image2),
+                    tensor_from_rgb_image(image3),
+                ]
+            ),
+            INPUT_TRUE_MODIFICATION_TYPE: np.array([0, 1, 2, 3]),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1, 1, 1]).float(),
+        }
+        # TODO
+        # sample.update(compute_features(image, self.features))
+        return sample
+
+
 def get_datasets(
     data_dir: str,
     fold: int,
@@ -318,6 +360,63 @@ def get_datasets(
 
             train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
             valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+
+        sampler = None
+        print("Train", train_ds)
+        print("Valid", valid_ds)
+        return train_ds, valid_ds, sampler
+
+
+def get_datasets_batched(
+    data_dir: str,
+    fold: int,
+    augmentation: str = "light",
+    fast: bool = False,
+    image_size: Tuple[int, int] = (512, 512),
+    features=None,
+):
+    train_transform = get_augmentations(augmentation, image_size)
+    valid_transform = A.NoOp()
+    if image_size[0] != 512 or image_size[1] != 512:
+        print("Adding RandomCrop size target image size is", image_size)
+        train_transform = A.Compose([A.RandomCrop(image_size[0], image_size[1], always_apply=True), train_transform])
+
+    if fold is None:
+        if fast:
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+            class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
+
+            sampler = WeightedRandomSampler(np.ones(len(class_0)), 65535)
+
+            train_ds = BatchedImageDataset(class_0, transform=train_transform, features=features)
+            valid_ds = BatchedImageDataset(class_0, transform=valid_transform, features=features)
+
+            print("Train", train_ds)
+            print("Valid", valid_ds)
+
+            return train_ds, valid_ds, sampler
+        else:
+            raise ValueError("Fold must be set")
+    else:
+        if fast:
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+        original_images = np.array(fs.find_images_in_dir(os.path.join(data_dir, "Cover")))
+        image_sizes = np.array([os.stat(fname).st_size for fname in original_images])
+        order = np.argsort(image_sizes)
+        original_images = original_images[order]
+        num_folds = 4
+        num_images = len(original_images)
+
+        folds_lut = (list(range(num_folds)) * num_images)[:num_images]
+        folds_lut = np.array(folds_lut)
+
+        train_images = original_images[folds_lut != fold].tolist()
+        valid_images = original_images[folds_lut == fold].tolist()
+
+        train_ds = BatchedImageDataset(train_images, transform=train_transform, features=features)
+        valid_ds = BatchedImageDataset(valid_images, transform=valid_transform, features=features)
 
         sampler = None
         print("Train", train_ds)
