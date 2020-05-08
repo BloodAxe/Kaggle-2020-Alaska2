@@ -31,7 +31,7 @@ class EqualizeHistogram(A.ImageOnlyTransform):
         return cv2.addWeighted(equalized, 0.5, img, 0.5, 0, dtype=cv2.CV_8U)
 
 
-def get_augmentations(augmentations_level: str):
+def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
     augmentations_level = augmentations_level.lower()
     if augmentations_level == "none":
         return A.NoOp()

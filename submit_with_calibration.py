@@ -1,7 +1,9 @@
+import pickle
 import warnings
 from collections import defaultdict
 
 from catalyst.utils import any2device
+from pytorch_toolbelt.utils import to_numpy
 from pytorch_toolbelt.utils.catalyst import report_checkpoint
 
 warnings.simplefilter("ignore", UserWarning)
@@ -19,6 +21,25 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from alaska2 import *
+from sklearn.linear_model import LogisticRegression as LR
+from sklearn.isotonic import IsotonicRegression as IR
+
+
+@torch.no_grad()
+def compute_oof_predictions(model, dataset, batch_size=1) -> pd.DataFrame:
+    df = defaultdict(list)
+    for batch in tqdm(DataLoader(dataset, batch_size=batch_size, pin_memory=True)):
+        batch = any2device(batch, device="cuda")
+
+        image_ids = batch[INPUT_IMAGE_ID_KEY]
+        y_preds = to_numpy(predict_from_flag(model, batch))
+        y_trues = to_numpy(batch[INPUT_TRUE_MODIFICATION_FLAG])
+        df["Id"].extend(image_ids)
+        df["y_true"].extend(y_trues)
+        df["y_pred"].extend(y_preds)
+
+    df = pd.DataFrame.from_dict(df)
+    return df
 
 
 @torch.no_grad()
@@ -64,7 +85,7 @@ def main():
     test_ds = get_test_dataset(data_dir, features=features)
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
-    model, checkpoints = ensemble_from_checkpoints(
+    model, checkpoints, required_features = ensemble_from_checkpoints(
         checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta
     )
 
@@ -77,40 +98,38 @@ def main():
         model = nn.DataParallel(model)
 
     model = model.eval()
+
+    fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
+    _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
+    oof_predictions = compute_oof_predictions(model, valid_ds)
+    oof_predictions.to_csv(os.path.join(output_dir, "oof_predictions.csv"), index=False)
+
+    print("Uncalibrated", alaska_weighted_auc(oof_predictions["y_true"].values, oof_predictions["y_pred"].values))
+
+    ir = IR(out_of_bounds="clip")
+    ir.fit(oof_predictions["y_pred"].values, oof_predictions["y_true"].values)
+    p_calibrated = ir.transform(oof_predictions["y_pred"].values)
+    print("IR", alaska_weighted_auc(oof_predictions["y_true"].values, p_calibrated))
+    with open(os.path.join(output_dir, "calibration.pkl"), "wb") as f:
+        pickle.dump(ir, f)
+
     loader = DataLoader(
         test_ds, batch_size=batch_size, num_workers=workers, pin_memory=True, shuffle=False, drop_last=False
     )
 
     proposalcsv_flag = defaultdict(list)
-    proposalcsv_type = defaultdict(list)
-    proposalcsv_type_flag = defaultdict(list)
 
     for batch in tqdm(loader):
         batch = any2device(batch, device="cuda")
-        probas_flag = predict_from_flag(model, batch)
-        probas_type = predict_from_type(model, batch)
-        probas_flag_type = predict_from_flag_and_type_sum(model, batch)
+        probas_flag = to_numpy(predict_from_flag(model, batch))
+        probas_flag_cal = ir.transform(probas_flag)
 
         for i, image_id in enumerate(batch[INPUT_IMAGE_ID_KEY]):
             proposalcsv_flag["Id"].append(image_id + ".jpg")
-            proposalcsv_flag["Label"].append(float(probas_flag[i]))
-
-            proposalcsv_type["Id"].append(image_id + ".jpg")
-            proposalcsv_type["Label"].append(float(probas_type[i]))
-
-            proposalcsv_type_flag["Id"].append(image_id + ".jpg")
-            proposalcsv_type_flag["Label"].append(float(probas_flag_type[i]))
+            proposalcsv_flag["Label"].append(float(probas_flag_cal[i]))
 
     proposalcsv = pd.DataFrame.from_dict(proposalcsv_flag)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_flag.csv"), index=False)
-    print(proposalcsv.head())
-
-    proposalcsv = pd.DataFrame.from_dict(proposalcsv_type)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_type.csv"), index=False)
-    print(proposalcsv.head())
-
-    proposalcsv = pd.DataFrame.from_dict(proposalcsv_type_flag)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_type_flag.csv"), index=False)
+    proposalcsv.to_csv(os.path.join(output_dir, "submission_flag_calibrated.csv"), index=False)
     print(proposalcsv.head())
 
 

@@ -142,15 +142,55 @@ class ContrastiveCosineEmbeddingLoss(nn.Module):
         return (same_class_loss + diff_class_loss) / batch_size
 
 
+class EmbeddingLoss(nn.Module):
+    """
+    This loss assumes embedding vectors has length [N*4] and batch has elem1, elem1, elem2, elem3
+    """
+
+    def forward(self, input: torch.Tensor, _):
+        """
+        input: [N,E]
+        """
+        batch_size, embedding_size = input.size()
+        num_unique_images = batch_size // 4
+
+        loss = 0
+        for i in range(num_unique_images):
+            cover = input[i * 4 + 0]
+            jmipod = input[i * 4 + 1]
+            juniward = input[i * 4 + 2]
+            uerd = input[i * 4 + 3]
+
+            jmipod_loss = F.cosine_similarity(cover, jmipod, dim=0).pow_(2)
+            juniward_loss = F.cosine_similarity(cover, juniward, dim=0).pow_(2)
+            uerd_loss = F.cosine_similarity(cover, uerd, dim=0).pow_(2)
+
+            sample_loss = jmipod_loss + juniward_loss + uerd_loss
+            loss += sample_loss
+
+        return loss / num_unique_images
+
+
 def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "ccos":
         return ContrastiveCosineEmbeddingLoss()
 
+    if loss_name.lower() == "cntr":
+        return EmbeddingLoss()
+
     if loss_name.lower() == "bce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean")
 
+    if loss_name.lower() == "wbce":
+        return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean", pos_weight=torch.tensor(0.33).float()).cuda()
+
     if loss_name.lower() == "ce":
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
+
+    if loss_name.lower() == "wce":
+        return nn.CrossEntropyLoss(
+            reduction="none" if tsa else "mean", weight=torch.tensor([2, 1, 2, 1]).float()
+        ).cuda()
 
     if loss_name.lower() == "focal":
         return FocalLoss(alpha=None, gamma=2, reduction="none" if tsa else "mean")

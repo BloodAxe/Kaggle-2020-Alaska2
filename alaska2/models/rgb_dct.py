@@ -28,7 +28,7 @@ class RGBDCTSiamese(nn.Module):
 
     def forward(self, **kwargs):
         rgb = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())
-        dct = self.dct_bn(kwargs[INPUT_DCT_KEY].float())
+        dct = self.dct_bn(kwargs[INPUT_FEATURES_DCT_KEY].float())
 
         rgb_features = self.pool(self.rgb_encoder(rgb)[-1])
         dct_featues = self.pool(self.dct_encoder(dct)[-1])
@@ -41,6 +41,9 @@ class RGBDCTSiamese(nn.Module):
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
         }
 
+    @property
+    def required_features(self):
+        return [INPUT_IMAGE_KEY, INPUT_FEATURES_DCT_KEY]
 
 def rgb_dct_efficientb3(num_classes=4, dropout=0, pretrained=True):
     rgb_encoder = EfficientNetB3Encoder()

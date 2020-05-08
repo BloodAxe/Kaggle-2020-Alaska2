@@ -24,7 +24,7 @@ class DCTModel(nn.Module):
         self.flag_classifier = nn.Linear(128, 1)
 
     def forward(self, **kwargs):
-        dct = self.dct_bn(kwargs[INPUT_DCT_KEY].float())
+        dct = self.dct_bn(kwargs[INPUT_FEATURES_DCT_KEY].float())
 
         dct_featues = self.pool(self.dct_encoder(dct)[-1])
         x = self.embedding(dct_featues)

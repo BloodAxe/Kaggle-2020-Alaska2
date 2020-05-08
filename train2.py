@@ -10,14 +10,28 @@ from datetime import datetime
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
-from pytorch_toolbelt.utils import fs
+from pytorch_toolbelt.utils import fs, itertools
 from pytorch_toolbelt.utils.catalyst import ShowPolarBatchesCallback, report_checkpoint, clean_checkpoint
 from pytorch_toolbelt.utils.random import set_manual_seed
 from pytorch_toolbelt.utils.torch_utils import count_parameters, transfer_weights
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
 
 from alaska2 import *
+
+
+def custom_collate(input):
+    input = default_collate(input)
+
+    _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
+
+    input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*input[INPUT_IMAGE_ID_KEY]))
+    input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
+    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
+    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
+
+    return input
 
 
 def main():
@@ -115,6 +129,9 @@ def main():
         num_workers = 0
         verbose = True
 
+    if train_batch_size % 4 != 0:
+        raise ValueError("Batch Size must be divizable by 4")
+
     # Compute batch size for validation
     valid_batch_size = int(train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1])))
 
@@ -181,11 +198,10 @@ def main():
 
     # Pretrain/warmup
     if warmup:
-        train_ds, valid_ds, train_sampler = get_datasets(
+        train_ds, valid_ds, train_sampler = get_datasets_batched(
             data_dir=data_dir,
             image_size=image_size,
             augmentation="light",
-            balance=balance,
             fast=fast,
             fold=fold,
             features=required_features,
@@ -216,9 +232,12 @@ def main():
             drop_last=True,
             shuffle=train_sampler is None,
             sampler=train_sampler,
+            collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+        )
 
         parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
         optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
@@ -288,11 +307,10 @@ def main():
         gc.collect()
 
     if run_train:
-        train_ds, valid_ds, train_sampler = get_datasets(
+        train_ds, valid_ds, train_sampler = get_datasets_batched(
             data_dir=data_dir,
             image_size=image_size,
             augmentation=augmentations,
-            balance=balance,
             fast=fast,
             fold=fold,
             features=required_features,
@@ -323,9 +341,12 @@ def main():
             drop_last=True,
             shuffle=train_sampler is None,
             sampler=train_sampler,
+            collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+        )
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)
@@ -397,11 +418,10 @@ def main():
         gc.collect()
 
     if fine_tune:
-        train_ds, valid_ds, train_sampler = get_datasets(
+        train_ds, valid_ds, train_sampler = get_datasets_batched(
             data_dir=data_dir,
             image_size=image_size,
             augmentation="medium",
-            balance=balance,
             fast=fast,
             fold=fold,
             features=required_features,
@@ -432,9 +452,12 @@ def main():
             drop_last=True,
             shuffle=train_sampler is None,
             sampler=train_sampler,
+            collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+        )
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)

@@ -34,6 +34,10 @@ class ELAModel(nn.Module):
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
         }
 
+    @property
+    def required_features(self):
+        return [INPUT_FEATURES_ELA_KEY]
+
 
 def ela_resnet34(num_classes=4, dropout=0, pretrained=True):
     dct_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(15)
