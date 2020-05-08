@@ -17,6 +17,7 @@ MODEL_REGISTRY = {
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
     "rgb_dct_b0_srnet": rgb_dct.rgb_dct_b0_srnet,
     #
+    "rgb_b0": rgb.b0,
     "rgb_resnet18": rgb.rgb_resnet18,
     "rgb_resnet34": rgb.rgb_resnet34,
     "dct_resnet34": dct.dct_resnet34,
