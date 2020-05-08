@@ -115,32 +115,13 @@ def main():
         num_workers = 0
         verbose = True
 
-    features = ["rgb"]
-    need_ela = False
-
-    if model_name.startswith("rgb_dct_"):
-        model_input_keys = [INPUT_IMAGE_KEY, INPUT_FEATURES_DCT_KEY]
-        features += ["dct"]
-    elif model_name.startswith("rgb_ela_blur_"):
-        model_input_keys = [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_KEY, INPUT_FEATURES_BLUR_KEY]
-        features += ["ela", "blur"]
-    elif model_name.startswith("dct_"):
-        model_input_keys = [INPUT_FEATURES_DCT_KEY]
-        features += ["dct"]
-    elif model_name.startswith("rgb_"):
-        model_input_keys = [INPUT_IMAGE_KEY]
-    elif model_name.startswith("ela_"):
-        model_input_keys = [INPUT_FEATURES_ELA_KEY]
-        features += ["ela"]
-    else:
-        raise KeyError(model_name)
-
     # Compute batch size for validation
-    valid_batch_size = train_batch_size
+    valid_batch_size = train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1]))
 
     run_train = num_epochs > 0
 
     model: nn.Module = get_model(model_name, dropout=dropout).cuda()
+    required_features = model.required_features
 
     if args.transfer:
         transfer_checkpoint = fs.auto_file(args.transfer)
@@ -207,7 +188,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            features=features,
+            features=required_features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -276,7 +257,7 @@ def main():
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
 
-        runner = SupervisedRunner(input_key=model_input_keys, output_key=None)
+        runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
             fp16=fp16,
             model=model,
@@ -313,7 +294,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            features=features,
+            features=required_features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -384,7 +365,7 @@ def main():
             callbacks += [SchedulerCallback(mode="batch")]
 
         # model training
-        runner = SupervisedRunner(input_key=model_input_keys, output_key=None)
+        runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
             fp16=fp16,
             model=model,
@@ -421,7 +402,7 @@ def main():
             balance=balance,
             fast=fast,
             fold=fold,
-            features=features,
+            features=required_features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -492,7 +473,7 @@ def main():
             callbacks += [SchedulerCallback(mode="batch")]
 
         # model training
-        runner = SupervisedRunner(input_key=model_input_keys, output_key=None)
+        runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
             fp16=fp16,
             model=model,

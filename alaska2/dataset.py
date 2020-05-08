@@ -232,14 +232,17 @@ class ModifiedImageDataset(Dataset):
 def get_datasets(
     data_dir: str,
     fold: int,
-    augmentation: str="light",
-    fast: bool=False,
+    augmentation: str = "light",
+    fast: bool = False,
     image_size: Tuple[int, int] = (512, 512),
     balance=False,
     features=None,
 ):
-    train_transform = get_augmentations(augmentation)
+    train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
+    if image_size[0] != 512 or image_size[1] != 512:
+        print("Adding RandomCrop size target image size is", image_size)
+        train_transform = A.Compose([A.RandomCrop(image_size[0], image_size[1], always_apply=True), train_transform])
 
     if fold is None:
         if fast:

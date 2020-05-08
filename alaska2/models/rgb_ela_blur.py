@@ -492,18 +492,9 @@ class FrankModel(nn.Module):
         self.encoder = FrankEncoder(activation=activation, dropout=dropout)
         self.pool = GlobalAvgPool2d(flatten=True)
         activation = get_activation_block(activation)
-        self.embedding = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.AlphaDropout(dropout),
-            activation(),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            activation(),
-        )
 
-        self.type_classifier = nn.Linear(128, num_classes)
-        self.flag_classifier = nn.Linear(128, 1)
+        self.type_classifier = nn.Linear(256, num_classes)
+        self.flag_classifier = nn.Linear(256, 1)
 
     def forward(self, **kwargs):
         rgb = kwargs[INPUT_IMAGE_KEY]
@@ -513,12 +504,11 @@ class FrankModel(nn.Module):
 
         features = self.encoder(self.rgb_bn(rgb.float()), blur, dct, ela)
         embedding = self.pool(features)
-        x = self.embedding(embedding)
 
         return {
             OUTPUT_PRED_EMBEDDING: embedding,
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(embedding),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(embedding),
         }
 
     @property
