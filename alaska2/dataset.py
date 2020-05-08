@@ -230,7 +230,13 @@ class ModifiedImageDataset(Dataset):
 
 
 def get_datasets(
-    data_dir: str, fold: int, image_size: Tuple[int, int], augmentation: str, fast: bool, balance=False, features=None
+    data_dir: str,
+    fold: int,
+    augmentation: str="light",
+    fast: bool=False,
+    image_size: Tuple[int, int] = (512, 512),
+    balance=False,
+    features=None,
 ):
     train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
