@@ -278,7 +278,14 @@ def get_criterion_callback(
 
 
 def get_criterions(
-    modification_flag, modification_type, embedding_loss, feature_maps_loss, num_epochs: int, mixup=False, cutmix=False, tsa=False
+    modification_flag,
+    modification_type,
+    embedding_loss,
+    num_epochs: int,
+    feature_maps_loss=None,
+    mixup=False,
+    cutmix=False,
+    tsa=False,
 ):
     criterions_dict = {}
     callbacks = []
