@@ -7,7 +7,7 @@ from catalyst.dl.callbacks import CriterionAggregatorCallback
 from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
 from torch import nn
 
-from .metric import CompetitionMetricCallback
+from .metric import CompetitionMetricCallback, EmbeddingCompetitionMetricCallback
 from .dataset import *
 from .cutmix import CutmixCallback
 from .mixup import MixupCriterionCallback, MixupInputCallback
@@ -183,7 +183,7 @@ class EmbeddingLossV2(nn.Module):
     This loss assumes embedding vectors has length [N*4] and batch has elem1, elem1, elem2, elem3
     """
 
-    def forward(self, input: torch.Tensor, _):
+    def forward(self, input: torch.Tensor, t):
         """
         input: [N,E]
         """
@@ -191,7 +191,7 @@ class EmbeddingLossV2(nn.Module):
         num_unique_images = batch_size // 4
         is_image = len(input.size()) == 4
 
-        background = torch.zeros(embedding_size,dtype=input.dtype,device=input.device)
+        background = torch.zeros(embedding_size, dtype=input.dtype, device=input.device)
         background[0] = 1
 
         loss = 0
@@ -337,6 +337,7 @@ def get_criterions(
     criterions_dict = {}
     callbacks = []
     losses = []
+    need_embedding_auc_score = False
 
     if modification_flag is not None:
         for criterion in modification_flag:
@@ -407,6 +408,9 @@ def get_criterions(
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
 
+            if loss_name == "cntrv2":
+                need_embedding_auc_score = True
+
     if feature_maps_loss is not None:
         for criterion in feature_maps_loss:
             if isinstance(criterion, (list, tuple)):
@@ -462,5 +466,11 @@ def get_criterions(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
             ),
             BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
+        ]
+    if need_embedding_auc_score is not None:
+        callbacks += [
+            EmbeddingCompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_EMBEDDING, prefix="auc_embedding"
+            ),
         ]
     return criterions_dict, callbacks
