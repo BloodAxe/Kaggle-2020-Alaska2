@@ -15,9 +15,9 @@ class RGBModel(nn.Module):
         self.rgb_encoder = rgb_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.embedding = nn.Sequential(
+            nn.AlphaDropout(dropout),
             nn.Linear(self.rgb_encoder.channels[-1], 128),
             nn.BatchNorm1d(128),
-            nn.AlphaDropout(dropout),
             nn.ReLU(True),
             nn.Linear(128, 128),
             nn.BatchNorm1d(128),
