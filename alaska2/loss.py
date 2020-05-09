@@ -7,7 +7,7 @@ from catalyst.dl.callbacks import CriterionAggregatorCallback
 from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
 from torch import nn
 
-from .metric import CompetitionMetricCallback, EmbeddingCompetitionMetricCallback
+from .metric import CompetitionMetricCallback, EmbeddingCompetitionMetricCallback, ClassifierCompetitionMetricCallback
 from .dataset import *
 from .cutmix import CutmixCallback
 from .mixup import MixupCriterionCallback, MixupInputCallback
@@ -340,6 +340,23 @@ def get_criterions(
     need_embedding_auc_score = False
 
     if modification_flag is not None:
+
+        # Metrics
+        callbacks += [
+            ConfusionMatrixCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                prefix="flag",
+                activation_fn=lambda x: x.sigmoid() > 0.5,
+                class_names=["Original", "Modified"],
+            ),
+            CompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_FLAG, prefix="auc"
+            ),
+            BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=5),
+        ]
+
+        # Losses
         for criterion in modification_flag:
             if isinstance(criterion, (list, tuple)):
                 loss_name, loss_weight = criterion
@@ -363,6 +380,25 @@ def get_criterions(
             print("Using loss", loss_name, loss_weight)
 
     if modification_type is not None:
+        # Metrics
+        callbacks += [
+            ConfusionMatrixCallback(
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                prefix="type",
+                class_names=["Cover", "JMiPOD", "JUNIWARD", "UERD"],
+            ),
+            AccuracyCallback(
+                input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
+            ),
+            BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
+            ClassifierCompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="auc_classifier"
+            ),
+            BestMetricCheckpointCallback(target_metric="auc_classifier", target_metric_minimize=False, save_n_best=5),
+        ]
+
+        # Losses
         for criterion in modification_type:
             if isinstance(criterion, (list, tuple)):
                 loss_name, loss_weight = criterion
@@ -411,6 +447,13 @@ def get_criterions(
             if loss_name == "cntrv2":
                 need_embedding_auc_score = True
 
+        if need_embedding_auc_score:
+            callbacks += [
+                EmbeddingCompetitionMetricCallback(
+                    input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_EMBEDDING, prefix="auc_embedding"
+                ),
+            ]
+
     if feature_maps_loss is not None:
         for criterion in feature_maps_loss:
             if isinstance(criterion, (list, tuple)):
@@ -440,37 +483,4 @@ def get_criterions(
     if mixup:
         callbacks.append(MixupInputCallback(fields=[INPUT_IMAGE_KEY], alpha=0.5, p=0.5))
 
-    if modification_flag is not None:
-        callbacks += [
-            ConfusionMatrixCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG,
-                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
-                prefix="flag",
-                activation_fn=lambda x: x.sigmoid() > 0.5,
-                class_names=["Original", "Modified"],
-            ),
-            CompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_FLAG, prefix="auc"
-            ),
-            BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=5),
-        ]
-    if modification_type is not None:
-        callbacks += [
-            ConfusionMatrixCallback(
-                input_key=INPUT_TRUE_MODIFICATION_TYPE,
-                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
-                prefix="type",
-                class_names=["Cover", "JMiPOD", "JUNIWARD", "UERD"],
-            ),
-            AccuracyCallback(
-                input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
-            ),
-            BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
-        ]
-    if need_embedding_auc_score is not None:
-        callbacks += [
-            EmbeddingCompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_EMBEDDING, prefix="auc_embedding"
-            ),
-        ]
     return criterions_dict, callbacks

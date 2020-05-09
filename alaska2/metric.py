@@ -6,7 +6,12 @@ from sklearn import metrics
 import numpy as np
 import torch.nn.functional as F
 
-__all__ = ["CompetitionMetricCallback", "alaska_weighted_auc", "EmbeddingCompetitionMetricCallback"]
+__all__ = [
+    "CompetitionMetricCallback",
+    "alaska_weighted_auc",
+    "EmbeddingCompetitionMetricCallback",
+    "ClassifierCompetitionMetricCallback",
+]
 
 
 def alaska_weighted_auc(y_true, y_pred):
@@ -61,7 +66,7 @@ class EmbeddingCompetitionMetricCallback(Callback):
         background = torch.zeros(embedding.size(1))
         background[0] = 1
 
-        predicted = 1 - F.cosine_similarity(embedding, background.unsqueeze(0),dim=1).pow_(2)
+        predicted = 1 - F.cosine_similarity(embedding, background.unsqueeze(0), dim=1).pow_(2)
         self.pred_labels.extend(to_numpy(predicted).flatten())
 
     def on_loader_end(self, state: RunnerState):
@@ -99,4 +104,33 @@ class CompetitionMetricCallback(Callback):
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
 
         logger = get_tensorboard_logger(state)
-        logger.add_pr_curve("auc", true_labels, pred_labels)
+        logger.add_pr_curve(self.prefix, true_labels, pred_labels)
+
+
+class ClassifierCompetitionMetricCallback(Callback):
+    def __init__(self, input_key: str, output_key: str, prefix="auc_classifier"):
+        super().__init__(CallbackOrder.Metric)
+        self.prefix = prefix
+        self.input_key = input_key
+        self.output_key = output_key
+        self.true_labels = []
+        self.pred_labels = []
+
+    def on_loader_start(self, state: RunnerState):
+        self.true_labels = []
+        self.pred_labels = []
+
+    @torch.no_grad()
+    def on_batch_end(self, state: RunnerState):
+        self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
+        has_mod_type = state.output[self.output_key].softmax(dim=1)[:, 1:].sum(dim=1)
+        self.pred_labels.extend(to_numpy(has_mod_type).flatten())
+
+    def on_loader_end(self, state: RunnerState):
+        true_labels = np.array(self.true_labels)
+        pred_labels = np.array(self.pred_labels)
+        score = alaska_weighted_auc(true_labels, pred_labels)
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
+
+        logger = get_tensorboard_logger(state)
+        logger.add_pr_curve(self.prefix, true_labels, pred_labels)

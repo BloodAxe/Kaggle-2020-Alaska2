@@ -44,6 +44,7 @@ def main():
         "--modification-type-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
     )
     parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
+    parser.add_argument("--feature-maps-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -75,13 +76,14 @@ def main():
     args = parser.parse_args()
     set_manual_seed(args.seed)
 
-    if args.modification_flag_loss is None:
-        args.modification_flag_loss = [["bce", 1.0]]
-        print("Classification flag loss is not specified, using default CE loss")
+    assert (
+        args.modification_flag_loss or args.modification_type_loss or args.embedding_loss
+    ), "At least one of losses must be set"
 
     modification_flag_loss = args.modification_flag_loss
     modification_type_loss = args.modification_type_loss
     embedding_loss = args.embedding_loss
+    feature_maps_loss = args.feature_maps_loss
 
     data_dir = args.data_dir
     cache = args.cache
@@ -195,6 +197,7 @@ def main():
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
+            feature_maps_loss=feature_maps_loss,
             num_epochs=warmup,
             mixup=False,
             cutmix=False,
@@ -257,6 +260,7 @@ def main():
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
+        print("  Feature maps   :", feature_maps_loss)
 
         runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
@@ -302,6 +306,7 @@ def main():
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
+            feature_maps_loss=feature_maps_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -356,6 +361,7 @@ def main():
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
+        print("  Feature maps   :", feature_maps_loss)
 
         optimizer = get_optimizer(
             optimizer_name, get_optimizable_parameters(model), learning_rate, weight_decay=weight_decay
@@ -411,6 +417,7 @@ def main():
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
+            feature_maps_loss=feature_maps_loss,
             num_epochs=fine_tune,
             mixup=False,
             cutmix=False,
@@ -465,6 +472,7 @@ def main():
         print("  Flag           :", modification_flag_loss)
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
+        print("  Feature maps   :", feature_maps_loss)
 
         optimizer = get_optimizer(
             "SGD", get_optimizable_parameters(model), learning_rate * 0.1, weight_decay=weight_decay

@@ -90,9 +90,9 @@ def main():
     args = parser.parse_args()
     set_manual_seed(args.seed)
 
-    if args.modification_flag_loss is None:
-        args.modification_flag_loss = [["bce", 1.0]]
-        print("Classification flag loss is not specified, using default CE loss")
+    assert (
+        args.modification_flag_loss or args.modification_type_loss or args.embedding_loss
+    ), "At least one of losses must be set"
 
     modification_flag_loss = args.modification_flag_loss
     modification_type_loss = args.modification_type_loss
@@ -130,9 +130,6 @@ def main():
     if fast:
         num_workers = 0
         verbose = True
-
-    if train_batch_size % 4 != 0:
-        raise ValueError("Batch Size must be divizable by 4")
 
     # Compute batch size for validation
     valid_batch_size = int(train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1])))
