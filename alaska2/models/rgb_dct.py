@@ -47,8 +47,8 @@ class RGBDCTSiamese(nn.Module):
 
         return {
             OUTPUT_PRED_EMBEDDING: embedding,
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(embedding),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(embedding),
         }
 
     @property
