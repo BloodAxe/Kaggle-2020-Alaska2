@@ -1,3 +1,5 @@
+from typing import Callable
+
 import torch
 from catalyst.dl import Callback, RunnerState, CallbackOrder
 from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
@@ -9,8 +11,10 @@ import torch.nn.functional as F
 __all__ = [
     "CompetitionMetricCallback",
     "alaska_weighted_auc",
-    "EmbeddingCompetitionMetricCallback",
-    "ClassifierCompetitionMetricCallback",
+    "OutputDistributionCallback",
+    "binary_logits_to_probas",
+    "classifier_logits_to_probas",
+    "embedding_to_probas",
 ]
 
 
@@ -48,48 +52,32 @@ def alaska_weighted_auc(y_true, y_pred):
         print(e)
         return 0
 
-class EmbeddingCompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, prefix="auc_embedding"):
-        super().__init__(CallbackOrder.Metric)
-        self.prefix = prefix
-        self.input_key = input_key
-        self.output_key = output_key
-        self.true_labels = []
-        self.pred_labels = []
 
-    def on_loader_start(self, state: RunnerState):
-        self.true_labels = []
-        self.pred_labels = []
+def binary_logits_to_probas(x):
+    return x.sigmoid().squeeze(1)
 
-    @torch.no_grad()
-    def on_batch_end(self, state: RunnerState):
-        self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
 
-        embedding = state.output[self.output_key].detach().cpu()
-        background = torch.zeros(embedding.size(1))
-        background[0] = 1
+def classifier_logits_to_probas(x):
+    return x.softmax(dim=1)[:, 1:].sum(dim=1)
 
-        predicted = 1 - F.cosine_similarity(embedding, background.unsqueeze(0), dim=1).pow_(2)
-        self.pred_labels.extend(to_numpy(predicted).flatten())
 
-    def on_loader_end(self, state: RunnerState):
-        true_labels = np.array(self.true_labels)
-        pred_labels = np.array(self.pred_labels)
-        score = alaska_weighted_auc(true_labels, pred_labels)
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
+def embedding_to_probas(x: torch.Tensor):
+    background = torch.zeros(x.size(1), device=x.device, dtype=x.dtype)
+    background[0] = 1
 
-        logger = get_tensorboard_logger(state)
-        logger.add_pr_curve(self.prefix, true_labels, pred_labels)
+    predicted = 1 - F.cosine_similarity(x, background.unsqueeze(0), dim=1).pow_(2)
+    return predicted
 
 
 class CompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, prefix="auc"):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc"):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.input_key = input_key
         self.output_key = output_key
         self.true_labels = []
         self.pred_labels = []
+        self.output_activation = output_activation
 
     def on_loader_start(self, state: RunnerState):
         self.true_labels = []
@@ -97,8 +85,9 @@ class CompetitionMetricCallback(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
+        output = self.output_activation(state.output[self.output_key].detach().cpu())
         self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
-        self.pred_labels.extend(to_numpy(state.output[self.output_key].sigmoid()).flatten())
+        self.pred_labels.extend(to_numpy(output).flatten())
 
     def on_loader_end(self, state: RunnerState):
         true_labels = np.array(self.true_labels)
@@ -110,14 +99,15 @@ class CompetitionMetricCallback(Callback):
         logger.add_pr_curve(self.prefix, true_labels, pred_labels)
 
 
-class ClassifierCompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, prefix="auc_classifier"):
+class OutputDistributionCallback(Callback):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="distribution"):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.input_key = input_key
         self.output_key = output_key
         self.true_labels = []
         self.pred_labels = []
+        self.output_activation = output_activation
 
     def on_loader_start(self, state: RunnerState):
         self.true_labels = []
@@ -125,15 +115,15 @@ class ClassifierCompetitionMetricCallback(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
+        output = state.output[self.output_key].detach()
+
         self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
-        has_mod_type = state.output[self.output_key].softmax(dim=1)[:, 1:].sum(dim=1)
-        self.pred_labels.extend(to_numpy(has_mod_type).flatten())
+        self.pred_labels.extend(to_numpy(self.output_activation(output)).flatten())
 
     def on_loader_end(self, state: RunnerState):
         true_labels = np.array(self.true_labels)
-        pred_labels = np.array(self.pred_labels)
-        score = alaska_weighted_auc(true_labels, pred_labels)
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
+        pred_probas = np.array(self.pred_labels)
 
         logger = get_tensorboard_logger(state)
-        logger.add_pr_curve(self.prefix, true_labels, pred_labels)
+        logger.add_histogram(self.prefix + "/neg", pred_probas[true_labels == 0], state.epoch)
+        logger.add_histogram(self.prefix + "/pos", pred_probas[true_labels == 1], state.epoch)

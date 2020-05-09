@@ -5,14 +5,14 @@ import torch.nn.functional as F
 from catalyst.dl import AccuracyCallback
 from catalyst.dl.callbacks import CriterionAggregatorCallback
 from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
+from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback, ConfusionMatrixCallback
 from torch import nn
 
-from .metric import CompetitionMetricCallback, EmbeddingCompetitionMetricCallback, ClassifierCompetitionMetricCallback
-from .dataset import *
 from .cutmix import CutmixCallback
+from .dataset import *
+from .metric import *
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
-from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback, ConfusionMatrixCallback
 
 __all__ = ["OHEMCrossEntropyLoss", "ArcFaceLoss", "get_loss", "get_criterions", "get_criterion_callback"]
 
@@ -177,7 +177,6 @@ class EmbeddingLoss(nn.Module):
         return loss / num_unique_images
 
 
-
 class EmbeddingLossV2(nn.Module):
     """
     This loss assumes embedding vectors has length [N*4] and batch has elem1, elem1, elem2, elem3
@@ -218,7 +217,6 @@ class EmbeddingLossV2(nn.Module):
             loss += sample_loss
 
         return loss / num_unique_images
-
 
 
 def get_loss(loss_name: str, tsa=False):
@@ -351,7 +349,16 @@ def get_criterions(
                 class_names=["Original", "Modified"],
             ),
             CompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_FLAG, prefix="auc"
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                prefix="auc",
+                output_activation=binary_logits_to_probas,
+            ),
+            OutputDistributionCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                output_activation=binary_logits_to_probas,
+                prefix="distribution/binary",
             ),
             BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=5),
         ]
@@ -392,8 +399,17 @@ def get_criterions(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
             ),
             BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
-            ClassifierCompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="auc_classifier"
+            CompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                output_activation=classifier_logits_to_probas,
+                prefix="auc_classifier",
+            ),
+            OutputDistributionCallback(
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                output_activation=classifier_logits_to_probas,
+                prefix="distribution/classifier",
             ),
             BestMetricCheckpointCallback(target_metric="auc_classifier", target_metric_minimize=False, save_n_best=5),
         ]
@@ -449,8 +465,17 @@ def get_criterions(
 
         if need_embedding_auc_score:
             callbacks += [
-                EmbeddingCompetitionMetricCallback(
-                    input_key=INPUT_TRUE_MODIFICATION_FLAG, output_key=OUTPUT_PRED_EMBEDDING, prefix="auc_embedding"
+                OutputDistributionCallback(
+                    input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                    output_key=OUTPUT_PRED_EMBEDDING,
+                    output_activation=embedding_to_probas,
+                    prefix="distribution/embedding",
+                ),
+                CompetitionMetricCallback(
+                    input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                    output_key=OUTPUT_PRED_EMBEDDING,
+                    prefix="auc_embedding",
+                    output_activation=embedding_to_probas,
                 ),
             ]
 

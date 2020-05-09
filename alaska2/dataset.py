@@ -17,11 +17,13 @@ INPUT_FEATURES_DCT_KEY = "input_dct"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
-INPUT_TRUE_MODIFICATION_TYPE = "true_modification_true"
+
+INPUT_TRUE_MODIFICATION_TYPE = "true_modification_type"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
 
-OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
 OUTPUT_PRED_MODIFICATION_TYPE = "pred_modification_type"
+OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
+
 OUTPUT_PRED_EMBEDDING = "pred_embedding"
 
 OUTPUT_FEATURE_MAP_4 = "pred_fm_4"
@@ -275,7 +277,7 @@ class BatchedImageDataset(Dataset):
                     tensor_from_rgb_image(image3),
                 ]
             ),
-            INPUT_TRUE_MODIFICATION_TYPE: np.array([0, 1, 2, 3]),
+            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, 1, 2, 3]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1, 1, 1]).float(),
         }
         # TODO
@@ -393,7 +395,7 @@ def get_datasets_batched(
 
             class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
 
-            sampler = WeightedRandomSampler(np.ones(len(class_0)), 65535)
+            sampler = WeightedRandomSampler(np.ones(len(class_0)), 2048)
 
             train_ds = BatchedImageDataset(class_0, transform=train_transform, features=features)
             valid_ds = BatchedImageDataset(class_0, transform=valid_transform, features=features)

@@ -11,7 +11,12 @@ from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
 from pytorch_toolbelt.utils import fs, itertools
-from pytorch_toolbelt.utils.catalyst import ShowPolarBatchesCallback, report_checkpoint, clean_checkpoint
+from pytorch_toolbelt.utils.catalyst import (
+    ShowPolarBatchesCallback,
+    report_checkpoint,
+    clean_checkpoint,
+    HyperParametersCallback,
+)
 from pytorch_toolbelt.utils.random import set_manual_seed
 from pytorch_toolbelt.utils.torch_utils import count_parameters, transfer_weights
 from torch import nn
@@ -220,7 +225,19 @@ def main():
         callbacks = (
             default_callbacks
             + loss_callbacks
-            + [OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False)]
+            + [
+                OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
+                HyperParametersCallback(
+                    hparam_dict={
+                        "model": model_name,
+                        "scheduler": scheduler_name,
+                        "optimizer": optimizer_name,
+                        "augmentations": augmentations,
+                        "size": args.size,
+                        "weight_decay": weight_decay,
+                    }
+                ),
+            ]
         )
 
         loaders = collections.OrderedDict()
@@ -331,7 +348,19 @@ def main():
         callbacks = (
             default_callbacks
             + loss_callbacks
-            + [OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False)]
+            + [
+                OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
+                HyperParametersCallback(
+                    hparam_dict={
+                        "model": model_name,
+                        "scheduler": scheduler_name,
+                        "optimizer": optimizer_name,
+                        "augmentations": augmentations,
+                        "size": args.size,
+                        "weight_decay": weight_decay,
+                    }
+                ),
+            ]
         )
 
         loaders = collections.OrderedDict()
@@ -444,7 +473,19 @@ def main():
         callbacks = (
             default_callbacks
             + loss_callbacks
-            + [OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False)]
+            + [
+                OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
+                HyperParametersCallback(
+                    hparam_dict={
+                        "model": model_name,
+                        "scheduler": scheduler_name,
+                        "optimizer": optimizer_name,
+                        "augmentations": augmentations,
+                        "size": args.size,
+                        "weight_decay": weight_decay,
+                    }
+                ),
+            ]
         )
 
         loaders = collections.OrderedDict()
