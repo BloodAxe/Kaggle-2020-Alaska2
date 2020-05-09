@@ -35,10 +35,10 @@ class RGBModel(nn.Module):
         x = self.embedding(embedding)
 
         return {
-            OUTPUT_FEATURE_MAP_4: features[0],
-            OUTPUT_FEATURE_MAP_8: features[1],
-            OUTPUT_FEATURE_MAP_16: features[2],
-            OUTPUT_FEATURE_MAP_32: features[3],
+            # OUTPUT_FEATURE_MAP_4: features[0],
+            # OUTPUT_FEATURE_MAP_8: features[1],
+            # OUTPUT_FEATURE_MAP_16: features[2],
+            # OUTPUT_FEATURE_MAP_32: features[3],
             OUTPUT_PRED_EMBEDDING: embedding,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
