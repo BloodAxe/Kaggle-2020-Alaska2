@@ -1,3 +1,4 @@
 /.idea/
 /runs/
 /tests/.pytest_cache/
+/models/
