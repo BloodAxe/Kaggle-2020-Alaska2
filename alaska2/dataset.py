@@ -24,24 +24,33 @@ OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
 OUTPUT_PRED_MODIFICATION_TYPE = "pred_modification_type"
 OUTPUT_PRED_EMBEDDING = "pred_embedding"
 
+OUTPUT_FEATURE_MAP_4 = "pred_fm_4"
+OUTPUT_FEATURE_MAP_8 = "pred_fm_8"
+OUTPUT_FEATURE_MAP_16 = "pred_fm_16"
+OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
+
 __all__ = [
-    "TrainingValidationDataset",
-    "get_datasets",
-    "get_datasets_batched",
-    "compute_dct",
-    "compute_ela",
-    "compute_blur_features",
-    "get_test_dataset",
-    "INPUT_TRUE_MODIFICATION_TYPE",
-    "INPUT_TRUE_MODIFICATION_FLAG",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_DCT_KEY",
     "INPUT_FEATURES_ELA_KEY",
-    "INPUT_IMAGE_KEY",
     "INPUT_IMAGE_ID_KEY",
+    "INPUT_IMAGE_KEY",
+    "INPUT_TRUE_MODIFICATION_FLAG",
+    "INPUT_TRUE_MODIFICATION_TYPE",
+    "OUTPUT_FEATURE_MAP_16",
+    "OUTPUT_FEATURE_MAP_32",
+    "OUTPUT_FEATURE_MAP_4",
+    "OUTPUT_FEATURE_MAP_8",
+    "OUTPUT_PRED_EMBEDDING",
     "OUTPUT_PRED_MODIFICATION_FLAG",
     "OUTPUT_PRED_MODIFICATION_TYPE",
-    "OUTPUT_PRED_EMBEDDING",
+    "TrainingValidationDataset",
+    "compute_blur_features",
+    "compute_dct",
+    "compute_ela",
+    "get_datasets",
+    "get_datasets_batched",
+    "get_test_dataset",
 ]
 
 
@@ -233,8 +242,11 @@ class ModifiedImageDataset(Dataset):
 class BatchedImageDataset(Dataset):
     def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
-        self.transform = A.ReplayCompose([transform])
         self.features = features
+        if isinstance(transform, A.ReplayCompose):
+            self.transform = transform
+        else:
+            self.transform = A.ReplayCompose([transform])
 
     def __len__(self):
         return len(self.images)
