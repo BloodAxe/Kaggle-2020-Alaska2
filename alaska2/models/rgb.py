@@ -1,7 +1,7 @@
 from pytorch_toolbelt.modules import *
 from alaska2.dataset import *
 
-__all__ = ["rgb_resnet34", "rgb_resnet18", "rgb_b0", "rgb_seresnext50"]
+__all__ = ["rgb_resnet34", "rgb_resnet18", "rgb_b0", "rgb_seresnext50", "rgb_densenet121"]
 
 
 class RGBModel(nn.Module):
@@ -66,4 +66,9 @@ def rgb_resnet34(num_classes=4, dropout=0, pretrained=True):
 
 def rgb_seresnext50(num_classes=4, dropout=0, pretrained=True):
     rgb_encoder = SEResNeXt50Encoder(pretrained=pretrained)
+    return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_densenet121(num_classes=4, dropout=0, pretrained=True):
+    rgb_encoder = DenseNet121Encoder(pretrained=pretrained)
     return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)

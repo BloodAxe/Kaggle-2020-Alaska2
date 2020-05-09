@@ -32,19 +32,26 @@ class EqualizeHistogram(A.ImageOnlyTransform):
 
 
 def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
+    if image_size[0] != 512 or image_size[1] != 512:
+        print("Adding RandomCrop size target image size is", image_size)
+        maybe_crop = A.RandomCrop(image_size[0], image_size[1], always_apply=True)
+    else:
+        maybe_crop = A.NoOp()
+
     augmentations_level = augmentations_level.lower()
     if augmentations_level == "none":
         return A.NoOp()
 
     if augmentations_level == "safe":
-        return A.Compose([A.HorizontalFlip(), A.VerticalFlip()])
+        return A.ReplayCompose([maybe_crop, A.HorizontalFlip(), A.VerticalFlip()])
 
     if augmentations_level == "light":
-        return A.Compose([A.RandomRotate90(), A.Transpose()])
+        return A.ReplayCompose([maybe_crop, A.RandomRotate90(), A.Transpose()])
 
     if augmentations_level == "medium":
-        return RandomOrder(
+        return A.ReplayCompose(
             [
+                maybe_crop,
                 A.RandomRotate90(),
                 A.Transpose(),
                 A.OneOf(
@@ -59,8 +66,9 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         )
 
     if augmentations_level == "hard":
-        return RandomOrder(
+        return A.ReplayCompose(
             [
+                maybe_crop,
                 A.RandomRotate90(),
                 A.Transpose(),
                 A.RandomBrightnessContrast(p=0.3),

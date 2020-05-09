@@ -21,6 +21,7 @@ MODEL_REGISTRY = {
     "rgb_resnet18": rgb.rgb_resnet18,
     "rgb_resnet34": rgb.rgb_resnet34,
     "rgb_seresnext50": rgb.rgb_seresnext50,
+    "rgb_densenet121": rgb.rgb_densenet121,
     # DCT
     "dct_resnet34": dct.dct_resnet34,
     "ela_resnet34": ela.ela_resnet34,
