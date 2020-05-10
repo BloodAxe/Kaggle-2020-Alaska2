@@ -6,11 +6,14 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm
 from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
+    # TIMM
+    "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
+
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
@@ -25,6 +28,7 @@ MODEL_REGISTRY = {
     # DCT
     "dct_resnet34": dct.dct_resnet34,
     "ela_resnet34": ela.ela_resnet34,
+
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
@@ -50,7 +54,9 @@ def wrap_model_with_tta(model, tta_mode, inputs, outputs):
     return model
 
 
-def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activation: str = "after_model", tta=None):
+def ensemble_from_checkpoints(
+    checkpoints, strict=False, outputs=None, activation: str = "after_model", tta=None, temperature=1
+):
     if activation not in {"after_model", "after_tta", "after_ensemble"}:
         raise KeyError(activation)
 
@@ -60,16 +66,16 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
     required_features = list(set(list(required_features)))
 
     if activation == "after_model":
-        models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG) for m in models]
-        models = [ApplySoftmaxTo(m, output_key=OUTPUT_PRED_MODIFICATION_TYPE) for m in models]
+        models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG, temperature=temperature) for m in models]
+        models = [ApplySoftmaxTo(m, output_key=OUTPUT_PRED_MODIFICATION_TYPE, temperature=temperature) for m in models]
         print("Applying sigmoid activation to outputs", outputs, "after model")
 
     if len(models) > 1:
 
         model = Ensembler(models, outputs=outputs)
         if activation == "after_ensemble":
-            model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG)
-            model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE)
+            model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG, temperature=temperature)
+            model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE, temperature=temperature)
             print("Applying sigmoid activation to outputs", outputs, "after ensemble")
     else:
         assert len(models) == 1
@@ -80,8 +86,8 @@ def ensemble_from_checkpoints(checkpoints, strict=False, outputs=None, activatio
         print("Wrapping models with TTA", tta)
 
     if activation == "after_tta":
-        model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG)
-        model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE)
+        model = ApplySigmoidTo(model, output_key=OUTPUT_PRED_MODIFICATION_FLAG, temperature=temperature)
+        model = ApplySoftmaxTo(model, output_key=OUTPUT_PRED_MODIFICATION_TYPE, temperature=temperature)
         print("Applying sigmoid activation to outputs", outputs, "after TTA")
 
     return model.eval(), loaded_checkpoints, required_features

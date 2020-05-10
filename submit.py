@@ -63,7 +63,7 @@ def main():
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
     model, checkpoints, required_features = ensemble_from_checkpoints(
-        checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta
+        checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta, temperature=0.5
     )
 
     test_ds = get_test_dataset(data_dir, features=required_features)
