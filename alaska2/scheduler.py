@@ -26,7 +26,7 @@ def get_scheduler(scheduler_name: str, optimizer, lr, num_epochs, batches_in_epo
         return PolyUpLR(optimizer, num_epochs, gamma=0.5)
 
     if scheduler_name.lower() == "cos":
-        return CosineAnnealingLR(optimizer, num_epochs, eta_min=1e-6)
+        return CosineAnnealingLR(optimizer, num_epochs, eta_min=5e-5)
 
     if scheduler_name.lower() == "cosr":
         return CosineAnnealingWarmRestarts(optimizer, T_0=max(2, num_epochs // 10), eta_min=5e-5)
@@ -42,7 +42,7 @@ def get_scheduler(scheduler_name: str, optimizer, lr, num_epochs, batches_in_epo
     if scheduler_name.lower() == "clr":
         return CyclicLR(
             optimizer,
-            base_lr=1e-6,
+            base_lr=5e-5,
             max_lr=lr,
             step_size_up=batches_in_epoch // 4,
             # mode='exp_range',

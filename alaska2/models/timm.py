@@ -53,6 +53,6 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 def rgb_dpn92(num_classes=4, pretrained=True, dropout=0):
     encoder = dpn.dpn92(pretrained=pretrained)
-    del encoder.fc
+    del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
