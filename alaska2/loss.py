@@ -192,6 +192,7 @@ class EmbeddingLossV2(nn.Module):
 
         background = torch.zeros(embedding_size, dtype=input.dtype, device=input.device)
         background[0] = 1
+        margin = 0.1
 
         loss = 0
         for i in range(num_unique_images):
@@ -201,11 +202,11 @@ class EmbeddingLossV2(nn.Module):
             uerd = input[i * 4 + 3]
 
             # Attract unedited images to fixed embedding
-            cover_loss = 1 - F.cosine_similarity(cover, background, dim=0).pow_(2)
+            cover_loss = F.relu(1 - F.cosine_similarity(cover, background, dim=0).pow_(2) - margin)
 
-            jmipod_loss = F.cosine_similarity(cover, jmipod, dim=0).pow_(2)
-            juniward_loss = F.cosine_similarity(cover, juniward, dim=0).pow_(2)
-            uerd_loss = F.cosine_similarity(cover, uerd, dim=0).pow_(2)
+            jmipod_loss = F.relu(F.cosine_similarity(cover, jmipod, dim=0).pow_(2) - margin)
+            juniward_loss = F.relu(F.cosine_similarity(cover, juniward, dim=0).pow_(2) - margin)
+            uerd_loss = F.relu(F.cosine_similarity(cover, uerd, dim=0).pow_(2) - margin)
 
             if is_image:
                 cover_loss = cover_loss.mean()
@@ -213,7 +214,7 @@ class EmbeddingLossV2(nn.Module):
                 juniward_loss = juniward_loss.mean()
                 uerd_loss = uerd_loss.mean()
 
-            sample_loss = cover_loss + jmipod_loss + juniward_loss + uerd_loss
+            sample_loss = cover_loss + (jmipod_loss + juniward_loss + uerd_loss) * 0.3333333
             loss += sample_loss
 
         return loss / num_unique_images
