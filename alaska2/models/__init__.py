@@ -14,7 +14,6 @@ MODEL_REGISTRY = {
     # TIMM
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
     "rgb_dpn92": timm.rgb_dpn92,
-
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
@@ -28,11 +27,11 @@ MODEL_REGISTRY = {
     "rgb_densenet121": rgb.rgb_densenet121,
     "rgb_densenet201": rgb.rgb_densenet201,
     "rgb_hrnet18": rgb.rgb_hrnet18,
-
     # DCT
     "dct_resnet34": dct.dct_resnet34,
+    "dct_hrnet18": dct.dct_hrnet18,
+    # ELA
     "ela_resnet34": ela.ela_resnet34,
-
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]

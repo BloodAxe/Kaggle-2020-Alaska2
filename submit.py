@@ -10,10 +10,8 @@ warnings.simplefilter("ignore", FutureWarning)
 import argparse
 import os
 
-import cv2
 import pandas as pd
 import numpy as np
-import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -37,6 +35,7 @@ def main():
     parser.add_argument("-w", "--workers", type=int, default=0)
     parser.add_argument("--tta", type=str, default=None)
     parser.add_argument("--activation", type=str, default="after_model")
+    parser.add_argument("--prefix", type=str, default="")
 
     args = parser.parse_args()
 
@@ -47,6 +46,7 @@ def main():
     workers = args.workers
     tta = args.tta
     activation = args.activation
+    prefix = args.prefix
 
     if output_dir is None:
         dirnames = list(set([os.path.dirname(ck) for ck in checkpoint_fnames]))
@@ -58,12 +58,14 @@ def main():
             )
 
     print("Submissions will be saved to ", output_dir)
+    print("Submissions will have prefix", prefix)
+
     os.makedirs(output_dir, exist_ok=True)
 
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
     model, checkpoints, required_features = ensemble_from_checkpoints(
-        checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta, temperature=0.5
+        checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta, temperature=1
     )
 
     test_ds = get_test_dataset(data_dir, features=required_features)
@@ -89,7 +91,7 @@ def main():
         batch = any2device(batch, device="cuda")
         probas_flag = predict_from_flag(model, batch)
         probas_type = predict_from_type(model, batch)
-        probas_flag_type = predict_from_flag_and_type_sum(model, batch)
+        probas_flag_type = predict_from_flag_and_type_mean(model, batch)
 
         for i, image_id in enumerate(batch[INPUT_IMAGE_ID_KEY]):
             proposalcsv_flag["Id"].append(image_id + ".jpg")
@@ -102,15 +104,15 @@ def main():
             proposalcsv_type_flag["Label"].append(float(probas_flag_type[i]))
 
     proposalcsv = pd.DataFrame.from_dict(proposalcsv_flag)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_flag.csv"), index=False)
+    proposalcsv.to_csv(os.path.join(output_dir, f"{prefix}submission_flag.csv"), index=False)
     print(proposalcsv.head())
 
     proposalcsv = pd.DataFrame.from_dict(proposalcsv_type)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_type.csv"), index=False)
+    proposalcsv.to_csv(os.path.join(output_dir, f"{prefix}submission_type.csv"), index=False)
     print(proposalcsv.head())
 
     proposalcsv = pd.DataFrame.from_dict(proposalcsv_type_flag)
-    proposalcsv.to_csv(os.path.join(output_dir, "submission_type_flag.csv"), index=False)
+    proposalcsv.to_csv(os.path.join(output_dir, f"{prefix}submission_type_flag.csv"), index=False)
     print(proposalcsv.head())
 
 

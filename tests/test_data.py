@@ -14,6 +14,14 @@ def test_dct():
     print(dct.shape, dct.mean(axis=(0, 1)), dct.std(axis=(0, 1)))
 
 
+def test_rgb_dct():
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
+    dct = compute_rgb_dct(image)
+    assert dct.shape[0] * 8 == image.shape[0]
+    assert dct.shape[1] * 8 == image.shape[1]
+    print(dct.shape, dct.mean(axis=(0, 1)), dct.std(axis=(0, 1)))
+
+
 def test_blur_features():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
     feature_maps1 = compute_blur_features(image)

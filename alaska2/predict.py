@@ -12,9 +12,10 @@ __all__ = [
     "Rot180TTA",
     "D4TTA",
     "predict_from_flag",
-    "predict_from_flag_and_type_sum",
+    "predict_from_flag_and_type_mean",
     "predict_from_type",
 ]
+
 
 def torch_flip_ud_lr(x: torch.Tensor):
     """
@@ -23,6 +24,7 @@ def torch_flip_ud_lr(x: torch.Tensor):
     :return:
     """
     return x.flip(2).flip(3)
+
 
 class HVFlipTTA(nn.Module):
     def __init__(self, model, inputs, outputs, average=True):
@@ -131,12 +133,12 @@ def predict_from_flag(model, inputs):
     return probs
 
 
-def predict_from_flag_and_type_sum(model, inputs):
+def predict_from_flag_and_type_mean(model, inputs):
     outputs = model(**inputs)
     flag_prob = outputs[OUTPUT_PRED_MODIFICATION_FLAG]
     no_mod_type = outputs[OUTPUT_PRED_MODIFICATION_TYPE][:, 0:1]
     has_mod_type = outputs[OUTPUT_PRED_MODIFICATION_TYPE][:, 1:].sum(dim=1, keepdim=True)
-    return torch.clamp(flag_prob - no_mod_type + has_mod_type, 0, 1)
+    return torch.clamp((flag_prob + has_mod_type) / 2 - no_mod_type, 0, 1)
 
 
 def predict_from_type(model, inputs):

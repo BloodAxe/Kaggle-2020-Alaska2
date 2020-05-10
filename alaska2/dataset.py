@@ -49,6 +49,7 @@ __all__ = [
     "TrainingValidationDataset",
     "compute_blur_features",
     "compute_dct",
+    "compute_rgb_dct",
     "compute_ela",
     "get_datasets",
     "get_datasets_batched",
@@ -68,6 +69,20 @@ def compute_dct(image):
         for j in range(0, image.shape[1], 8):
             dct = cv2.dct(image[i : i + 8, j : j + 8])
             dct_image[i // 8, j // 8, :] = dct.flatten()
+
+    return dct_image
+
+
+def compute_rgb_dct(image):
+    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64 * 3), dtype=np.float32)
+
+    one_over_255 = np.float32(1.0 / 255.0)
+    image = image * one_over_255
+    for i in range(0, image.shape[0], 8):
+        for j in range(0, image.shape[1], 8):
+            for c in range(3):
+                dct = cv2.dct(image[i : i + 8, j : j + 8, c])
+                dct_image[i // 8, j // 8, 64 * c : 64 * (c + 1)] = dct.flatten()
 
     return dct_image
 
@@ -104,7 +119,7 @@ def compute_blur_features(image):
 def compute_features(image, features):
     sample = {}
     if INPUT_FEATURES_DCT_KEY in features:
-        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)))
+        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_rgb_dct(image))
 
     if INPUT_FEATURES_ELA_KEY in features:
         sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
