@@ -29,12 +29,17 @@ from alaska2 import *
 def custom_collate(input):
     input = default_collate(input)
 
-    _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
-
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*input[INPUT_IMAGE_ID_KEY]))
-    input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
     input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
     input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
+
+    if INPUT_FEATURES_DCT_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_FEATURES_DCT_KEY].size()
+        input[INPUT_FEATURES_DCT_KEY] = input[INPUT_FEATURES_DCT_KEY].view(-1, channels, rows, cols)
+
+    if INPUT_IMAGE_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
+        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
 
     return input
 
