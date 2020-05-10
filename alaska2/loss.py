@@ -236,6 +236,9 @@ def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "wbce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean", pos_weight=torch.tensor(0.33).float()).cuda()
 
+    if loss_name.lower() == "wbce2":
+        return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean", pos_weight=torch.tensor(0.66).float()).cuda()
+
     if loss_name.lower() == "ce":
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
 
