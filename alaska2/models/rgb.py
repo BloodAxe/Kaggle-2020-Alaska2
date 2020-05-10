@@ -72,3 +72,8 @@ def rgb_seresnext50(num_classes=4, dropout=0, pretrained=True):
 def rgb_densenet121(num_classes=4, dropout=0, pretrained=True):
     rgb_encoder = DenseNet121Encoder(pretrained=pretrained)
     return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_densenet201(num_classes=4, dropout=0, pretrained=True):
+    rgb_encoder = DenseNet201Encoder(pretrained=pretrained)
+    return RGBModel(rgb_encoder, num_classes=num_classes, dropout=dropout)
