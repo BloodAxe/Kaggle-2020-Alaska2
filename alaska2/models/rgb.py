@@ -47,6 +47,7 @@ class RGBModel(nn.Module):
             and "embedding.1.weight" in state_dict
             and "embedding.1.running_mean" in state_dict
             and "embedding.1.running_var" in state_dict
+            and "embedding.2.num_batches_tracked" in state_dict
         ):
             # First layer is Linear, second layer is BN
             state_dict = rename_keys(
@@ -54,7 +55,6 @@ class RGBModel(nn.Module):
                 [
                     ("embedding.0.bias", "embedding.fc1.bias"),
                     ("embedding.0.weight", "embedding.fc1.weight"),
-
                     ("embedding.1.bias", "embedding.bn1.bias"),
                     ("embedding.1.weight", "embedding.bn1.weight"),
                     ("embedding.1.running_mean", "embedding.bn1.running_mean"),
@@ -63,12 +63,13 @@ class RGBModel(nn.Module):
                 ],
             )
         elif (
-                "embedding.1.weight" in state_dict
-                and "embedding.1.bias" in state_dict
-                and "embedding.2.bias" in state_dict
-                and "embedding.2.weight" in state_dict
-                and "embedding.2.running_mean" in state_dict
-                and "embedding.2.running_var" in state_dict
+            "embedding.1.weight" in state_dict
+            and "embedding.1.bias" in state_dict
+            and "embedding.2.bias" in state_dict
+            and "embedding.2.weight" in state_dict
+            and "embedding.2.running_mean" in state_dict
+            and "embedding.2.running_var" in state_dict
+            and "embedding.2.num_batches_tracked" in state_dict
         ):
             # Second layer is Linear, Third layer is BN
             state_dict = rename_keys(
@@ -76,7 +77,28 @@ class RGBModel(nn.Module):
                 [
                     ("embedding.1.bias", "embedding.fc1.bias"),
                     ("embedding.1.weight", "embedding.fc1.weight"),
-
+                    ("embedding.2.bias", "embedding.bn1.bias"),
+                    ("embedding.2.weight", "embedding.bn1.weight"),
+                    ("embedding.2.running_mean", "embedding.bn1.running_mean"),
+                    ("embedding.2.running_var", "embedding.bn1.running_var"),
+                    ("embedding.2.num_batches_tracked", "embedding.bn1.num_batches_tracked"),
+                ],
+            )
+        elif (
+            "embedding.0.weight" in state_dict
+            and "embedding.0.bias" in state_dict
+            and "embedding.2.bias" in state_dict
+            and "embedding.2.weight" in state_dict
+            and "embedding.2.running_mean" in state_dict
+            and "embedding.2.running_var" in state_dict
+            and "embedding.2.num_batches_tracked" in state_dict
+        ):
+            # Second layer is Linear, Third layer is BN
+            state_dict = rename_keys(
+                state_dict,
+                [
+                    ("embedding.0.bias", "embedding.fc1.bias"),
+                    ("embedding.0.weight", "embedding.fc1.weight"),
                     ("embedding.2.bias", "embedding.bn1.bias"),
                     ("embedding.2.weight", "embedding.bn1.weight"),
                     ("embedding.2.running_mean", "embedding.bn1.running_mean"),
@@ -90,7 +112,6 @@ class RGBModel(nn.Module):
             [
                 ("embedding.4.bias", "embedding.fc2.bias"),
                 ("embedding.4.weight", "embedding.fc2.weight"),
-
                 ("embedding.5.bias", "embedding.bn2.bias"),
                 ("embedding.5.weight", "embedding.bn2.weight"),
                 ("embedding.5.running_mean", "embedding.bn2.running_mean"),
