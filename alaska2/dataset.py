@@ -79,15 +79,17 @@ def compute_dct(image):
 def compute_rgb_dct(image):
     dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64 * 3), dtype=np.float32)
 
-    one_over_255 = np.float32(1.0 / 255.0)
-    image = image * one_over_255
-    for i in range(0, image.shape[0], 8):
-        for j in range(0, image.shape[1], 8):
-            for c in range(3):
-                dct = cv2.dct(image[i : i + 8, j : j + 8, c])
-                dct_image[i // 8, j // 8, 64 * c : 64 * (c + 1)] = dct.flatten()
+    # image = image * one_over_255
+    # for i in range(0, image.shape[0], 8):
+    #     for j in range(0, image.shape[1], 8):
+    #         for c in range(3):
+    #             dct = cv2.dct(image[i : i + 8, j : j + 8, c])
+    #             dct_image[i // 8, j // 8, 64 * c : 64 * (c + 1)] = dct.flatten()
+    #
+    # return dct_image
 
-    return dct_image
+    one_over_255 = np.float32(1.0 / 255.0)
+    return image_dct_slow(image * one_over_255)
 
 
 DCTMTX = np.array(
@@ -147,6 +149,10 @@ def compute_blur_features(image):
 
 def compute_features(image, features):
     sample = {}
+
+    if INPUT_IMAGE_KEY in features:
+        sample[INPUT_IMAGE_KEY] = tensor_from_rgb_image(image)
+
     if INPUT_FEATURES_DCT_KEY in features:
         sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_rgb_dct(image))
 
@@ -185,7 +191,6 @@ class TrainingValidationDataset(Dataset):
 
             sample = {
                 INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-                INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
             }
 
             if self.targets is not None:
@@ -225,7 +230,6 @@ class BalancedTrainingDataset(Dataset):
 
         sample = {
             INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
             INPUT_TRUE_MODIFICATION_TYPE: int(target),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
@@ -251,7 +255,6 @@ class CoverImageDataset(Dataset):
 
         sample = {
             INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
             INPUT_TRUE_MODIFICATION_TYPE: int(target),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
@@ -281,7 +284,6 @@ class ModifiedImageDataset(Dataset):
 
         sample = {
             INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
             INPUT_TRUE_MODIFICATION_TYPE: int(target),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
         }
