@@ -1,7 +1,31 @@
+import torch
 from pytorch_toolbelt.modules import *
+from torch import nn
+
 from alaska2.dataset import *
+import numpy as np
+import torch.nn.functional as F
 
 __all__ = ["dct_resnet34", "dct_hrnet18", "dct_seresnext50"]
+
+from alaska2.dataset import DCTMTX
+
+
+class DCT(nn.Module):
+    def __init__(self):
+        super().__init__()
+        dctmtx = torch.from_numpy(DCTMTX).view((8,8))
+        self.register_buffer("dctmtx", dctmtx)
+
+    def forward(self, x):
+        batch, channels, rows, cols = x.size()
+
+        x_unfold = F.unfold(x, kernel_size=(8,8), padding=0, stride=(8,8))
+        x_unfold = x_unfold.permute(0,2, 1).reshape(batch, -1, 8, 8)
+        torch.bmm()
+        dct_fold = F.fold(dct, output_size=(rows, cols), kernel_size=8,stride=1)
+        return dct_fold
+
 
 
 class DCTModel(nn.Module):

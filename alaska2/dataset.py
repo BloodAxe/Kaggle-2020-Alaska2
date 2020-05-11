@@ -90,6 +90,32 @@ def compute_rgb_dct(image):
     return dct_image
 
 
+DCTMTX = np.array(
+    [
+        [0.3536, 0.3536, 0.3536, 0.3536, 0.3536, 0.3536, 0.3536, 0.3536],
+        [0.4904, 0.4157, 0.2778, 0.0975, -0.0975, -0.2778, -0.4157, -0.4904],
+        [0.4619, 0.1913, -0.1913, -0.4619, -0.4619, -0.1913, 0.1913, 0.4619],
+        [0.4157, -0.0975, -0.4904, -0.2778, 0.2778, 0.4904, 0.0975, -0.4157],
+        [0.3536, -0.3536, -0.3536, 0.3536, 0.3536, -0.3536, -0.3536, 0.3536],
+        [0.2778, -0.4904, 0.0975, 0.4157, -0.4157, -0.0975, 0.4904, -0.2778],
+        [0.1913, -0.4619, 0.4619, -0.1913, -0.1913, 0.4619, -0.4619, 0.1913],
+        [0.0975, -0.2778, 0.4157, -0.4904, 0.4904, -0.4157, 0.2778, -0.0975],
+    ],
+    dtype=np.float32,
+)
+
+
+def image_dct_slow(image):
+    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
+
+    for i in range(0, image.shape[0], 8):
+        for j in range(0, image.shape[1], 8):
+            dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
+            dct_image[i // 8, j // 8, :] = dct.flatten()
+
+    return dct_image
+
+
 def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
     diff = np.zeros((image.shape[0], image.shape[1], 3 * len(quality_steps)), dtype=np.float32)
 
