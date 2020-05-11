@@ -47,7 +47,7 @@ class RGBModel(nn.Module):
             and "embedding.1.weight" in state_dict
             and "embedding.1.running_mean" in state_dict
             and "embedding.1.running_var" in state_dict
-            and "embedding.2.num_batches_tracked" in state_dict
+            and "embedding.1.num_batches_tracked" in state_dict
         ):
             # First layer is Linear, second layer is BN
             state_dict = rename_keys(
