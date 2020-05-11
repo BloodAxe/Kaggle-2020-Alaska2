@@ -10,6 +10,12 @@ from alaska2.models.dct import DCT
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
+import jpeg4py as jpeg
+
+def test_dct():
+    a = os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg")
+    d = jpeg.JPEG(a)
+
 
 def test_dct():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"), cv2.IMREAD_GRAYSCALE)

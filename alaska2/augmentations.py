@@ -5,6 +5,7 @@ import cv2
 import random
 import numpy as np
 from albumentations.core.composition import BaseCompose
+from .dataset import INPUT_FEATURES_DCT_KEY, INPUT_FEATURES_BLUR_KEY, INPUT_FEATURES_ELA_KEY
 
 __all__ = ["RandomOrder", "EqualizeHistogram", "get_augmentations"]
 
@@ -38,15 +39,22 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
     else:
         maybe_crop = A.NoOp()
 
+    additional_targets = {
+        INPUT_FEATURES_ELA_KEY: "image",
+        INPUT_FEATURES_BLUR_KEY: "image",
+        INPUT_FEATURES_DCT_KEY: "image",
+    }
     augmentations_level = augmentations_level.lower()
     if augmentations_level == "none":
         return A.NoOp()
 
     if augmentations_level == "safe":
-        return A.ReplayCompose([maybe_crop, A.HorizontalFlip(), A.VerticalFlip()])
+        return A.ReplayCompose(
+            [maybe_crop, A.HorizontalFlip(), A.VerticalFlip()], additional_targets=additional_targets
+        )
 
     if augmentations_level == "light":
-        return A.ReplayCompose([maybe_crop, A.RandomRotate90(), A.Transpose()])
+        return A.ReplayCompose([maybe_crop, A.RandomRotate90(), A.Transpose()], additional_targets=additional_targets)
 
     if augmentations_level == "medium":
         return A.ReplayCompose(
@@ -62,7 +70,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                     ]
                 ),
                 A.CoarseDropout(min_width=8, min_height=8, max_width=256, max_height=256, max_holes=3),
-            ]
+            ],
+            additional_targets=additional_targets,
         )
 
     if augmentations_level == "hard":
@@ -76,7 +85,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                 A.ShiftScaleRotate(
                     rotate_limit=5, shift_limit=0.05, scale_limit=0.05, border_mode=cv2.BORDER_CONSTANT
                 ),
-            ]
+            ],
+            additional_targets=additional_targets,
         )
 
     raise KeyError(augmentations_level)

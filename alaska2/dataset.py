@@ -2,7 +2,6 @@ import os
 import random
 from typing import Tuple, Optional, Union, List
 import pandas as pd
-
 import albumentations as A
 import cv2
 import numpy as np
@@ -52,7 +51,6 @@ __all__ = [
     "TrainingValidationDataset",
     "compute_blur_features",
     "compute_dct",
-    "compute_rgb_dct",
     "compute_ela",
     "get_datasets",
     "get_datasets_batched",
@@ -60,36 +58,12 @@ __all__ = [
 ]
 
 
-def compute_dct(image):
-    assert image.shape[0] % 8 == 0
-    assert image.shape[1] % 8 == 0
+def compute_dct(jpeg_file):
+    from jpeg2dct.numpy import load, loads
 
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
+    dct_y, dct_cb, dct_cr = load("Cover/00001.jpg")
 
-    one_over_255 = np.float32(1.0 / 255.0)
-    image = image * one_over_255
-    for i in range(0, image.shape[0], 8):
-        for j in range(0, image.shape[1], 8):
-            dct = cv2.dct(image[i : i + 8, j : j + 8])
-            dct_image[i // 8, j // 8, :] = dct.flatten()
-
-    return dct_image
-
-
-def compute_rgb_dct(image):
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64 * 3), dtype=np.float32)
-
-    # image = image * one_over_255
-    # for i in range(0, image.shape[0], 8):
-    #     for j in range(0, image.shape[1], 8):
-    #         for c in range(3):
-    #             dct = cv2.dct(image[i : i + 8, j : j + 8, c])
-    #             dct_image[i // 8, j // 8, 64 * c : 64 * (c + 1)] = dct.flatten()
-    #
-    # return dct_image
-
-    one_over_255 = np.float32(1.0 / 255.0)
-    return image_dct_slow(image * one_over_255)
+    return dct_y, dct_cb, dct_cr
 
 
 DCTMTX = np.array(
@@ -105,17 +79,6 @@ DCTMTX = np.array(
     ],
     dtype=np.float32,
 )
-
-
-def image_dct_slow(image):
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
-
-    for i in range(0, image.shape[0], 8):
-        for j in range(0, image.shape[1], 8):
-            dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
-            dct_image[i // 8, j // 8, :] = dct.flatten()
-
-    return dct_image
 
 
 def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
@@ -147,19 +110,27 @@ def compute_blur_features(image):
     return diff
 
 
-def compute_features(image, features):
+def compute_features(image_fname, features):
     sample = {}
 
+    if INPUT_FEATURES_DCT_KEY in features:
+        dct_y, dct_cb, dct_cr = compute_dct(image_fname)
+        dct_y = tensor_from_rgb_image(dct_y)
+        dct_cb = tensor_from_rgb_image(dct_cb)
+        dct_cr = tensor_from_rgb_image(dct_cr)
+        dct = torch.cat([dct_y, dct_cb, dct_cr], dim=0)
+        sample[INPUT_FEATURES_DCT_KEY] = dct
+
     if INPUT_IMAGE_KEY in features:
+        image = cv2.imread(image_fname)
         sample[INPUT_IMAGE_KEY] = tensor_from_rgb_image(image)
 
-    if INPUT_FEATURES_DCT_KEY in features:
-        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_rgb_dct(image))
-
     if INPUT_FEATURES_ELA_KEY in features:
+        image = cv2.imread(image_fname)
         sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
 
     if INPUT_FEATURES_BLUR_KEY in features:
+        image = cv2.imread(image_fname)
         sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
 
     return sample
@@ -185,24 +156,18 @@ class TrainingValidationDataset(Dataset):
         return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, features={self.features})"
 
     def __getitem__(self, index):
-        try:
-            image = cv2.imread(self.images[index])
-            image = self.transform(image=image)["image"]
+        image_fname = self.images[index]
+        data = compute_features(image_fname, self.features)
 
-            sample = {
-                INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            }
+        data = self.transform(**data)
 
-            if self.targets is not None:
-                sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
-                sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+        data[INPUT_IMAGE_ID_KEY] = fs.id_from_fname(self.images[index])
 
-            sample.update(compute_features(image, self.features))
-            return sample
-        except Exception as e:
-            print(index, self.images[index])
-            print(e)
-            print(image.shape)
+        if self.targets is not None:
+            data[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
+            data[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+
+        return data
 
 
 class BalancedTrainingDataset(Dataset):
