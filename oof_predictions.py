@@ -38,7 +38,7 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
             df[OUTPUT_PRED_MODIFICATION_FLAG].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG]).flatten())
 
         if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
-            df[OUTPUT_PRED_MODIFICATION_TYPE].extend(outputs[OUTPUT_PRED_MODIFICATION_TYPE])
+            df[OUTPUT_PRED_MODIFICATION_TYPE].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE]).tolist())
 
     df = pd.DataFrame.from_dict(df)
     return df
