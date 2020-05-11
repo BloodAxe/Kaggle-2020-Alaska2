@@ -151,9 +151,9 @@ def compute_features(image_fname, features):
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
         dct_y, dct_cb, dct_cr = compute_dct(image_fname)
-        dct_y = tensor_from_rgb_image(dct_y)
-        dct_cb = tensor_from_rgb_image(dct_cb)
-        dct_cr = tensor_from_rgb_image(dct_cr)
+        dct_y = tensor_from_rgb_image(dct_y).float()
+        dct_cb = tensor_from_rgb_image(dct_cb).float()
+        dct_cr = tensor_from_rgb_image(dct_cr).float()
         sample[INPUT_FEATURES_DCT_Y_KEY] = dct_y
         sample[INPUT_FEATURES_DCT_CR_KEY] = dct_cr
         sample[INPUT_FEATURES_DCT_CB_KEY] = dct_cb
