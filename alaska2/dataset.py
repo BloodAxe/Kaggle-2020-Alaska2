@@ -10,10 +10,11 @@ from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils.data import Dataset, WeightedRandomSampler
 
-from .augmentations import get_augmentations
 
 INPUT_IMAGE_KEY = "input_image"
-INPUT_FEATURES_DCT_KEY = "input_dct"
+INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
+INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
+INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
@@ -34,7 +35,9 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
-    "INPUT_FEATURES_DCT_KEY",
+    "INPUT_FEATURES_DCT_Y_KEY",
+    "INPUT_FEATURES_DCT_CR_KEY",
+    "INPUT_FEATURES_DCT_CB_KEY",
     "INPUT_FEATURES_ELA_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
@@ -50,7 +53,8 @@ __all__ = [
     "OUTPUT_PRED_MODIFICATION_TYPE",
     "TrainingValidationDataset",
     "compute_blur_features",
-    "compute_dct",
+    "compute_dct_fast",
+    "compute_dct_slow",
     "compute_ela",
     "get_datasets",
     "get_datasets_batched",
@@ -58,11 +62,10 @@ __all__ = [
 ]
 
 
-def compute_dct(jpeg_file):
+def compute_dct_fast(jpeg_file):
     from jpeg2dct.numpy import load, loads
 
-    dct_y, dct_cb, dct_cr = load("Cover/00001.jpg")
-
+    dct_y, dct_cb, dct_cr = load(jpeg_file)
     return dct_y, dct_cb, dct_cr
 
 
@@ -79,6 +82,39 @@ DCTMTX = np.array(
     ],
     dtype=np.float32,
 )
+
+
+def dct8(image):
+    assert image.shape[0] % 8 == 0
+    assert image.shape[1] % 8 == 0
+
+    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
+
+    one_over_255 = np.float32(1.0 / 255.0)
+    image = image * one_over_255
+    for i in range(0, image.shape[0], 8):
+        for j in range(0, image.shape[1], 8):
+            dct = cv2.dct(image[i : i + 8, j : j + 8])
+            dct_image[i // 8, j // 8, :] = dct.flatten()
+
+    return dct_image
+
+
+def compute_dct_slow(jpeg_file):
+    image = cv2.imread(jpeg_file)
+    ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCR_CB)
+    y, cr, cb = cv2.split(ycrcb)
+    cr = cv2.pyrDown(cr)
+    cb = cv2.pyrDown(cb)
+    return dct8(y), dct8(cr), dct8(cb)
+
+
+try:
+    from jpeg2dct.numpy import load, loads
+
+    compute_dct = compute_dct_fast
+except ImportError:
+    compute_dct = compute_dct_slow
 
 
 def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
@@ -113,13 +149,14 @@ def compute_blur_features(image):
 def compute_features(image_fname, features):
     sample = {}
 
-    if INPUT_FEATURES_DCT_KEY in features:
+    if INPUT_FEATURES_DCT_Y_KEY in features:
         dct_y, dct_cb, dct_cr = compute_dct(image_fname)
         dct_y = tensor_from_rgb_image(dct_y)
         dct_cb = tensor_from_rgb_image(dct_cb)
         dct_cr = tensor_from_rgb_image(dct_cr)
-        dct = torch.cat([dct_y, dct_cb, dct_cr], dim=0)
-        sample[INPUT_FEATURES_DCT_KEY] = dct
+        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_y
+        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_cr
+        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_cb
 
     if INPUT_IMAGE_KEY in features:
         image = cv2.imread(image_fname)
@@ -159,15 +196,16 @@ class TrainingValidationDataset(Dataset):
         image_fname = self.images[index]
         data = compute_features(image_fname, self.features)
 
-        data = self.transform(**data)
+        # data = self.transform(**data)
 
-        data[INPUT_IMAGE_ID_KEY] = fs.id_from_fname(self.images[index])
+        sample = dict((key, value) for (key, value) in data.items() if key in self.features)
+        sample[INPUT_IMAGE_ID_KEY] = fs.id_from_fname(image_fname)
 
         if self.targets is not None:
-            data[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
-            data[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
+            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
 
-        return data
+        return sample
 
 
 class BalancedTrainingDataset(Dataset):
@@ -310,6 +348,8 @@ def get_datasets(
     balance=False,
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
@@ -377,6 +417,8 @@ def get_datasets_batched(
     image_size: Tuple[int, int] = (512, 512),
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
