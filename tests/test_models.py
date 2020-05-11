@@ -11,7 +11,7 @@ TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_d
 def test_models_forward(model_name):
     model = get_model(model_name).cuda().eval()
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
-    dct = compute_dct(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+    dct = compute_dct_fast(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
     ela = compute_ela(image)
     blur = compute_blur_features(image)
 

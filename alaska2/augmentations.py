@@ -5,7 +5,13 @@ import cv2
 import random
 import numpy as np
 from albumentations.core.composition import BaseCompose
-from .dataset import INPUT_FEATURES_DCT_KEY, INPUT_FEATURES_BLUR_KEY, INPUT_FEATURES_ELA_KEY
+from .dataset import (
+    INPUT_FEATURES_DCT_CR_KEY,
+    INPUT_FEATURES_DCT_Y_KEY,
+    INPUT_FEATURES_DCT_CB_KEY,
+    INPUT_FEATURES_BLUR_KEY,
+    INPUT_FEATURES_ELA_KEY,
+)
 
 __all__ = ["RandomOrder", "EqualizeHistogram", "get_augmentations"]
 
@@ -42,7 +48,9 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
     additional_targets = {
         INPUT_FEATURES_ELA_KEY: "image",
         INPUT_FEATURES_BLUR_KEY: "image",
-        INPUT_FEATURES_DCT_KEY: "image",
+        INPUT_FEATURES_DCT_Y_KEY: "image",
+        INPUT_FEATURES_DCT_CB_KEY: "image",
+        INPUT_FEATURES_DCT_CR_KEY: "image",
     }
     augmentations_level = augmentations_level.lower()
     if augmentations_level == "none":
