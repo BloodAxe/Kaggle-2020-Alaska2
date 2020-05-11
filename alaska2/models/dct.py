@@ -1,7 +1,7 @@
 from pytorch_toolbelt.modules import *
 from alaska2.dataset import *
 
-__all__ = ["dct_resnet34", "dct_hrnet18"]
+__all__ = ["dct_resnet34", "dct_hrnet18", "dct_seresnext50"]
 
 
 class DCTModel(nn.Module):
@@ -10,28 +10,20 @@ class DCTModel(nn.Module):
         self.dct_bn = nn.BatchNorm2d(64)
         self.dct_encoder = dct_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
-        self.embedding = nn.Sequential(
-            nn.Linear(self.dct_encoder.channels[-1], 128),
-            nn.BatchNorm1d(128),
-            nn.AlphaDropout(dropout),
-            nn.ReLU(True),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(True),
-        )
+        self.dropout = nn.Dropout(dropout)
 
-        self.type_classifier = nn.Linear(128, num_classes)
-        self.flag_classifier = nn.Linear(128, 1)
+        self.type_classifier = nn.Linear(dct_encoder.channels[-1], num_classes)
+        self.flag_classifier = nn.Linear(dct_encoder.channels[-1], 1)
 
     def forward(self, **kwargs):
         dct = self.dct_bn(kwargs[INPUT_FEATURES_DCT_KEY].float())
 
-        dct_featues = self.pool(self.dct_encoder(dct)[-1])
-        x = self.embedding(dct_featues)
+        x = self.pool(self.dct_encoder(dct)[-1])
 
         return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
+            OUTPUT_PRED_EMBEDDING: x,
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.dropout(x)),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.dropout(x)),
         }
 
     @property
@@ -75,6 +67,11 @@ class DCTModelAllPool(nn.Module):
 
 def dct_resnet34(num_classes=4, dropout=0, pretrained=True):
     dct_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(64 * 3)
+    return DCTModel(dct_encoder, num_classes=num_classes, dropout=dropout)
+
+
+def dct_seresnext50(num_classes=4, dropout=0, pretrained=True):
+    dct_encoder = SEResNeXt50Encoder(pretrained=pretrained).change_input_channels(64 * 3)
     return DCTModel(dct_encoder, num_classes=num_classes, dropout=dropout)
 
 

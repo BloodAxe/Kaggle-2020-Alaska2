@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch
 from pytorch_toolbelt.modules import *
 from alaska2.dataset import *
@@ -16,17 +18,88 @@ class RGBModel(nn.Module):
         self.rgb_encoder = rgb_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.embedding = nn.Sequential(
-            nn.Linear(self.rgb_encoder.channels[-1], 128),
-            nn.AlphaDropout(dropout),
-            nn.BatchNorm1d(128),
-            nn.ReLU(True),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(True),
+            OrderedDict(
+                [
+                    ("fc1", nn.Linear(self.rgb_encoder.channels[-1], 128)),
+                    ("drop", nn.AlphaDropout(dropout)),
+                    ("bn1", nn.BatchNorm1d(128)),
+                    ("act1", nn.ReLU(True)),
+                    ("fc2", nn.Linear(128, 128)),
+                    ("bn2", nn.BatchNorm1d(128)),
+                    ("act2", nn.ReLU(True)),
+                ]
+            )
         )
 
         self.type_classifier = nn.Linear(128, num_classes)
         self.flag_classifier = nn.Linear(128, 1)
+
+    def load_state_dict(self, state_dict, strict=True):
+        def rename_keys(data_dict, renames):
+            for oldkey, newkey in renames:
+                data_dict = OrderedDict((newkey if k == oldkey else k, v) for k, v in data_dict.items())
+            return data_dict
+
+        if (
+            "embedding.0.weight" in state_dict
+            and "embedding.0.bias" in state_dict
+            and "embedding.1.bias" in state_dict
+            and "embedding.1.weight" in state_dict
+            and "embedding.1.running_mean" in state_dict
+            and "embedding.1.running_var" in state_dict
+        ):
+            # First layer is Linear, second layer is BN
+            state_dict = rename_keys(
+                state_dict,
+                [
+                    ("embedding.0.bias", "embedding.fc1.bias"),
+                    ("embedding.0.weight", "embedding.fc1.weight"),
+
+                    ("embedding.1.bias", "embedding.bn1.bias"),
+                    ("embedding.1.weight", "embedding.bn1.weight"),
+                    ("embedding.1.running_mean", "embedding.bn1.running_mean"),
+                    ("embedding.1.running_var", "embedding.bn1.running_var"),
+                    ("embedding.1.num_batches_tracked", "embedding.bn1.num_batches_tracked"),
+                ],
+            )
+        elif (
+                "embedding.1.weight" in state_dict
+                and "embedding.1.bias" in state_dict
+                and "embedding.2.bias" in state_dict
+                and "embedding.2.weight" in state_dict
+                and "embedding.2.running_mean" in state_dict
+                and "embedding.2.running_var" in state_dict
+        ):
+            # Second layer is Linear, Third layer is BN
+            state_dict = rename_keys(
+                state_dict,
+                [
+                    ("embedding.1.bias", "embedding.fc1.bias"),
+                    ("embedding.1.weight", "embedding.fc1.weight"),
+
+                    ("embedding.2.bias", "embedding.bn1.bias"),
+                    ("embedding.2.weight", "embedding.bn1.weight"),
+                    ("embedding.2.running_mean", "embedding.bn1.running_mean"),
+                    ("embedding.2.running_var", "embedding.bn1.running_var"),
+                    ("embedding.2.num_batches_tracked", "embedding.bn1.num_batches_tracked"),
+                ],
+            )
+
+        state_dict = rename_keys(
+            state_dict,
+            [
+                ("embedding.4.bias", "embedding.fc2.bias"),
+                ("embedding.4.weight", "embedding.fc2.weight"),
+
+                ("embedding.5.bias", "embedding.bn2.bias"),
+                ("embedding.5.weight", "embedding.bn2.weight"),
+                ("embedding.5.running_mean", "embedding.bn2.running_mean"),
+                ("embedding.5.running_var", "embedding.bn2.running_var"),
+                ("embedding.5.num_batches_tracked", "embedding.bn2.num_batches_tracked"),
+            ],
+        )
+
+        return super().load_state_dict(state_dict, strict)
 
     def forward(self, **kwargs):
         image = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())

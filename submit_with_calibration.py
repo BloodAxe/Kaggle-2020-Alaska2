@@ -25,21 +25,6 @@ from sklearn.linear_model import LogisticRegression as LR
 from sklearn.isotonic import IsotonicRegression as IR
 
 
-@torch.no_grad()
-def compute_oof_predictions(model, dataset, batch_size=1) -> pd.DataFrame:
-    df = defaultdict(list)
-    for batch in tqdm(DataLoader(dataset, batch_size=batch_size, pin_memory=True)):
-        batch = any2device(batch, device="cuda")
-
-        image_ids = batch[INPUT_IMAGE_ID_KEY]
-        y_preds = to_numpy(predict_from_flag(model, batch))
-        y_trues = to_numpy(batch[INPUT_TRUE_MODIFICATION_FLAG])
-        df["Id"].extend(image_ids)
-        df["y_true"].extend(y_trues)
-        df["y_pred"].extend(y_preds)
-
-    df = pd.DataFrame.from_dict(df)
-    return df
 
 
 @torch.no_grad()
@@ -85,7 +70,7 @@ def main():
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
     model, checkpoints, required_features = ensemble_from_checkpoints(
-        checkpoint_fnames, strict=False, outputs=outputs, activation=activation, tta=tta
+        checkpoint_fnames, strict=True, outputs=outputs, activation=activation, tta=tta
     )
 
     test_ds = get_test_dataset(data_dir, features=required_features)
@@ -98,12 +83,6 @@ def main():
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model = model.eval()
-
-    fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
-    _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
-    oof_predictions = compute_oof_predictions(model, valid_ds)
-    oof_predictions.to_csv(os.path.join(output_dir, "oof_predictions.csv"), index=False)
 
     print("Uncalibrated", alaska_weighted_auc(oof_predictions["y_true"].values, oof_predictions["y_pred"].values))
 

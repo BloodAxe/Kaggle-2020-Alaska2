@@ -1,6 +1,7 @@
 import os
 import random
 from typing import Tuple, Optional, Union, List
+import pandas as pd
 
 import albumentations as A
 import cv2
@@ -17,6 +18,7 @@ INPUT_FEATURES_DCT_KEY = "input_dct"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
+INPUT_FOLD_KEY = "fold"
 
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_type"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
@@ -35,6 +37,7 @@ __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_DCT_KEY",
     "INPUT_FEATURES_ELA_KEY",
+    "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
     "INPUT_IMAGE_KEY",
     "INPUT_TRUE_MODIFICATION_FLAG",
@@ -150,20 +153,25 @@ class TrainingValidationDataset(Dataset):
         return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, features={self.features})"
 
     def __getitem__(self, index):
-        image = cv2.imread(self.images[index])
-        image = self.transform(image=image)["image"]
+        try:
+            image = cv2.imread(self.images[index])
+            image = self.transform(image=image)["image"]
 
-        sample = {
-            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
-        }
+            sample = {
+                INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
+                INPUT_IMAGE_KEY: tensor_from_rgb_image(image),
+            }
 
-        if self.targets is not None:
-            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
-            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+            if self.targets is not None:
+                sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
+                sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
 
-        sample.update(compute_features(image, self.features))
-        return sample
+            sample.update(compute_features(image, self.features))
+            return sample
+        except Exception as e:
+            print(index, self.images[index])
+            print(e)
+            print(image.shape)
 
 
 class BalancedTrainingDataset(Dataset):
@@ -338,54 +346,29 @@ def get_datasets(
         else:
             raise ValueError("Fold must be set")
     else:
-        if fast:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
-        original_images = np.array(fs.find_images_in_dir(os.path.join(data_dir, "Cover")))
-        image_sizes = np.array([os.stat(fname).st_size for fname in original_images])
-        order = np.argsort(image_sizes)
-        original_images = original_images[order]
-        num_folds = 4
-        num_images = len(original_images)
+        train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
+        valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
 
-        folds_lut = (list(range(num_folds)) * num_images)[:num_images]
-        folds_lut = np.array(folds_lut)
+        train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
+        valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
-        if balance:
-            train_images = original_images[folds_lut != fold].tolist()
-            train_x = train_images.copy()
+        train_x = train_images.copy()
+        train_y = [0] * len(train_images)
 
-            valid_images = original_images[folds_lut == fold].tolist()
-            valid_x = valid_images.copy()
-            valid_y = [0] * len(valid_images)
+        valid_x = valid_images.copy()
+        valid_y = [0] * len(valid_images)
 
-            for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-                valid_x += [fname.replace("Cover", method) for fname in valid_images]
-                valid_y += [i + 1] * len(valid_images)
+        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            train_x += [fname.replace("Cover", method) for fname in train_images]
+            train_y += [i + 1] * len(train_images)
 
-            cover_ds = CoverImageDataset(train_x, transform=train_transform, features=features)
-            modified_ds = ModifiedImageDataset(train_x, transform=train_transform, features=features)
+            valid_x += [fname.replace("Cover", method) for fname in valid_images]
+            valid_y += [i + 1] * len(valid_images)
 
-            train_ds = cover_ds + modified_ds
-            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
-        else:
-            train_images = original_images[folds_lut != fold].tolist()
-            train_x = train_images.copy()
-            train_y = [0] * len(train_images)
-
-            valid_images = original_images[folds_lut == fold].tolist()
-            valid_x = valid_images.copy()
-            valid_y = [0] * len(valid_images)
-
-            for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-                train_x += [fname.replace("Cover", method) for fname in train_images]
-                train_y += [i + 1] * len(train_images)
-
-                valid_x += [fname.replace("Cover", method) for fname in valid_images]
-                valid_y += [i + 1] * len(valid_images)
-
-            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
-            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+        train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
+        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
         sampler = None
         print("Train", train_ds)
@@ -422,21 +405,13 @@ def get_datasets_batched(
         else:
             raise ValueError("Fold must be set")
     else:
-        if fast:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
-        original_images = np.array(fs.find_images_in_dir(os.path.join(data_dir, "Cover")))
-        image_sizes = np.array([os.stat(fname).st_size for fname in original_images])
-        order = np.argsort(image_sizes)
-        original_images = original_images[order]
-        num_folds = 4
-        num_images = len(original_images)
+        train_images = data_folds.loc[INPUT_IMAGE_ID_KEY, data_folds[INPUT_FOLD_KEY] != fold].tolist()
+        valid_images = data_folds.loc[INPUT_IMAGE_ID_KEY, data_folds[INPUT_FOLD_KEY] == fold].tolist()
 
-        folds_lut = (list(range(num_folds)) * num_images)[:num_images]
-        folds_lut = np.array(folds_lut)
-
-        train_images = original_images[folds_lut != fold].tolist()
-        valid_images = original_images[folds_lut == fold].tolist()
+        train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
+        valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
         train_ds = BatchedImageDataset(train_images, transform=train_transform, features=features)
         valid_ds = BatchedImageDataset(valid_images, transform=valid_transform, features=features)
