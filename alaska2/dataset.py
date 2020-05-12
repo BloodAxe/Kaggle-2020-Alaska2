@@ -189,9 +189,7 @@ class TrainingValidationDataset(Dataset):
             image = cv2.imread(self.images[index])
             image = self.transform(image=image)["image"]
 
-            sample = {
-                INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            }
+            sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
 
             if self.targets is not None:
                 sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
@@ -305,11 +303,15 @@ class BatchedImageDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        # Select one of 3 altered images
-        image0 = cv2.imread(self.images[index])
-        image1 = cv2.imread(self.images[index].replace("Cover", "JMiPOD"))
-        image2 = cv2.imread(self.images[index].replace("Cover", "JUNIWARD"))
-        image3 = cv2.imread(self.images[index].replace("Cover", "UERD"))
+        image_fname0 = self.images[index]
+        image_fname1 = image_fname0.replace("Cover", "JMiPOD")
+        image_fname2 = image_fname0.replace("Cover", "JUNIWARD")
+        image_fname3 = image_fname0.replace("Cover", "UERD")
+
+        image0 = cv2.imread(image_fname0)
+        image1 = cv2.imread(image_fname1)
+        image2 = cv2.imread(image_fname2)
+        image3 = cv2.imread(image_fname3)
 
         data = self.transform(image=image0)
 
@@ -319,7 +321,12 @@ class BatchedImageDataset(Dataset):
         image3 = self.transform.replay(data["replay"], image=image3)["image"]
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(self.images[index])] * 4,
+            INPUT_IMAGE_ID_KEY: [
+                fs.id_from_fname(image_fname0),
+                fs.id_from_fname(image_fname1),
+                fs.id_from_fname(image_fname2),
+                fs.id_from_fname(image_fname3),
+            ],
             INPUT_IMAGE_KEY: torch.stack(
                 [
                     tensor_from_rgb_image(image0),
