@@ -17,6 +17,6 @@
 | May07_16_48_rgb_resnet34_fold0 (fine-tune)   | rgb_resnet34           | 0    | 8451 |      | 56.90 |
 | May08_22_42_rgb_resnet34_fold1               | rgb_resnet34           | 1    | 8439 |      | 56.62 |
 | May09_15_13_rgb_densenet121_fold0_fp16       | rgb_densenet121        | 0    | 8658 | 8660 | 60.90 |
-| May10_19_26_rgb_skresnext50_32x4d_fold3_fp16 | rgb_skresnext50_32x4d  | 3    |      |      |
-| May10_16_32_rgb_densenet201_fold3_fp16       | rgb_densenet201        | 3    |
+| May10_19_26_rgb_skresnext50_32x4d_fold3_fp16 | rgb_skresnext50_32x4d  | 3    | 8560 | 8559 | 59.51 |
+| May11_08_49_rgb_densenet201_fold3_fp16       | rgb_densenet201        | 3    | 8402 | 8405 | 56.38 |
 

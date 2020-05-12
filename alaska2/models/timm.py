@@ -53,7 +53,7 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 
 def rgb_skresnext50_32x4d_mish(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(pretrained=pretrained, activation=Mish)
+    encoder = skresnext50_32x4d(pretrained=pretrained, act_layer=Mish)
     del encoder.fc
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)

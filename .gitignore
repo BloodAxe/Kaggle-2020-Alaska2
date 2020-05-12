@@ -2,3 +2,5 @@
 /runs/
 /tests/.pytest_cache/
 /models/
+alaska2/__pycache__/
+alaska2/models/__pycache__/
