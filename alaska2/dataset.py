@@ -290,7 +290,7 @@ class ModifiedImageDataset(Dataset):
         return sample
 
 
-class BatchedImageDataset(Dataset):
+class PairedImageDataset(Dataset):
     def __init__(self, images: np.ndarray, transform: A.Compose, features):
         self.images = images
         self.features = features
@@ -308,17 +308,15 @@ class BatchedImageDataset(Dataset):
         image_fname2 = image_fname0.replace("Cover", "JUNIWARD")
         image_fname3 = image_fname0.replace("Cover", "UERD")
 
+        method = random.randint(0, 2)
+
         image0 = cv2.imread(image_fname0)
-        image1 = cv2.imread(image_fname1)
-        image2 = cv2.imread(image_fname2)
-        image3 = cv2.imread(image_fname3)
+        image1 = cv2.imread([image_fname1, image_fname2, image_fname3][method])
 
         data = self.transform(image=image0)
 
         image0 = data["image"]
         image1 = self.transform.replay(data["replay"], image=image1)["image"]
-        image2 = self.transform.replay(data["replay"], image=image2)["image"]
-        image3 = self.transform.replay(data["replay"], image=image3)["image"]
 
         sample = {
             INPUT_IMAGE_ID_KEY: [
@@ -327,16 +325,9 @@ class BatchedImageDataset(Dataset):
                 fs.id_from_fname(image_fname2),
                 fs.id_from_fname(image_fname3),
             ],
-            INPUT_IMAGE_KEY: torch.stack(
-                [
-                    tensor_from_rgb_image(image0),
-                    tensor_from_rgb_image(image1),
-                    tensor_from_rgb_image(image2),
-                    tensor_from_rgb_image(image3),
-                ]
-            ),
-            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, 1, 2, 3]).long(),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1, 1, 1]).float(),
+            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1),]),
+            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
         }
         # TODO
         # sample.update(compute_features(image, self.features))
@@ -430,8 +421,8 @@ def get_datasets_batched(
 
             sampler = WeightedRandomSampler(np.ones(len(class_0)), 2048)
 
-            train_ds = BatchedImageDataset(class_0, transform=train_transform, features=features)
-            valid_ds = BatchedImageDataset(class_0, transform=valid_transform, features=features)
+            train_ds = PairedImageDataset(class_0, transform=train_transform, features=features)
+            valid_ds = PairedImageDataset(class_0, transform=valid_transform, features=features)
 
             print("Train", train_ds)
             print("Valid", valid_ds)
@@ -448,8 +439,8 @@ def get_datasets_batched(
         train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
-        train_ds = BatchedImageDataset(train_images, transform=train_transform, features=features)
-        valid_ds = BatchedImageDataset(valid_images, transform=valid_transform, features=features)
+        train_ds = PairedImageDataset(train_images, transform=train_transform, features=features)
+        valid_ds = PairedImageDataset(valid_images, transform=valid_transform, features=features)
 
         sampler = None
         print("Train", train_ds)
