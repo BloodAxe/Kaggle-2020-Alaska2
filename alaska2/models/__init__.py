@@ -31,7 +31,6 @@ MODEL_REGISTRY = {
     # DCT
     "dct_resnet34": dct.dct_resnet34,
     "dct_seresnext50": dct.dct_seresnext50,
-    "dct_hrnet18": dct.dct_hrnet18,
     # ELA
     "ela_resnet34": ela.ela_resnet34,
 }

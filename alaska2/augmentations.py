@@ -6,8 +6,8 @@ import random
 import numpy as np
 from albumentations.core.composition import BaseCompose
 from .dataset import (
-    INPUT_FEATURES_DCT_CR_KEY,
     INPUT_FEATURES_DCT_Y_KEY,
+    INPUT_FEATURES_DCT_CR_KEY,
     INPUT_FEATURES_DCT_CB_KEY,
     INPUT_FEATURES_BLUR_KEY,
     INPUT_FEATURES_ELA_KEY,

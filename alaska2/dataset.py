@@ -11,10 +11,11 @@ from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils.data import Dataset, WeightedRandomSampler
 
-from .augmentations import get_augmentations
 
-INPUT_IMAGE_KEY = "input_image"
-INPUT_FEATURES_DCT_KEY = "input_dct"
+INPUT_IMAGE_KEY = "image"
+INPUT_FEATURES_DCT_Y_KEY = "input_dct"
+INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
+INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
@@ -35,7 +36,9 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
-    "INPUT_FEATURES_DCT_KEY",
+    "INPUT_FEATURES_DCT_CB_KEY",
+    "INPUT_FEATURES_DCT_CR_KEY",
+    "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_ELA_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
@@ -51,21 +54,14 @@ __all__ = [
     "OUTPUT_PRED_MODIFICATION_TYPE",
     "TrainingValidationDataset",
     "compute_blur_features",
+    "compute_dct_fast",
+    "compute_dct_slow",
     "compute_ela",
+    "dct8",
     "get_datasets",
     "get_datasets_batched",
     "get_test_dataset",
-    "compute_dct_fast",
-    "compute_dct_slow",
-    "dct8",
-    "INPUT_FEATURES_DCT_CB_KEY",
-    "INPUT_FEATURES_DCT_CR_KEY",
-    "INPUT_FEATURES_DCT_Y_KEY",
 ]
-
-INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
-INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
-INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 
 
 def compute_dct_fast(jpeg_file):
@@ -108,7 +104,6 @@ def dct8(image):
     image = image * one_over_255
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
-            dct = cv2.dct(image[i : i + 8, j : j + 8])
             dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
@@ -144,20 +139,22 @@ def compute_blur_features(image):
     return diff
 
 
-def compute_features(image, features):
+def compute_additional_features(image_fname, features):
     sample = {}
 
-    if INPUT_IMAGE_KEY in features:
-        sample[INPUT_IMAGE_KEY] = tensor_from_rgb_image(image)
-
-    if INPUT_FEATURES_DCT_KEY in features:
-        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_rgb_dct(image))
+    if INPUT_FEATURES_DCT_Y_KEY in features:
+        dct_file = np.load(fs.change_extension(image_fname, ".npz"))
+        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"]
+        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"]
+        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"]
 
     if INPUT_FEATURES_ELA_KEY in features:
-        sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+        image = cv2.imread(image_fname)
+        sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
 
     if INPUT_FEATURES_BLUR_KEY in features:
-        sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
+        image = cv2.imread(image_fname)
+        sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
 
     return sample
 
@@ -182,108 +179,21 @@ class TrainingValidationDataset(Dataset):
         return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, features={self.features})"
 
     def __getitem__(self, index):
-        try:
-            image = cv2.imread(self.images[index])
-            image = self.transform(image=image)["image"]
+        data = {INPUT_IMAGE_KEY: cv2.imread(self.images[index])}
+        data.update(compute_additional_features(self.images[index], self.features))
 
-            sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
+        data = self.transform(**data)
 
-            if self.targets is not None:
-                sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
-                sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+        sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
+        for key, value in data.items():
+            if key == "replay":
+                continue
+            sample[key] = tensor_from_rgb_image(value)
 
-            sample.update(compute_features(image, self.features))
-            return sample
-        except Exception as e:
-            print(index, self.images[index])
-            print(e)
-            print(image.shape)
+        if self.targets is not None:
+            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
+            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
 
-
-class BalancedTrainingDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, features):
-        self.images = images
-        self.transform = transform
-        self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
-        self.features = features
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        # With 50% probability select one of 3 altered images
-        if random.random() >= 0.5:
-            target = random.randint(0, len(self.methods) - 1)
-            method = self.methods[target]
-            image = cv2.imread(self.images[index].replace("Cover", method))
-            target = target + 1
-        else:
-            image = cv2.imread(self.images[index])
-            target = 0
-
-        image = self.transform(image=image)["image"]
-
-        sample = {
-            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_TRUE_MODIFICATION_TYPE: int(target),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
-        }
-
-        sample.update(compute_features(image, self.features))
-        return sample
-
-
-class CoverImageDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, features):
-        self.images = images
-        self.transform = transform
-        self.features = features
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = cv2.imread(self.images[index])
-        target = 0
-
-        image = self.transform(image=image)["image"]
-
-        sample = {
-            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_TRUE_MODIFICATION_TYPE: int(target),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
-        }
-
-        sample.update(compute_features(image, self.features))
-        return sample
-
-
-class ModifiedImageDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, features):
-        self.images = images
-        self.transform = transform
-        self.methods = ["JMiPOD", "JUNIWARD", "UERD"]
-        self.features = features
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        # Select one of 3 altered images
-        target = random.randint(0, len(self.methods) - 1)
-        method = self.methods[target]
-        image = cv2.imread(self.images[index].replace("Cover", method))
-        target = target + 1
-
-        image = self.transform(image=image)["image"]
-
-        sample = {
-            INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]),
-            INPUT_TRUE_MODIFICATION_TYPE: int(target),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([target > 0]).float(),
-        }
-
-        sample.update(compute_features(image, self.features))
         return sample
 
 
@@ -336,6 +246,8 @@ def get_datasets(
     balance=False,
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
@@ -403,6 +315,8 @@ def get_datasets_batched(
     image_size: Tuple[int, int] = (512, 512),
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
