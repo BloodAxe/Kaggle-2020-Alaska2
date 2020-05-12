@@ -13,6 +13,7 @@ from ..predict import *
 MODEL_REGISTRY = {
     # TIMM
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
+    "rgb_skresnext50_32x4d_mish": timm.rgb_skresnext50_32x4d_mish,
     "rgb_dpn92": timm.rgb_dpn92,
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
@@ -29,6 +30,7 @@ MODEL_REGISTRY = {
     "rgb_hrnet18": rgb.rgb_hrnet18,
     # DCT
     "dct_resnet34": dct.dct_resnet34,
+    "dct_seresnext50": dct.dct_seresnext50,
     "dct_hrnet18": dct.dct_hrnet18,
     # ELA
     "ela_resnet34": ela.ela_resnet34,
@@ -58,9 +60,9 @@ def wrap_model_with_tta(model, tta_mode, inputs, outputs):
 
 
 def ensemble_from_checkpoints(
-    checkpoints, strict=False, outputs=None, activation: str = "after_model", tta=None, temperature=1
+    checkpoints, strict=True, outputs=None, activation: str = "after_model", tta=None, temperature=1
 ):
-    if activation not in {"after_model", "after_tta", "after_ensemble"}:
+    if activation not in {None, "after_model", "after_tta", "after_ensemble"}:
         raise KeyError(activation)
 
     models, loaded_checkpoints = zip(*[model_from_checkpoint(ck, strict=strict) for ck in checkpoints])

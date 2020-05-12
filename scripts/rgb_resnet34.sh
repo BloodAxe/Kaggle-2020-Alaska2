@@ -5,14 +5,14 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 #  --modification-flag-loss bce 1 --modification-type-loss ce 0.01\
 #  -v -lr 1e-4 --fold 0 --seed 12340
 
-python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 100 --fine-tune 10 -a safe\
-  --modification-flag-loss bce 1 --modification-type-loss ce 0.01\
-  -v -lr 1e-4 --fold 1 --seed 12341
+#python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 100 --fine-tune 10 -a safe\
+#  --modification-flag-loss bce 1 --modification-type-loss ce 0.01\
+#  -v -lr 1e-4 --fold 1 --seed 12341
 
-python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 100 --fine-tune 10 -a safe\
-  --modification-flag-loss bce 1 --modification-type-loss ce 0.01\
-  -v -lr 1e-4 --fold 2 --seed 12342
+python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 50 -a safe\
+  --modification-flag-loss wbce 1 --modification-type-loss ce 0.01\
+  -v -lr 1e-4 --fold 2 --seed 12342 -c runs/May10_04_25_rgb_resnet34_fold2/main/checkpoints_auc/best.pth
 
-python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 100 --fine-tune 10 -a safe\
-  --modification-flag-loss bce 1 --modification-type-loss ce 0.01\
+python train.py -m rgb_resnet34 -b 184 -w 16 -d 0.2 -s cos --epochs 100 -a safe\
+  --modification-flag-loss wbce 1 --modification-type-loss ce 0.01\
   -v -lr 1e-4 --fold 3 --seed 12343

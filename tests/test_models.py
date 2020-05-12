@@ -47,6 +47,7 @@ def test_plot_lr():
         # "cosd",
         # "cosr",
         # "cosrd",
+        "flat_cos",
         "poly_up",
         # "exp",
         # "poly"
@@ -60,8 +61,8 @@ def test_plot_lr():
         lrs = []
         scheduler = get_scheduler(name, opt, lr, epochs, batches_in_epoch=10000)
         for epoch in range(epochs):
-            lrs.append(scheduler.get_lr()[0])
             scheduler.step(epoch)
+            lrs.append(scheduler.get_lr()[0])
         plt.plot(range(epochs), lrs, label=name)
 
     plt.legend()
