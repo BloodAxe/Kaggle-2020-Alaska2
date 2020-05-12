@@ -258,7 +258,7 @@ def main():
         )
 
         loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
         )
 
         parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
@@ -381,7 +381,7 @@ def main():
         )
 
         loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
         )
 
         print("Train session    :", checkpoint_prefix)
@@ -506,7 +506,7 @@ def main():
         )
 
         loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True, collate_fn=custom_collate,
+            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
         )
 
         print("Train session    :", checkpoint_prefix)
