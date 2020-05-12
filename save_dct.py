@@ -31,6 +31,7 @@ def main():
         + fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
         + fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
         + fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
+        + fs.find_images_in_dir(os.path.join(data_dir, "Test"))
     )
     os.makedirs(args.output_dir, exist_ok=True)
 
