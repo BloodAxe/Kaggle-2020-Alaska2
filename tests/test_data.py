@@ -5,8 +5,7 @@ import torch
 from alaska2.dataset import *
 import matplotlib.pyplot as plt
 
-from alaska2.dataset import image_dct_slow
-from alaska2.models.dct import DCT
+from alaska2.dataset import compute_dct_fast, compute_dct_slow
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
@@ -30,7 +29,7 @@ def test_dct():
     net = DCT()
     dct_tensor = net(image_tensor)
 
-    dct_tensor = dct_tensor[0,0].detach().cpu().numpy()
+    dct_tensor = dct_tensor[0, 0].detach().cpu().numpy()
     print(dct_tensor.shape, dct2.mean(axis=(0, 1)), dct2.std(axis=(0, 1)))
 
 
