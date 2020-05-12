@@ -5,7 +5,7 @@ from catalyst.contrib.optimizers import RAdam, Lamb
 from torch.optim import SGD, Adam, RMSprop, AdamW
 from torch.optim.optimizer import Optimizer
 
-
+from torch_optimizer import Ranger
 # import torch.optim as Optimizer
 
 # Original source:  https://github.com/shivram1987/diffGrad/blob/master/diffGrad.py
@@ -257,9 +257,9 @@ def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_
     if optimizer_name.lower() == "radam":
         return RAdam(parameters, learning_rate, weight_decay=weight_decay, eps=1e-5, **kwargs)  # As Jeremy suggests
 
-    # if optimizer_name.lower() == "ranger":
-    #     return Ranger(parameters, learning_rate, weight_decay=weight_decay,
-    #                   **kwargs)
+    if optimizer_name.lower() == "ranger":
+        return Ranger(parameters, learning_rate, weight_decay=weight_decay,
+                      **kwargs)
 
     # if optimizer_name.lower() == "qhadamw":
     #     return QHAdamW(parameters, learning_rate, weight_decay=weight_decay,
