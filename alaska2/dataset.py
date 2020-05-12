@@ -51,45 +51,28 @@ __all__ = [
     "OUTPUT_PRED_MODIFICATION_TYPE",
     "TrainingValidationDataset",
     "compute_blur_features",
-    "compute_dct",
-    "compute_rgb_dct",
     "compute_ela",
     "get_datasets",
     "get_datasets_batched",
     "get_test_dataset",
+    "compute_dct_fast",
+    "compute_dct_slow",
+    "dct8",
+    "INPUT_FEATURES_DCT_CB_KEY",
+    "INPUT_FEATURES_DCT_CR_KEY",
+    "INPUT_FEATURES_DCT_Y_KEY",
 ]
 
-
-def compute_dct(image):
-    assert image.shape[0] % 8 == 0
-    assert image.shape[1] % 8 == 0
-
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
-
-    one_over_255 = np.float32(1.0 / 255.0)
-    image = image * one_over_255
-    for i in range(0, image.shape[0], 8):
-        for j in range(0, image.shape[1], 8):
-            dct = cv2.dct(image[i : i + 8, j : j + 8])
-            dct_image[i // 8, j // 8, :] = dct.flatten()
-
-    return dct_image
+INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
+INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
+INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 
 
-def compute_rgb_dct(image):
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64 * 3), dtype=np.float32)
+def compute_dct_fast(jpeg_file):
+    from jpeg2dct.numpy import load, loads
 
-    # image = image * one_over_255
-    # for i in range(0, image.shape[0], 8):
-    #     for j in range(0, image.shape[1], 8):
-    #         for c in range(3):
-    #             dct = cv2.dct(image[i : i + 8, j : j + 8, c])
-    #             dct_image[i // 8, j // 8, 64 * c : 64 * (c + 1)] = dct.flatten()
-    #
-    # return dct_image
-
-    one_over_255 = np.float32(1.0 / 255.0)
-    return image_dct_slow(image * one_over_255)
+    dct_y, dct_cb, dct_cr = load(jpeg_file)
+    return dct_y, dct_cb, dct_cr
 
 
 DCTMTX = np.array(
@@ -107,11 +90,25 @@ DCTMTX = np.array(
 )
 
 
-def image_dct_slow(image):
+def compute_dct_slow(jpeg_file):
+    image = cv2.imread(jpeg_file)
+    ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCR_CB)
+    y, cr, cb = cv2.split(ycrcb)
+    cr = cv2.pyrDown(cr)
+    cb = cv2.pyrDown(cb)
+    return dct8(y), dct8(cr), dct8(cb)
+
+
+def dct8(image):
+    assert image.shape[0] % 8 == 0
+    assert image.shape[1] % 8 == 0
     dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
 
+    one_over_255 = np.float32(1.0 / 255.0)
+    image = image * one_over_255
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
+            dct = cv2.dct(image[i : i + 8, j : j + 8])
             dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
@@ -320,10 +317,7 @@ class PairedImageDataset(Dataset):
         image1 = self.transform.replay(data["replay"], image=image1)["image"]
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [
-                fs.id_from_fname(image_fname0),
-                fs.id_from_fname(modified_fname),
-            ],
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname),],
             INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1),]),
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),

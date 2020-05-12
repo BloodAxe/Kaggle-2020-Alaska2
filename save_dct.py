@@ -5,16 +5,18 @@ from multiprocessing import Pool
 from pytorch_toolbelt.utils import fs, os
 from tqdm import tqdm
 
-from alaska2 import compute_dct
+from alaska2 import compute_dct_slow, compute_dct_fast
 import numpy as np
 
+
 def extract_and_save_dct(fname, output_dir):
-    dct_y, dct_cr, dct_cb = compute_dct(fname)
+    dct_y, dct_cr, dct_cb = compute_dct_fast(fname)
 
     image_id = fs.id_from_fname(fname) + ".npz"
-    method = os.path.split(fname)[-2]
+    method = os.path.split(os.path.split(fname)[0])[1]
     dct_fname = os.path.join(output_dir, method, image_id)
-    np.savez(dct_fname, dct_y=dct_y, dct_cr=dct_cr, dct_cb=dct_cb)
+    np.savez_compressed(dct_fname, dct_y=dct_y, dct_cr=dct_cr, dct_cb=dct_cb)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,12 +31,13 @@ def main():
         + fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
         + fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
         + fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
+        + fs.find_images_in_dir(os.path.join(data_dir, "Test"))
     )
     os.makedirs(args.output_dir, exist_ok=True)
 
     process_fn = partial(extract_and_save_dct, output_dir=args.output_dir)
     with Pool(8) as wp:
-        for _ in tqdm(wp.imap_unordered(process_fn, original_images)):
+        for _ in tqdm(wp.imap_unordered(process_fn, original_images), total=len(original_images)):
             pass
 
 
