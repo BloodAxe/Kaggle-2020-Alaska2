@@ -310,8 +310,9 @@ class PairedImageDataset(Dataset):
 
         method = random.randint(0, 2)
 
+        modified_fname = [image_fname1, image_fname2, image_fname3][method]
         image0 = cv2.imread(image_fname0)
-        image1 = cv2.imread([image_fname1, image_fname2, image_fname3][method])
+        image1 = cv2.imread(modified_fname)
 
         data = self.transform(image=image0)
 
@@ -321,9 +322,7 @@ class PairedImageDataset(Dataset):
         sample = {
             INPUT_IMAGE_ID_KEY: [
                 fs.id_from_fname(image_fname0),
-                fs.id_from_fname(image_fname1),
-                fs.id_from_fname(image_fname2),
-                fs.id_from_fname(image_fname3),
+                fs.id_from_fname(modified_fname),
             ],
             INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1),]),
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
