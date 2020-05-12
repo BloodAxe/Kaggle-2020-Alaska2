@@ -442,8 +442,8 @@ def get_datasets_batched(
     else:
         data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
-        train_images = data_folds.loc[INPUT_IMAGE_ID_KEY, data_folds[INPUT_FOLD_KEY] != fold].tolist()
-        valid_images = data_folds.loc[INPUT_IMAGE_ID_KEY, data_folds[INPUT_FOLD_KEY] == fold].tolist()
+        train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
+        valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
 
         train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
