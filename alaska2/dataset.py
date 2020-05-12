@@ -440,7 +440,14 @@ def get_datasets_batched(
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
         train_ds = PairedImageDataset(train_images, transform=train_transform, features=features)
-        valid_ds = PairedImageDataset(valid_images, transform=valid_transform, features=features)
+
+        valid_x = valid_images.copy()
+        valid_y = [0] * len(valid_images)
+
+        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            valid_x += [fname.replace("Cover", method) for fname in valid_images]
+            valid_y += [i + 1] * len(valid_images)
+        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
         sampler = None
         print("Train", train_ds)

@@ -458,7 +458,7 @@ def main():
         train_ds, valid_ds, train_sampler = get_datasets_batched(
             data_dir=data_dir,
             image_size=image_size,
-            augmentation="medium",
+            augmentation="light",
             fast=fast,
             fold=fold,
             features=required_features,
