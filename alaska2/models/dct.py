@@ -11,8 +11,6 @@ import torch.nn.functional as F
 
 __all__ = ["dct_skresnext50_32x4d"]
 
-from alaska2.models.timm import TimmRgbModel
-
 
 class DCTModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
@@ -50,4 +48,4 @@ def dct_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(pretrained=pretrained)
     del encoder.fc
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return DCTModel(encoder, num_classes=num_classes, dropout=dropout)
