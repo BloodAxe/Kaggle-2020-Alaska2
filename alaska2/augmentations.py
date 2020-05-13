@@ -83,7 +83,12 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
 
     if augmentations_level == "light":
         return A.ReplayCompose(
-            [maybe_crop, A.HorizontalFlip(), A.VerticalFlip(), A.RandomRotate90()],
+            [
+                maybe_crop,
+                # D4
+                A.RandomRotate90(p=1.0),
+                A.Transpose(p=0.5),
+            ],
             additional_targets=additional_targets,
         )
 
@@ -91,10 +96,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         return A.ReplayCompose(
             [
                 maybe_crop,
-                A.HorizontalFlip(),
-                A.VerticalFlip(),
-                A.RandomRotate90(),
-                A.Transpose(),
+                A.RandomRotate90(p=1.0),
+                A.Transpose(p=0.5),
                 A.OneOf(
                     [
                         A.RandomGridShuffle(grid=(2, 2)),
