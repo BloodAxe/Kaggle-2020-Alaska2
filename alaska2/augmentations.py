@@ -6,6 +6,15 @@ import random
 import numpy as np
 from albumentations.core.composition import BaseCompose
 
+from .dataset import (
+    INPUT_IMAGE_KEY,
+    INPUT_FEATURES_ELA_KEY,
+    INPUT_FEATURES_DCT_CR_KEY,
+    INPUT_FEATURES_DCT_CB_KEY,
+    INPUT_FEATURES_DCT_Y_KEY,
+    INPUT_FEATURES_BLUR_KEY,
+)
+
 __all__ = ["RandomOrder", "EqualizeHistogram", "get_augmentations"]
 
 
@@ -38,12 +47,22 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
     else:
         maybe_crop = A.NoOp()
 
+    additional_targets = {
+        INPUT_FEATURES_ELA_KEY: "image",
+        INPUT_FEATURES_BLUR_KEY: "image",
+        INPUT_FEATURES_DCT_Y_KEY: "image",
+        INPUT_FEATURES_DCT_CB_KEY: "image",
+        INPUT_FEATURES_DCT_CR_KEY: "image",
+    }
+
     augmentations_level = augmentations_level.lower()
     if augmentations_level == "none":
-        return A.NoOp()
+        return A.ReplayCompose([A.NoOp()])
 
     if augmentations_level == "safe":
-        return A.ReplayCompose([maybe_crop, A.HorizontalFlip(), A.VerticalFlip()])
+        return A.ReplayCompose(
+            [maybe_crop, A.HorizontalFlip(), A.VerticalFlip()], additional_targets=additional_targets,
+        )
 
     if augmentations_level == "light":
         return A.ReplayCompose(
@@ -52,7 +71,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                 # D4
                 A.RandomRotate90(p=1.0),
                 A.Transpose(p=0.5),
-            ]
+            ],
+            additional_targets=additional_targets,
         )
 
     if augmentations_level == "medium":
@@ -68,7 +88,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                         A.RandomGridShuffle(grid=(4, 4)),
                     ]
                 ),
-            ]
+            ],
+            additional_targets=additional_targets,
         )
 
     if augmentations_level == "hard":
@@ -82,7 +103,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                 A.ShiftScaleRotate(
                     rotate_limit=5, shift_limit=0.05, scale_limit=0.05, border_mode=cv2.BORDER_CONSTANT
                 ),
-            ]
+            ],
+            additional_targets=additional_targets,
         )
 
     raise KeyError(augmentations_level)

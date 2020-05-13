@@ -11,14 +11,16 @@ from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils.data import Dataset, WeightedRandomSampler
 
-from .augmentations import get_augmentations
 
 INPUT_IMAGE_KEY = "input_image"
-INPUT_FEATURES_DCT_KEY = "input_dct"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_FOLD_KEY = "fold"
+
+INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
+INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
+INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_type"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
@@ -35,7 +37,9 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
-    "INPUT_FEATURES_DCT_KEY",
+    "INPUT_FEATURES_DCT_CB_KEY",
+    "INPUT_FEATURES_DCT_CR_KEY",
+    "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_ELA_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
@@ -51,21 +55,15 @@ __all__ = [
     "OUTPUT_PRED_MODIFICATION_TYPE",
     "TrainingValidationDataset",
     "compute_blur_features",
+    "compute_dct_fast",
+    "compute_dct_slow",
     "compute_ela",
+    "dct8",
     "get_datasets",
     "get_datasets_batched",
     "get_test_dataset",
-    "compute_dct_fast",
-    "compute_dct_slow",
-    "dct8",
-    "INPUT_FEATURES_DCT_CB_KEY",
-    "INPUT_FEATURES_DCT_CR_KEY",
-    "INPUT_FEATURES_DCT_Y_KEY",
 ]
 
-INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
-INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
-INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
 
 
 def compute_dct_fast(jpeg_file):
@@ -149,9 +147,6 @@ def compute_features(image, features):
 
     if INPUT_IMAGE_KEY in features:
         sample[INPUT_IMAGE_KEY] = tensor_from_rgb_image(image)
-
-    if INPUT_FEATURES_DCT_KEY in features:
-        sample[INPUT_FEATURES_DCT_KEY] = tensor_from_rgb_image(compute_rgb_dct(image))
 
     if INPUT_FEATURES_ELA_KEY in features:
         sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
@@ -336,6 +331,8 @@ def get_datasets(
     balance=False,
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
@@ -403,6 +400,8 @@ def get_datasets_batched(
     image_size: Tuple[int, int] = (512, 512),
     features=None,
 ):
+    from .augmentations import get_augmentations
+
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 

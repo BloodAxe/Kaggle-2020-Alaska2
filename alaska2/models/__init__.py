@@ -33,7 +33,7 @@ MODEL_REGISTRY = {
     "dct_seresnext50": dct.dct_seresnext50,
     "dct_hrnet18": dct.dct_hrnet18,
     # ELA
-    "ela_resnet34": ela.ela_resnet34,
+    "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
