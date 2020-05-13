@@ -81,9 +81,9 @@ class DCTTriModel(nn.Module):
         self.flag_classifier = nn.Linear(features, 1)
 
     def forward(self, **kwargs):
-        dct_y = self.y_encoder(kwargs[INPUT_FEATURES_DCT_Y_KEY])
-        dct_cr = self.cr_encoder(kwargs[INPUT_FEATURES_DCT_CR_KEY])
-        dct_cb = self.cb_encoder(kwargs[INPUT_FEATURES_DCT_CB_KEY])
+        dct_y = self.y_encoder(kwargs[INPUT_FEATURES_DCT_Y_KEY])[-1]
+        dct_cr = self.cr_encoder(kwargs[INPUT_FEATURES_DCT_CR_KEY])[-1]
+        dct_cb = self.cb_encoder(kwargs[INPUT_FEATURES_DCT_CB_KEY])[-1]
 
         x = torch.cat([self.pool(dct_y), self.pool(dct_cr), self.pool(dct_cb)], dim=1)
         x = self.fc(x)
