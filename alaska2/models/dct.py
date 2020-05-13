@@ -57,9 +57,53 @@ class DCTModel(nn.Module):
         return [INPUT_FEATURES_DCT_Y_KEY, INPUT_FEATURES_DCT_CR_KEY, INPUT_FEATURES_DCT_CB_KEY]
 
 
+class DCTTriModel(nn.Module):
+    def __init__(self, y_encoder: EncoderModule, cr_encoder: EncoderModule, cb_encoder:EncoderModule,
+                 num_classes, dropout=0):
+        super().__init__()
+
+        self.y_encoder = y_encoder
+        self.cr_encoder = cr_encoder
+        self.cb_encoder = cb_encoder
+        self.pool = GlobalAvgPool2d(flatten=True)
+        self.dropout = nn.Dropout(dropout)
+
+        concat_features = y_encoder.channels[-1]+cr_encoder.channels[-1]+cb_encoder.channels[-1]
+        features = concat_features//2
+
+        self.fc = nn.Sequential(OrderedDict([
+            ("fc1", nn.Linear(concat_features, features)),
+            ("bn1", nn.BatchNorm1d(features)),
+            ("relu1",nn.ReLU(True))
+        ]))
+
+        self.type_classifier = nn.Linear(features, num_classes)
+        self.flag_classifier = nn.Linear(features, 1)
+
+    def forward(self, **kwargs):
+        dct_y = self.y_encoder(kwargs[INPUT_FEATURES_DCT_Y_KEY])
+        dct_cr = self.cr_encoder(kwargs[INPUT_FEATURES_DCT_CR_KEY])
+        dct_cb = self.cb_encoder(kwargs[INPUT_FEATURES_DCT_CB_KEY])
+
+        x = torch.cat([self.pool(dct_y), self.pool(dct_cr), self.pool(dct_cb)], dim=1)
+        x = self.fc(x)
+
+        return {
+            OUTPUT_PRED_EMBEDDING: x,
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.dropout(x)),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.dropout(x)),
+        }
+
+    @property
+    def required_features(self):
+        return [INPUT_FEATURES_DCT_Y_KEY, INPUT_FEATURES_DCT_CR_KEY, INPUT_FEATURES_DCT_CB_KEY]
+
+
 def dct_resnet34(num_classes=4, dropout=0, pretrained=True):
-    dct_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(64 * 3)
-    return DCTModel(dct_encoder, num_classes=num_classes, dropout=dropout)
+    y_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(64)
+    cr_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(64)
+    cb_encoder = Resnet34Encoder(pretrained=pretrained).change_input_channels(64)
+    return DCTTriModel(y_encoder, cr_encoder, cb_encoder, num_classes=num_classes, dropout=dropout)
 
 
 def dct_seresnext50(num_classes=4, dropout=0, pretrained=True):
