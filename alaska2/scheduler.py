@@ -108,7 +108,7 @@ def get_scheduler(scheduler_name: str, optimizer, lr, num_epochs, batches_in_epo
         return CosineAnnealingLR(optimizer, num_epochs, eta_min=5e-5)
 
     if scheduler_name.lower() == "flat_cos":
-        return FlatCosineAnnealingLR(optimizer, num_epochs, int(num_epochs * 0.8), eta_min=5e-5)
+        return FlatCosineAnnealingLR(optimizer, num_epochs, int(num_epochs * 0.6), eta_min=5e-5)
 
     if scheduler_name.lower() == "cosr":
         return CosineAnnealingWarmRestarts(optimizer, T_0=max(2, num_epochs // 10), eta_min=5e-5)
