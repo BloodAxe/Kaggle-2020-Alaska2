@@ -144,9 +144,9 @@ def compute_additional_features(image_fname, features):
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
-        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"]
-        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"]
-        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"]
+        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"].astype(np.float32)
+        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"].astype(np.float32)
+        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"].astype(np.float32)
 
     if INPUT_FEATURES_ELA_KEY in features:
         image = cv2.imread(image_fname)
