@@ -13,6 +13,11 @@ from torch.utils.data import Dataset, WeightedRandomSampler
 
 
 INPUT_IMAGE_KEY = "image"
+
+INPUT_FEATURES_CHANNEL_Y_KEY = "input_image_y"
+INPUT_FEATURES_CHANNEL_CR_KEY = "input_image_cr"
+INPUT_FEATURES_CHANNEL_CB_KEY = "input_image_cb"
+
 INPUT_FEATURES_DCT_Y_KEY = "input_dct"
 INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
 INPUT_FEATURES_DCT_CB_KEY = "input_dct_cb"
@@ -40,6 +45,9 @@ __all__ = [
     "INPUT_FEATURES_DCT_CR_KEY",
     "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_ELA_KEY",
+    "INPUT_FEATURES_CHANNEL_Y_KEY",
+    "INPUT_FEATURES_CHANNEL_CB_KEY",
+    "INPUT_FEATURES_CHANNEL_CR_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
     "INPUT_IMAGE_KEY",
@@ -154,6 +162,12 @@ def compute_additional_features(image_fname, features):
     sample = {}
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
+        dct_file = np.load(fs.change_extension(image_fname, ".npz"))
+        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"].astype(np.float32)
+        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"].astype(np.float32)
+        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"].astype(np.float32)
+
+    if INPUT_FEATURES_CHANNEL_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         sample[INPUT_FEATURES_DCT_Y_KEY] = idct8(dct_file["dct_y"]) / 128
         sample[INPUT_FEATURES_DCT_CR_KEY] = idct8(dct_file["dct_cr"]) / 64

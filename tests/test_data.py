@@ -51,6 +51,28 @@ def test_decode_dct_mod():
     plt.show()
 
 
+def test_dct_mean_std():
+    dct_files = [
+        np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz")),
+        np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00002.npz")),
+        np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00003.npz")),
+        np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00004.npz")),
+    ]
+
+    dct_y = np.row_stack([data["dct_y"] for data in dct_files])
+    dct_cr = np.row_stack([data["dct_cr"] for data in dct_files])
+    dct_cb = np.row_stack([data["dct_cb"] for data in dct_files])
+
+    def make_normalize(mean, std):
+        mean = ", ".join(str(x) for x in mean)
+        std = ", ".join(str(x) for x in std)
+        return f"Normalize([{mean}],[{std}])"
+
+    print(make_normalize(dct_y.mean(axis=(0, 1)), dct_y.std(axis=(0, 1))))
+    print(make_normalize(dct_cr.mean(axis=(0, 1)), dct_cr.std(axis=(0, 1))))
+    print(make_normalize(dct_cb.mean(axis=(0, 1)), dct_cb.std(axis=(0, 1))))
+
+
 def test_compute_dct_slow():
     a = os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg")
     dct_y, dct_cr, dct_cb = compute_dct_slow(a)
