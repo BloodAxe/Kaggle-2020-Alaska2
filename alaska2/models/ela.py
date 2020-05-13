@@ -50,7 +50,7 @@ class TimmElaModel(nn.Module):
 
 
 def ela_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(deep_stem=True, in_chans=6)
+    encoder = skresnext50_32x4d(stem_type="deep", in_chans=6)
 
     del encoder.fc
 
