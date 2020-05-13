@@ -5,8 +5,50 @@ import torch
 from alaska2.dataset import *
 import matplotlib.pyplot as plt
 
+from alaska2.dataset import idct8
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+
+def test_decode_dct():
+    a = os.path.join(TEST_DATA_DIR, "Cover", "00001.npz")
+    data = np.load(a)
+    dct_y = data["dct_y"]
+    dct_cr = data["dct_cr"]
+    dct_cb = data["dct_cb"]
+
+    img_y = idct8(dct_y) + 128
+    img_cr = idct8(dct_cr)
+    img_cb = idct8(dct_cb)
+    img_y_round = img_y.astype(int)
+
+    plt.figure()
+    plt.imshow(img_y, cmap="gray")
+    plt.show()
+
+    plt.figure()
+    plt.imshow(img_y_round - img_y, cmap="gray")
+    plt.show()
+
+
+def test_decode_dct_mod():
+    a = os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz")
+    data = np.load(a)
+    dct_y = data["dct_y"]
+    dct_cr = data["dct_cr"]
+    dct_cb = data["dct_cb"]
+
+    plt.figure()
+    plt.imshow(idct8(dct_y)[..., 0], cmap="gray")
+    plt.show()
+
+    plt.figure()
+    plt.imshow(idct8(dct_cr)[..., 0], cmap="gray")
+    plt.show()
+
+    plt.figure()
+    plt.imshow(idct8(dct_cb)[..., 0], cmap="gray")
+    plt.show()
 
 
 def test_compute_dct_slow():

@@ -80,7 +80,7 @@ class Srnet(nn.Module):
 
     @property
     def channels(self):
-        return [512]
+        return 512
 
     def forward(self, inputs):
         # Layer 1
@@ -162,4 +162,4 @@ class Srnet(nn.Module):
         bn = self.bn122(conv2)
         # print("L12:",res.shape)
 
-        return [bn]
+        return bn

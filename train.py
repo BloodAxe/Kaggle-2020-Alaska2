@@ -552,4 +552,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    with torch.autograd.detect_anomaly():
+        main()

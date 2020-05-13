@@ -110,6 +110,17 @@ def dct8(image):
     return dct_image
 
 
+def idct8(dct):
+    dct_image = np.zeros((dct.shape[0] * 8, dct.shape[1] * 8, 1), dtype=np.float32)
+
+    for i in range(0, dct.shape[0]):
+        for j in range(0, dct.shape[1]):
+            img = DCTMTX.T @ dct[i, j].reshape((8, 8)) @ DCTMTX
+            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
+
+    return dct_image
+
+
 def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
     diff = np.zeros((image.shape[0], image.shape[1], 3 * len(quality_steps)), dtype=np.float32)
 
@@ -144,9 +155,9 @@ def compute_additional_features(image_fname, features):
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
-        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"].astype(np.float32)
-        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"].astype(np.float32)
-        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"].astype(np.float32)
+        sample[INPUT_FEATURES_DCT_Y_KEY] = idct8(dct_file["dct_y"]) / 128
+        sample[INPUT_FEATURES_DCT_CR_KEY] = idct8(dct_file["dct_cr"]) / 64
+        sample[INPUT_FEATURES_DCT_CB_KEY] = idct8(dct_file["dct_cb"]) / 64
 
     if INPUT_FEATURES_ELA_KEY in features:
         image = cv2.imread(image_fname)
@@ -227,8 +238,8 @@ class PairedImageDataset(Dataset):
         image1 = self.transform.replay(data["replay"], image=image1)["image"]
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname),],
-            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1),]),
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname)],
+            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1)]),
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
         }

@@ -42,10 +42,10 @@ def test_plot_lr():
 
     plt.figure(figsize=(16, 20))
 
-    epochs = 100
+    epochs = 50
     schedulers = [
         # "cosd",
-        # "cosr",
+        "cosr",
         # "cosrd",
         "flat_cos",
         "poly_up",
@@ -54,14 +54,14 @@ def test_plot_lr():
     ]
 
     for name in schedulers:
-        lr = 1e-4
+        lr = 1e-3
         net = nn.Conv2d(1, 1, 1)
-        opt = SGD(net.parameters(), lr=lr)
+        opt = get_optimizer("Ranger", net.parameters(), learning_rate=lr)
 
         lrs = []
         scheduler = get_scheduler(name, opt, lr, epochs, batches_in_epoch=10000)
         for epoch in range(epochs):
-            scheduler.step(epoch)
+            scheduler.step()
             lrs.append(scheduler.get_lr()[0])
         plt.plot(range(epochs), lrs, label=name)
 
