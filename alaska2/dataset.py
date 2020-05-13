@@ -115,7 +115,7 @@ def dct8(image):
     return dct_image
 
 
-def compute_ela(image, quality_steps=[75, 80, 85, 90, 95]):
+def compute_ela(image, quality_steps=[75]):
     diff = np.zeros((image.shape[0], image.shape[1], 3 * len(quality_steps)), dtype=np.float32)
 
     for i, q in enumerate(quality_steps):
