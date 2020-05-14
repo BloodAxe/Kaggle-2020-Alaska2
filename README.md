@@ -7,6 +7,7 @@
 # Useful
 
 1. https://www.kaggle.com/remicogranne/jpeg-explanations
+2. https://github.com/digantamisra98/EvoNorm/blob/master/evonorm2d.py
 
 # Models
 
