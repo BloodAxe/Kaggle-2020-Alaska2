@@ -118,10 +118,6 @@ def main():
     tsa = args.tsa
     fine_tune = args.fine_tune
 
-    if fast:
-        num_workers = 0
-        verbose = True
-
     # Compute batch size for validation
     valid_batch_size = max(1, int(train_batch_size // ((512 ** 2) / (image_size[0] * image_size[1]))))
 

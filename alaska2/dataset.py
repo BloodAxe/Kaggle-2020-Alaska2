@@ -370,6 +370,10 @@ def get_datasets(
         train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
+        if fast:
+            train_images = train_images[::10]
+            valid_images = valid_images[::10]
+
         train_x = train_images.copy()
         train_y = [0] * len(train_images)
 
@@ -431,6 +435,10 @@ def get_datasets_batched(
         train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
+        if fast:
+            train_images = train_images[::10]
+            valid_images = valid_images[::10]
+            
         train_ds = PairedImageDataset(train_images, transform=train_transform, features=features)
 
         valid_x = valid_images.copy()
