@@ -1,7 +1,7 @@
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
 from timm.models import skresnext50_32x4d
-from timm.models import dpn
+from timm.models import dpn, tresnet
 
 from torch import nn
 
@@ -12,7 +12,7 @@ from alaska2.dataset import (
     INPUT_IMAGE_KEY,
 )
 
-__all__ = ["rgb_skresnext50_32x4d", "rgb_skresnext50_32x4d_mish", "rgb_dpn92"]
+__all__ = ["rgb_skresnext50_32x4d", "rgb_skresnext50_32x4d_mish", "rgb_dpn92", "rgb_tresnet_m"]
 
 
 class TimmRgbModel(nn.Module):
@@ -54,6 +54,13 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 def rgb_skresnext50_32x4d_mish(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(pretrained=pretrained, act_layer=Mish)
+    del encoder.fc
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_tresnet_m(num_classes=4, pretrained=True, dropout=0):
+    encoder = tresnet.tresnet_m(pretrained=pretrained)
     del encoder.fc
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
