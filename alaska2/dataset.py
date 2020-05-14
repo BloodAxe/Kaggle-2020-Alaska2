@@ -65,7 +65,6 @@ __all__ = [
 ]
 
 
-
 def compute_dct_fast(jpeg_file):
     from jpeg2dct.numpy import load, loads
 
@@ -159,8 +158,17 @@ def compute_features(image, features):
 
 class TrainingValidationDataset(Dataset):
     def __init__(
-        self, images: np.ndarray, targets: Optional[Union[List, np.ndarray]], transform: A.Compose, features: List[str]
+        self,
+        images: np.ndarray,
+        targets: Optional[Union[List, np.ndarray]],
+        transform: A.Compose,
+        features: List[str],
+        obliterate: A.Compose = None,
+        obliterate_p=0.0,
     ):
+        """
+        :param obliterate - Augmentation that destroys embedding.
+        """
         if targets is not None:
             if len(images) != len(targets):
                 raise ValueError(f"Size of images and targets does not match: {len(images)} {len(targets)}")
@@ -169,6 +177,9 @@ class TrainingValidationDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.features = features
+
+        self.obliterate = obliterate
+        self.obliterate_p = obliterate_p
 
     def __len__(self):
         return len(self.images)
@@ -184,8 +195,14 @@ class TrainingValidationDataset(Dataset):
             sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
 
             if self.targets is not None:
-                sample[INPUT_TRUE_MODIFICATION_TYPE] = int(self.targets[index])
-                sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([self.targets[index] > 0]).float()
+                t = self.targets[index]
+
+                if t > 0 and self.obliterate_p > 0 and self.obliterate_p > random.random():
+                    t = 0
+                    image = self.obliterate(image=image)["image"]
+
+                sample[INPUT_TRUE_MODIFICATION_TYPE] = int(t)
+                sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([t > 0]).float()
 
             sample.update(compute_features(image, self.features))
             return sample
@@ -312,8 +329,8 @@ class PairedImageDataset(Dataset):
         image1 = self.transform.replay(data["replay"], image=image1)["image"]
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname),],
-            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1),]),
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname)],
+            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1)]),
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
         }
@@ -438,7 +455,7 @@ def get_datasets_batched(
         if fast:
             train_images = train_images[::10]
             valid_images = valid_images[::10]
-            
+
         train_ds = PairedImageDataset(train_images, transform=train_transform, features=features)
 
         valid_x = valid_images.copy()

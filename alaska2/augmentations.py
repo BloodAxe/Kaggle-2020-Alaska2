@@ -15,29 +15,7 @@ from .dataset import (
     INPUT_FEATURES_BLUR_KEY,
 )
 
-__all__ = ["RandomOrder", "EqualizeHistogram", "get_augmentations"]
-
-
-class RandomOrder(BaseCompose):
-    def __init__(self, transforms):
-        super(RandomOrder, self).__init__(transforms, p=1)
-
-    def __call__(self, force_apply=False, **data):
-        transforms = list(self.transforms)
-        random.shuffle(transforms)
-
-        for idx, t in enumerate(transforms):
-            data = t(force_apply=force_apply, **data)
-        return data
-
-
-class EqualizeHistogram(A.ImageOnlyTransform):
-    def __init__(self, p=0.5):
-        super().__init__(p=p)
-
-    def apply(self, img, **params):
-        equalized = cv2.equalizeHist(img)
-        return cv2.addWeighted(equalized, 0.5, img, 0.5, 0, dtype=cv2.CV_8U)
+__all__ = ["get_augmentations"]
 
 
 def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
@@ -61,7 +39,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
 
     if augmentations_level == "safe":
         return A.ReplayCompose(
-            [maybe_crop, A.HorizontalFlip(), A.VerticalFlip()], additional_targets=additional_targets,
+            [maybe_crop, A.HorizontalFlip(), A.VerticalFlip()], additional_targets=additional_targets
         )
 
     if augmentations_level == "light":
