@@ -347,8 +347,9 @@ def get_datasets(
     image_size: Tuple[int, int] = (512, 512),
     balance=False,
     features=None,
+    obliterate_p=0.0,
 ):
-    from .augmentations import get_augmentations
+    from .augmentations import get_augmentations, get_obliterate_augs
 
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
@@ -404,7 +405,14 @@ def get_datasets(
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
             valid_y += [i + 1] * len(valid_images)
 
-        train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
+        train_ds = TrainingValidationDataset(
+            train_x,
+            train_y,
+            transform=train_transform,
+            features=features,
+            obliterate=get_obliterate_augs() if obliterate_p > 0 else None,
+            obliterate_p=obliterate_p,
+        )
         valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
         sampler = None

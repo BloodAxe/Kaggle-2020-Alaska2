@@ -15,7 +15,25 @@ from .dataset import (
     INPUT_FEATURES_BLUR_KEY,
 )
 
-__all__ = ["get_augmentations"]
+__all__ = ["get_augmentations", "get_obliterate_augs"]
+
+
+def get_obliterate_augs():
+    """
+    Get the augmentation that can obliterate the hidden signal.
+    This is used as augmentation to create negative sample from positive one.
+    :return:
+    """
+    return A.OneOf(
+        [
+            A.ImageCompression(quality_lower=70, quality_upper=90, p=1),
+            A.RandomSizedCrop((256, 384), 512, 512, interpolation=cv2.INTER_CUBIC, p=1),
+            A.RandomSizedCrop((256, 384), 512, 512, interpolation=cv2.INTER_LINEAR, p=1),
+            A.Downscale(p=1),
+            A.GaussianBlur(blur_limit=(5, 9), p=1),
+        ],
+        p=1,
+    )
 
 
 def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
