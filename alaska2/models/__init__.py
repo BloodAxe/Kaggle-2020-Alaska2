@@ -15,6 +15,8 @@ MODEL_REGISTRY = {
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
     "rgb_skresnext50_32x4d_mish": timm.rgb_skresnext50_32x4d_mish,
     "rgb_dpn92": timm.rgb_dpn92,
+    "rgb_tresnet_m": timm.rgb_tresnet_m,
+
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
