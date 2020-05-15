@@ -8,6 +8,7 @@
 
 1. https://www.kaggle.com/remicogranne/jpeg-explanations
 2. https://github.com/digantamisra98/EvoNorm/blob/master/evonorm2d.py
+3. https://github.com/Steganalysis-CNN/residual-steganalysis/blob/master/init/res_finetune_test.m
 
 # Models
 
@@ -20,4 +21,5 @@
 | May10_19_26_rgb_skresnext50_32x4d_fold3_fp16 | rgb_skresnext50_32x4d  | 3    | 8700 | 8699 | 61.45 |
 | May11_08_49_rgb_densenet201_fold3_fp16       | rgb_densenet201        | 3    | 8402 | 8405 | 56.38 |
 | May12_13_01_rgb_skresnext50_32x4d_fold2_fp16 | rgb_skresnext50_32x4d  | 2    | 9049 | 9048 | 67.56 |
+| May13_19_06_rgb_skresnext50_32x4d_fold1_fp16 | rgb_skresnext50_32x4d  | 1    | 9055 | 9055 | 67.60 |
 
