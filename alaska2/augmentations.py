@@ -13,6 +13,9 @@ from .dataset import (
     INPUT_FEATURES_DCT_CB_KEY,
     INPUT_FEATURES_DCT_Y_KEY,
     INPUT_FEATURES_BLUR_KEY,
+    INPUT_FEATURES_CHANNEL_CR_KEY,
+    INPUT_FEATURES_CHANNEL_CB_KEY,
+    INPUT_FEATURES_CHANNEL_Y_KEY,
 )
 
 __all__ = ["get_augmentations", "get_obliterate_augs"]
@@ -49,6 +52,9 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         INPUT_FEATURES_DCT_Y_KEY: "image",
         INPUT_FEATURES_DCT_CB_KEY: "image",
         INPUT_FEATURES_DCT_CR_KEY: "image",
+        INPUT_FEATURES_CHANNEL_Y_KEY: "image",
+        INPUT_FEATURES_CHANNEL_CR_KEY: "image",
+        INPUT_FEATURES_CHANNEL_CB_KEY: "image",
     }
 
     augmentations_level = augmentations_level.lower()
