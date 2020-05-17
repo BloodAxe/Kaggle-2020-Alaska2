@@ -6,7 +6,7 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb
 from ..dataset import *
 from ..predict import *
 
@@ -16,7 +16,6 @@ MODEL_REGISTRY = {
     "rgb_skresnext50_32x4d_mish": timm.rgb_skresnext50_32x4d_mish,
     "rgb_dpn92": timm.rgb_dpn92,
     "rgb_tresnet_m": timm.rgb_tresnet_m,
-
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
@@ -36,6 +35,8 @@ MODEL_REGISTRY = {
     "dct_hrnet18": dct.dct_hrnet18,
     # ELA
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
+    # YCrCb
+    "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]

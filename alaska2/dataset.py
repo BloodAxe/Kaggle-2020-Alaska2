@@ -66,6 +66,7 @@ __all__ = [
     "compute_dct_slow",
     "compute_ela",
     "dct8",
+    "idct8",
     "get_datasets",
     "get_datasets_batched",
     "get_test_dataset",
@@ -115,6 +116,17 @@ def dct8(image):
             dct = cv2.dct(image[i : i + 8, j : j + 8])
             dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
+
+    return dct_image
+
+
+def idct8(dct):
+    dct_image = np.zeros((dct.shape[0] * 8, dct.shape[1] * 8, 1), dtype=np.float32)
+
+    for i in range(0, dct.shape[0]):
+        for j in range(0, dct.shape[1]):
+            img = DCTMTX.T @ dct[i, j].reshape((8, 8)) @ DCTMTX
+            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
 
     return dct_image
 
