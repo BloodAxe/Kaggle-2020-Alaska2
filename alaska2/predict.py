@@ -87,42 +87,43 @@ class Rot180TTA(nn.Module):
 
 
 class D4TTA(nn.Module):
-    def __init__(self, model, outputs, average=True):
+    def __init__(self, model, inputs, outputs, average=True):
         super().__init__()
         self.model = model
+        self.inputs = inputs
         self.outputs = outputs
         self.average = average
 
-    def forward(self, image):
-        outputs = self.model(image)
+    def augment_inputs(self, augment_fn, kwargs):
+        augmented_inputs = dict(
+            (key, augment_fn(value) if key in self.inputs else value) for key, value in kwargs.items()
+        )
+        return augmented_inputs
 
-        augment = [AF.torch_rot90, AF.torch_rot180, AF.torch_rot270]
-        deaugment = [AF.torch_rot270, AF.torch_rot180, AF.torch_rot90]
+    def forward(self, **kwargs):
+        normal_input = kwargs
+        fliped_input = self.augment_inputs(AF.torch_fliplr, kwargs)
 
-        for aug, deaug in zip(augment, deaugment):
-            input = aug(image)
-            aug_output = self.model(input)
+        outputs = self.model(**normal_input)
 
+        other_outputs = [
+            self.model(**self.augment_inputs(AF.torch_rot90, normal_input)),
+            self.model(**self.augment_inputs(AF.torch_rot180, normal_input)),
+            self.model(**self.augment_inputs(AF.torch_rot270, normal_input)),
+
+            self.model(**fliped_input),
+            self.model(**self.augment_inputs(AF.torch_rot90, fliped_input)),
+            self.model(**self.augment_inputs(AF.torch_rot180, fliped_input)),
+            self.model(**self.augment_inputs(AF.torch_rot270, fliped_input)),
+        ]
+
+        for tta_outputs in other_outputs:
             for output_key in self.outputs:
-                outputs[output_key] += deaug(aug_output[output_key])
+                outputs[output_key] += tta_outputs[output_key]
 
-        image_t = AF.torch_transpose(image)
-
-        augment = [AF.torch_none, AF.torch_rot90, AF.torch_rot180, AF.torch_rot270]
-        deaugment = [AF.torch_none, AF.torch_rot270, AF.torch_rot180, AF.torch_rot90]
-
-        for aug, deaug in zip(augment, deaugment):
-            input = aug(image_t)
-            aug_output = self.model(input)
-
-            for output_key in self.outputs:
-                x = deaug(aug_output[output_key])
-                outputs[output_key] += AF.torch_transpose(x)
-
-        if self.average:
-            averaging_scale = 1.0 / 8.0
-            for output_key in self.outputs:
-                outputs[output_key] *= averaging_scale
+        scale = 1.0 / 8.0
+        for output_key in self.outputs:
+            outputs[output_key] *= scale
 
         return outputs
 

@@ -58,6 +58,9 @@ def wrap_model_with_tta(model, tta_mode, inputs, outputs):
     if tta_mode == "flip-hv":
         model = HVFlipTTA(model, inputs=inputs, outputs=outputs, average=True)
 
+    if tta_mode == "d4":
+        model = D4TTA(model, inputs=inputs, outputs=outputs, average=True)
+
     return model
 
 

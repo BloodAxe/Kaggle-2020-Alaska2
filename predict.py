@@ -85,9 +85,13 @@ def main():
         oof_predictions.to_csv(oof_predictions_csv, index=False)
 
         tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-
         oof_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
         oof_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
+        oof_predictions.to_csv(oof_predictions_csv, index=False)
+
+        tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+        oof_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
         oof_predictions.to_csv(oof_predictions_csv, index=False)
 
 
