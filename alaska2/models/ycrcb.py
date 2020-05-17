@@ -16,7 +16,7 @@ class YCrCbModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
         super().__init__()
         self.encoder = encoder
-        self.y_conv = nn.Conv2d(1, 8, kernel_size=3, padding=1)
+        self.y_conv = nn.Conv2d(1, 8, kernel_size=3, padding=1, stride=2)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
