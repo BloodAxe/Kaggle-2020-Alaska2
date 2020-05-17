@@ -48,7 +48,8 @@ class YCrCbModel(nn.Module):
 
 
 def ycrcb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(pretrained=pretrained, in_chans=8*3)
+    encoder = skresnext50_32x4d(pretrained=pretrained)
     del encoder.fc
+    encoder.conv1 = make_n_channel_input(encoder.conv1, 8 * 3, "auto")
 
     return YCrCbModel(encoder, num_classes=num_classes, dropout=dropout)
