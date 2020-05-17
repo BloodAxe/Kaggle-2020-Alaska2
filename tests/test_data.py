@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import pytest, os, cv2
 import numpy as np
 import torch
@@ -74,3 +76,28 @@ def test_ela():
     ela = compute_ela(image)
 
     print(ela.shape, ela.sum(axis=(0, 1)), ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
+
+
+def test_normalize_ycrcb():
+    files = [
+        "../test_data/Cover/00001.npz",
+        "../test_data/Cover/00002.npz",
+        "../test_data/Cover/00003.npz",
+        "../test_data/Cover/00004.npz",
+    ]
+
+    sample = defaultdict(list)
+
+    for f in files:
+        dct_file = np.load(f)
+        sample[INPUT_FEATURES_CHANNEL_Y_KEY].append(idct8(dct_file["dct_y"]) / 64)
+        sample[INPUT_FEATURES_CHANNEL_CR_KEY].append(idct8(dct_file["dct_cr"]) / 8)
+        sample[INPUT_FEATURES_CHANNEL_CB_KEY].append(idct8(dct_file["dct_cb"]) / 8)
+
+    y = np.row_stack(sample[INPUT_FEATURES_CHANNEL_Y_KEY])
+    cr = np.row_stack(sample[INPUT_FEATURES_CHANNEL_CR_KEY])
+    cb = np.row_stack(sample[INPUT_FEATURES_CHANNEL_CB_KEY])
+
+    print("Y ", y.mean(), y.std())
+    print("Cr", cr.mean(), cr.std())
+    print("Cb", cb.mean(), cb.std())
