@@ -17,6 +17,8 @@ class YCrCbModel(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.y_conv = nn.Conv2d(1, 8, kernel_size=3, padding=1, stride=2)
+        self.cr_conv = nn.Conv2d(1, 8, kernel_size=1, padding=0, stride=1)
+        self.cb_conv = nn.Conv2d(1, 8, kernel_size=1, padding=0, stride=1)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
@@ -26,8 +28,8 @@ class YCrCbModel(nn.Module):
         x = torch.cat(
             [
                 self.y_conv(kwargs[INPUT_FEATURES_CHANNEL_Y_KEY]),
-                kwargs[INPUT_FEATURES_CHANNEL_CR_KEY],
-                kwargs[INPUT_FEATURES_CHANNEL_CB_KEY],
+                self.cr_conv(kwargs[INPUT_FEATURES_CHANNEL_CR_KEY]),
+                self.cb_conv(kwargs[INPUT_FEATURES_CHANNEL_CB_KEY]),
             ],
             dim=1,
         )
@@ -46,7 +48,7 @@ class YCrCbModel(nn.Module):
 
 
 def ycrcb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(pretrained=pretrained)
+    encoder = skresnext50_32x4d(pretrained=pretrained, in_chans=8*3)
     del encoder.fc
 
     return YCrCbModel(encoder, num_classes=num_classes, dropout=dropout)
