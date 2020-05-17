@@ -113,7 +113,7 @@ def dct8(image):
     image = image * one_over_255
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
-            dct = cv2.dct(image[i : i + 8, j : j + 8])
+            # dct = cv2.dct(image[i : i + 8, j : j + 8])
             dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
@@ -174,9 +174,9 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_FEATURES_CHANNEL_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
-        sample[INPUT_FEATURES_DCT_Y_KEY] = idct8(dct_file["dct_y"]) / 128
-        sample[INPUT_FEATURES_DCT_CR_KEY] = idct8(dct_file["dct_cr"]) / 64
-        sample[INPUT_FEATURES_DCT_CB_KEY] = idct8(dct_file["dct_cb"]) / 64
+        sample[INPUT_FEATURES_CHANNEL_Y_KEY] = idct8(dct_file["dct_y"]) / 128
+        sample[INPUT_FEATURES_CHANNEL_CR_KEY] = idct8(dct_file["dct_cr"]) / 64
+        sample[INPUT_FEATURES_CHANNEL_CB_KEY] = idct8(dct_file["dct_cb"]) / 64
 
     return sample
 
