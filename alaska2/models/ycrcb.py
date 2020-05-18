@@ -42,8 +42,8 @@ class YCrCbModel(nn.Module):
 
     def forward(self, **kwargs):
         y = self.y_norm(kwargs[INPUT_FEATURES_CHANNEL_Y_KEY])
-        cr = self.y_norm(kwargs[INPUT_FEATURES_CHANNEL_CR_KEY])
-        cb = self.y_norm(kwargs[INPUT_FEATURES_CHANNEL_CB_KEY])
+        cr = self.cr_norm(kwargs[INPUT_FEATURES_CHANNEL_CR_KEY])
+        cb = self.cb_norm(kwargs[INPUT_FEATURES_CHANNEL_CB_KEY])
 
         x = torch.cat([self.y_s2d(y), cr, cb], dim=1)
 
