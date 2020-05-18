@@ -163,14 +163,11 @@ def compute_blur_features(image):
 def compute_features(image: np.ndarray, image_fname: str, features):
     sample = {}
 
-    if INPUT_IMAGE_KEY in features:
-        sample[INPUT_IMAGE_KEY] = tensor_from_rgb_image(image)
-
     if INPUT_FEATURES_ELA_KEY in features:
-        sample[INPUT_FEATURES_ELA_KEY] = tensor_from_rgb_image(compute_ela(image))
+        sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
 
     if INPUT_FEATURES_BLUR_KEY in features:
-        sample[INPUT_FEATURES_BLUR_KEY] = tensor_from_rgb_image(compute_blur_features(image))
+        sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
 
     if INPUT_FEATURES_CHANNEL_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
