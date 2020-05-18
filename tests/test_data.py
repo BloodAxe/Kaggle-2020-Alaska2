@@ -35,12 +35,12 @@ def test_dct():
     print(dct_tensor.shape, dct2.mean(axis=(0, 1)), dct2.std(axis=(0, 1)))
 
 
-def test_rgb_dct():
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
-    dct = compute_rgb_dct(image)
-    assert dct.shape[0] * 8 == image.shape[0]
-    assert dct.shape[1] * 8 == image.shape[1]
-    print(dct.shape, dct.mean(axis=(0, 1)), dct.std(axis=(0, 1)))
+def test_dct_comp():
+    dct1 = np.load(os.path.join(TEST_DATA_DIR, "Cover", "00001.npz"))
+    dct2 = np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz"))
+    y1 = dct1["dct_y"]
+    y2 = dct2["dct_y"]
+    print(dct1)
 
 
 def test_blur_features():
