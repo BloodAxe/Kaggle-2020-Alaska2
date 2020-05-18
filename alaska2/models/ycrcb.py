@@ -3,7 +3,6 @@ from collections import OrderedDict
 import torch
 from pytorch_toolbelt.modules import *
 from timm.models import skresnext50_32x4d
-from timm.models.layers.space_to_depth import SpaceToDepth
 from torch import nn
 
 from alaska2.dataset import *
@@ -11,6 +10,18 @@ import numpy as np
 import torch.nn.functional as F
 
 __all__ = ["ycrcb_skresnext50_32x4d"]
+
+class SpaceToDepth(nn.Module):
+    def __init__(self, block_size=4):
+        super().__init__()
+        self.bs = block_size
+
+    def forward(self, x):
+        N, C, H, W = x.size()
+        x = x.view(N, C, H // self.bs, self.bs, W // self.bs, self.bs)  # (N, C, H//bs, bs, W//bs, bs)
+        x = x.permute(0, 3, 5, 1, 2, 4).contiguous()  # (N, bs, bs, C, H//bs, W//bs)
+        x = x.view(N, C * (self.bs ** 2), H // self.bs, W // self.bs)  # (N, C*bs^2, H//bs, W//bs)
+        return x
 
 
 class YCrCbModel(nn.Module):
