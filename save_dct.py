@@ -7,7 +7,11 @@ from tqdm import tqdm
 
 from alaska2 import compute_dct_slow, compute_dct_fast
 import numpy as np
+import jpegio as jpio
 
+# ! git clone https://github.com/dwgoon/jpegio
+# # Once downloaded install the package
+# !pip install jpegio/.
 
 def extract_and_save_dct(fname, output_dir):
     dct_y, dct_cr, dct_cb = compute_dct_fast(fname)
@@ -15,7 +19,11 @@ def extract_and_save_dct(fname, output_dir):
     image_id = fs.id_from_fname(fname) + ".npz"
     method = os.path.split(os.path.split(fname)[0])[1]
     dct_fname = os.path.join(output_dir, method, image_id)
-    np.savez_compressed(dct_fname, dct_y=dct_y, dct_cr=dct_cr, dct_cb=dct_cb)
+
+    jpegStruct = jpio.read(fname)
+    qt = jpegStruct.quant_tables
+
+    np.savez_compressed(dct_fname, dct_y=dct_y, dct_cr=dct_cr, dct_cb=dct_cb, quant_table=qt)
 
 
 def main():

@@ -36,11 +36,47 @@ def test_dct():
 
 
 def test_dct_comp():
+    [Col, Row] = np.meshgrid(range(8), range(8))
+    T = 0.5 * np.cos(np.pi * (2 * Col + 1) * Row / (2 * 8))
+    T[0, :] = T[0, :] / np.sqrt(2)
+
+    print(T)
+
     dct1 = np.load(os.path.join(TEST_DATA_DIR, "Cover", "00001.npz"))
-    dct2 = np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz"))
-    y1 = dct1["dct_y"]
-    y2 = dct2["dct_y"]
-    print(dct1)
+
+    y = idct8(dct1["dct_y"]).squeeze(-1)
+    cr = idct8(dct1["dct_cr"]).squeeze(-1)
+    cb = idct8(dct1["dct_cb"]).squeeze(-1)
+
+    plt.figure()
+    plt.imshow(y, cmap="gray")
+    plt.show()
+
+    plt.figure()
+    plt.imshow(cr)
+    plt.show()
+
+    plt.figure()
+    plt.imshow(cb)
+    plt.show()
+
+    imgYCC = np.dstack(
+        [
+            y / 128.,
+            cv2.resize(cr / 64., None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
+            cv2.resize(cb / 64., None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
+        ]
+    )
+    rgb = cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
+
+    plt.figure()
+    plt.imshow(rgb)
+    plt.show()
+
+    # dct2 = np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz"))
+    # y1 = dct1["dct_y"]
+    # y2 = dct2["dct_y"]
+    # print(dct1)
 
 
 def test_blur_features():
