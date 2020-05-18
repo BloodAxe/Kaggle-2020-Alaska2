@@ -4,6 +4,7 @@ from pytorch_toolbelt.utils import fs
 from tqdm import tqdm
 
 from alaska2 import idct8
+from alaska2.dataset import idct8v2
 
 
 def compute_mean_std(dataset):
@@ -19,17 +20,17 @@ def compute_mean_std(dataset):
     for image_fname in dataset:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         # This normalization roughly puts values into zero mean and unit variance
-        y = idct8(dct_file["dct_y"])
-        cr = idct8(dct_file["dct_cr"])
-        cb = idct8(dct_file["dct_cb"])
+        y = idct8v2(dct_file["dct_y"], dct_file["quant_table"][0])
+        cb = idct8v2(dct_file["dct_cb"], dct_file["quant_table"][1])
+        cr = idct8v2(dct_file["dct_cr"], dct_file["quant_table"][1])
 
         global_mean[0] += y.mean()
-        global_mean[1] += cr.mean()
-        global_mean[2] += cb.mean()
+        global_mean[1] += cb.mean()
+        global_mean[2] += cr.mean()
 
         global_var[0] += y.std() ** 2
-        global_var[1] += cr.std() ** 2
-        global_var[2] += cb.std() ** 2
+        global_var[1] += cb.std() ** 2
+        global_var[2] += cr.std() ** 2
 
         n_items += 1
 
@@ -37,8 +38,9 @@ def compute_mean_std(dataset):
 
 
 def main():
-    dataset = fs.find_images_in_dir("d:\\datasets\\ALASKA2\\Cover")
-    print("YCrCB", compute_mean_std(tqdm(dataset)))
+    dataset = fs.find_images_in_dir("/home/bloodaxe/datasets/ALASKA2/Cover")
+    dataset = dataset[:500]
+    print("YCbCr", compute_mean_std(tqdm(dataset)))
 
 
 if __name__ == "__main__":

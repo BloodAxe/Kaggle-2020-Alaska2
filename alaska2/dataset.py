@@ -11,7 +11,6 @@ from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils.data import Dataset, WeightedRandomSampler
 
-
 INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
@@ -124,7 +123,7 @@ def dct8(image):
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
             # dct = cv2.dct(image[i : i + 8, j : j + 8])
-            dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
+            dct = DCTMTX @ image[i: i + 8, j: j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
     return dct_image
@@ -136,9 +135,26 @@ def idct8(dct):
     for i in range(0, dct.shape[0]):
         for j in range(0, dct.shape[1]):
             img = DCTMTX.T @ dct[i, j].reshape((8, 8)) @ DCTMTX
-            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
+            dct_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
 
     return dct_image
+
+
+def idct8v2(dct, qm):
+    decoded_image = np.zeros((dct.shape[0], dct.shape[1], 1), dtype=np.float32)
+
+    if qm is None:
+        for i in range(0, dct.shape[0] // 8):
+            for j in range(0, dct.shape[1] // 8):
+                img = DCTMTX.T @ (dct[i * 8:(i + 1) * 8, j * 8:(j + 1) * 8]) @ DCTMTX
+                decoded_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
+    else:
+        for i in range(0, dct.shape[0] // 8):
+            for j in range(0, dct.shape[1] // 8):
+                img = DCTMTX.T @ (qm * dct[i * 8:(i + 1) * 8, j * 8:(j + 1) * 8]) @ DCTMTX
+                decoded_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
+
+    return decoded_image
 
 
 def compute_ela(image, quality_steps=[75]):
@@ -147,7 +163,7 @@ def compute_ela(image, quality_steps=[75]):
     for i, q in enumerate(quality_steps):
         retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
         image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        np.subtract(image_lq, image, out=diff[..., i * 3 : i * 3 + 3], dtype=np.float32)
+        np.subtract(image_lq, image, out=diff[..., i * 3: i * 3 + 3], dtype=np.float32)
 
     return diff
 
@@ -183,21 +199,21 @@ def compute_features(image: np.ndarray, image_fname: str, features):
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         # This normalization roughly puts values into zero mean and unit variance
         sample[INPUT_FEATURES_CHANNEL_Y_KEY] = idct8(dct_file["dct_y"])
-        sample[INPUT_FEATURES_CHANNEL_CR_KEY] = idct8(dct_file["dct_cr"])
         sample[INPUT_FEATURES_CHANNEL_CB_KEY] = idct8(dct_file["dct_cb"])
+        sample[INPUT_FEATURES_CHANNEL_CR_KEY] = idct8(dct_file["dct_cr"])
 
     return sample
 
 
 class TrainingValidationDataset(Dataset):
     def __init__(
-        self,
-        images: np.ndarray,
-        targets: Optional[Union[List, np.ndarray]],
-        transform: A.Compose,
-        features: List[str],
-        obliterate: A.Compose = None,
-        obliterate_p=0.0,
+            self,
+            images: np.ndarray,
+            targets: Optional[Union[List, np.ndarray]],
+            transform: A.Compose,
+            features: List[str],
+            obliterate: A.Compose = None,
+            obliterate_p=0.0,
     ):
         """
         :param obliterate - Augmentation that destroys embedding.
@@ -290,14 +306,14 @@ class PairedImageDataset(Dataset):
 
 
 def get_datasets(
-    data_dir: str,
-    fold: int,
-    augmentation: str = "light",
-    fast: bool = False,
-    image_size: Tuple[int, int] = (512, 512),
-    balance=False,
-    features=None,
-    obliterate_p=0.0,
+        data_dir: str,
+        fold: int,
+        augmentation: str = "light",
+        fast: bool = False,
+        image_size: Tuple[int, int] = (512, 512),
+        balance=False,
+        features=None,
+        obliterate_p=0.0,
 ):
     from .augmentations import get_augmentations, get_obliterate_augs
 
@@ -372,12 +388,12 @@ def get_datasets(
 
 
 def get_datasets_batched(
-    data_dir: str,
-    fold: int,
-    augmentation: str = "light",
-    fast: bool = False,
-    image_size: Tuple[int, int] = (512, 512),
-    features=None,
+        data_dir: str,
+        fold: int,
+        augmentation: str = "light",
+        fast: bool = False,
+        image_size: Tuple[int, int] = (512, 512),
+        features=None,
 ):
     from .augmentations import get_augmentations
 

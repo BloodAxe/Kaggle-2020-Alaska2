@@ -7,32 +7,36 @@ import torch
 from alaska2.dataset import *
 import matplotlib.pyplot as plt
 
-from alaska2.dataset import compute_dct_fast, compute_dct_slow
+from alaska2.dataset import compute_dct_fast, compute_dct_slow, idct8v2
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
 
 def test_dct():
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"), cv2.IMREAD_GRAYSCALE)
-    dct = compute_dct(image)
+    import jpegio as jpio
 
-    assert dct.shape[0] * 8 == image.shape[0]
-    assert dct.shape[1] * 8 == image.shape[1]
-    print(dct.shape, dct.mean(axis=(0, 1)), dct.std(axis=(0, 1)))
+    image_fname = os.path.join(TEST_DATA_DIR, "Cover", "00002.jpg")
+    image = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE)
+    dct_y, dct_cb, dct_cr = compute_dct_fast(image_fname)
+    y1 = idct8(dct_y)
+    cb1 = idct8(dct_cb)
+    cr1 = idct8(dct_cr)
 
-    one_over_255 = np.float32(1.0 / 255.0)
-    image = image * one_over_255
+    y88 = y1[:8, :8, 0]
+    dct_y88 = dct_y[0, 0].reshape((8, 8))
 
-    dct2 = image_dct_slow(image)
-    print(dct2.shape, dct2.mean(axis=(0, 1)), dct2.std(axis=(0, 1)))
-    # np.testing.assert_allclose(dct2, dct)
+    jpegStruct = jpio.read(image_fname)
+    qt = jpegStruct.quant_tables
+    dct_matrix = jpegStruct.coef_arrays
 
-    image_tensor = torch.from_numpy(image).unsqueeze(0).unsqueeze(0)
-    net = DCT()
-    dct_tensor = net(image_tensor)
+    dct_y88_2 = jpegStruct.coef_arrays[0][:8, :8] * qt[0]
+    y2 = idct8v2(jpegStruct.coef_arrays[0], qt[0])
 
-    dct_tensor = dct_tensor[0, 0].detach().cpu().numpy()
-    print(dct_tensor.shape, dct2.mean(axis=(0, 1)), dct2.std(axis=(0, 1)))
+    y2_88 = y2[:8, :8, 0]
+
+    cb2 = idct8v2(jpegStruct.coef_arrays[1], qt[1])
+    cr2 = idct8v2(jpegStruct.coef_arrays[2], qt[1])
+    print(dct_matrix)
 
 
 def test_dct_comp():
