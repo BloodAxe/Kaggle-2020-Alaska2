@@ -140,7 +140,7 @@ def idct8(dct):
     return dct_image
 
 
-def idct8v2(dct, qm):
+def idct8v2(dct, qm=None):
     decoded_image = np.zeros((dct.shape[0], dct.shape[1], 1), dtype=np.float32)
 
     if qm is None:
@@ -198,9 +198,9 @@ def compute_features(image: np.ndarray, image_fname: str, features):
     if INPUT_FEATURES_CHANNEL_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         # This normalization roughly puts values into zero mean and unit variance
-        sample[INPUT_FEATURES_CHANNEL_Y_KEY] = idct8(dct_file["dct_y"])
-        sample[INPUT_FEATURES_CHANNEL_CB_KEY] = idct8(dct_file["dct_cb"])
-        sample[INPUT_FEATURES_CHANNEL_CR_KEY] = idct8(dct_file["dct_cr"])
+        sample[INPUT_FEATURES_CHANNEL_Y_KEY] = idct8v2(dct_file["dct_y"])
+        sample[INPUT_FEATURES_CHANNEL_CB_KEY] = idct8v2(dct_file["dct_cb"])
+        sample[INPUT_FEATURES_CHANNEL_CR_KEY] = idct8v2(dct_file["dct_cr"])
 
     return sample
 

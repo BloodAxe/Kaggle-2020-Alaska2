@@ -20,9 +20,9 @@ def compute_mean_std(dataset):
     for image_fname in dataset:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         # This normalization roughly puts values into zero mean and unit variance
-        y = idct8v2(dct_file["dct_y"], dct_file["quant_table"][0])
-        cb = idct8v2(dct_file["dct_cb"], dct_file["quant_table"][1])
-        cr = idct8v2(dct_file["dct_cr"], dct_file["quant_table"][1])
+        y = idct8v2(dct_file["dct_y"])
+        cb = idct8v2(dct_file["dct_cb"])
+        cr = idct8v2(dct_file["dct_cr"])
 
         global_mean[0] += y.mean()
         global_mean[1] += cb.mean()

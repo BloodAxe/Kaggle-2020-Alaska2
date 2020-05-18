@@ -29,7 +29,6 @@ class YCrCbModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
         super().__init__()
         self.rgb_encoder = encoder
-        # YCrCB (array([-15.25726164,  -7.29664547,   3.33329585]), array([43.31931419, 10.97596226, 10.13833837]))
         self.norm = Normalize([-10.5957038, -3.62235547, 2.02056952], [42.37946293, 8.89775623, 8.94904454])
 
         self.pool = GlobalAvgPool2d(flatten=True)
