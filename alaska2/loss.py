@@ -5,7 +5,11 @@ import torch.nn.functional as F
 from catalyst.dl import AccuracyCallback
 from catalyst.dl.callbacks import CriterionAggregatorCallback
 from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
-from pytorch_toolbelt.utils.catalyst import BestMetricCheckpointCallback, ConfusionMatrixCallback
+from pytorch_toolbelt.utils.catalyst import (
+    BestMetricCheckpointCallback,
+    ConfusionMatrixCallback,
+    TrainOnlyCriterionCallback,
+)
 from torch import nn
 
 from .cutmix import CutmixCallback
@@ -13,6 +17,7 @@ from .dataset import *
 from .metric import *
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
+
 
 __all__ = [
     "OHEMCrossEntropyLoss",
@@ -374,7 +379,12 @@ def get_criterion_callback(
         )
 
     else:
-        criterion_callback = CriterionCallback(
+        if loss_name in {"rank", "rank2"}:
+            criterion_cls = TrainOnlyCriterionCallback
+        else:
+            criterion_cls = CriterionCallback
+
+        criterion_callback = criterion_cls(
             prefix=prefix,
             input_key=input_key,
             output_key=output_key,
