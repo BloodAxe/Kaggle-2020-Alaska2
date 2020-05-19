@@ -14,7 +14,14 @@ from .metric import *
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
 
-__all__ = ["OHEMCrossEntropyLoss", "ArcFaceLoss", "get_loss", "get_criterions", "get_criterion_callback"]
+__all__ = [
+    "OHEMCrossEntropyLoss",
+    "ArcFaceLoss",
+    "PairwiseRankingLoss",
+    "get_loss",
+    "get_criterions",
+    "get_criterion_callback",
+]
 
 
 class OHEMCrossEntropyLoss(nn.CrossEntropyLoss):
@@ -220,7 +227,32 @@ class EmbeddingLossV2(nn.Module):
         return loss / num_unique_images
 
 
+class PairwiseRankingLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """
+        input: [N,E]
+        """
+        batch_size = input.size(0)
+
+        # View to [B,2], 0 are negatives, 1 are positives
+        input = input.view(batch_size // 2, 2)
+        target = target.view(batch_size)
+
+        # cost = - torch.mean(
+        #     torch.sigmoid(input @ torch.transpose(input)) * np.maximum(y @ np.ones(y.shape).T - np.ones(y.shape) @ y.T, 0)
+        # )
+
+        loss = -F.logsigmoid(input[:, 1] - input[:, 0]).mean()
+        return loss
+
+
 def get_loss(loss_name: str, tsa=False):
+    if loss_name.lower() == "rank":
+        return PairwiseRankingLoss()
+
     if loss_name.lower() == "ccos":
         return ContrastiveCosineEmbeddingLoss()
 

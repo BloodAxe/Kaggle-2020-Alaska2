@@ -123,7 +123,7 @@ def dct8(image):
     for i in range(0, image.shape[0], 8):
         for j in range(0, image.shape[1], 8):
             # dct = cv2.dct(image[i : i + 8, j : j + 8])
-            dct = DCTMTX @ image[i: i + 8, j: j + 8] @ DCTMTX.T
+            dct = DCTMTX @ image[i : i + 8, j : j + 8] @ DCTMTX.T
             dct_image[i // 8, j // 8, :] = dct.flatten()
 
     return dct_image
@@ -135,7 +135,7 @@ def idct8(dct):
     for i in range(0, dct.shape[0]):
         for j in range(0, dct.shape[1]):
             img = DCTMTX.T @ dct[i, j].reshape((8, 8)) @ DCTMTX
-            dct_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
+            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
 
     return dct_image
 
@@ -146,13 +146,13 @@ def idct8v2(dct, qm=None):
     if qm is None:
         for i in range(0, dct.shape[0] // 8):
             for j in range(0, dct.shape[1] // 8):
-                img = DCTMTX.T @ (dct[i * 8:(i + 1) * 8, j * 8:(j + 1) * 8]) @ DCTMTX
-                decoded_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
+                img = DCTMTX.T @ (dct[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8]) @ DCTMTX
+                decoded_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
     else:
         for i in range(0, dct.shape[0] // 8):
             for j in range(0, dct.shape[1] // 8):
-                img = DCTMTX.T @ (qm * dct[i * 8:(i + 1) * 8, j * 8:(j + 1) * 8]) @ DCTMTX
-                decoded_image[i * 8: (i + 1) * 8, j * 8: (j + 1) * 8, 0] = img
+                img = DCTMTX.T @ (qm * dct[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8]) @ DCTMTX
+                decoded_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
 
     return decoded_image
 
@@ -163,7 +163,7 @@ def compute_ela(image, quality_steps=[75]):
     for i, q in enumerate(quality_steps):
         retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
         image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        np.subtract(image_lq, image, out=diff[..., i * 3: i * 3 + 3], dtype=np.float32)
+        np.subtract(image_lq, image, out=diff[..., i * 3 : i * 3 + 3], dtype=np.float32)
 
     return diff
 
@@ -207,13 +207,13 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
 class TrainingValidationDataset(Dataset):
     def __init__(
-            self,
-            images: np.ndarray,
-            targets: Optional[Union[List, np.ndarray]],
-            transform: A.Compose,
-            features: List[str],
-            obliterate: A.Compose = None,
-            obliterate_p=0.0,
+        self,
+        images: np.ndarray,
+        targets: Optional[Union[List, np.ndarray]],
+        transform: A.Compose,
+        features: List[str],
+        obliterate: A.Compose = None,
+        obliterate_p=0.0,
     ):
         """
         :param obliterate - Augmentation that destroys embedding.
@@ -278,42 +278,48 @@ class PairedImageDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        image_fname0 = self.images[index]
-        image_fname1 = image_fname0.replace("Cover", "JMiPOD")
-        image_fname2 = image_fname0.replace("Cover", "JUNIWARD")
-        image_fname3 = image_fname0.replace("Cover", "UERD")
+        cover_image_fname = self.images[index]
 
         method = random.randint(0, 2)
+        method_name = ["JMiPOD", "JUNIWARD", "UERD"][method]
+        secret_image_fname = cover_image_fname.replace("Cover", method_name)
 
-        modified_fname = [image_fname1, image_fname2, image_fname3][method]
-        image0 = cv2.imread(image_fname0)
-        image1 = cv2.imread(modified_fname)
+        cover_image = cv2.imread(cover_image_fname)
+        secret_image = cv2.imread(secret_image_fname)
 
-        data = self.transform(image=image0)
+        cover_data = {}
+        cover_data["image"] = cover_image
+        cover_data.update(compute_features(cover_image, cover_image_fname, self.features))
+        cover_data = self.transform(**cover_data)
 
-        image0 = data["image"]
-        image1 = self.transform.replay(data["replay"], image=image1)["image"]
+        secret_data = {}
+        secret_data["image"] = secret_image
+        secret_data.update(compute_features(secret_image, secret_image_fname, self.features))
+        secret_data = self.transform.replay(cover_data["replay"], **secret_data)
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(image_fname0), fs.id_from_fname(modified_fname)],
-            INPUT_IMAGE_KEY: torch.stack([tensor_from_rgb_image(image0), tensor_from_rgb_image(image1)]),
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(secret_image_fname)],
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
         }
-        # TODO
-        # sample.update(compute_features(image, self.features))
+
+        for key, value in cover_data.items():
+            if key in self.features:
+                sample[key] = torch.stack([tensor_from_rgb_image(cover_data[key]),
+                                           tensor_from_rgb_image(secret_data[key])])
+
         return sample
 
 
 def get_datasets(
-        data_dir: str,
-        fold: int,
-        augmentation: str = "light",
-        fast: bool = False,
-        image_size: Tuple[int, int] = (512, 512),
-        balance=False,
-        features=None,
-        obliterate_p=0.0,
+    data_dir: str,
+    fold: int,
+    augmentation: str = "light",
+    fast: bool = False,
+    image_size: Tuple[int, int] = (512, 512),
+    balance=False,
+    features=None,
+    obliterate_p=0.0,
 ):
     from .augmentations import get_augmentations, get_obliterate_augs
 
@@ -388,12 +394,12 @@ def get_datasets(
 
 
 def get_datasets_batched(
-        data_dir: str,
-        fold: int,
-        augmentation: str = "light",
-        fast: bool = False,
-        image_size: Tuple[int, int] = (512, 512),
-        features=None,
+    data_dir: str,
+    fold: int,
+    augmentation: str = "light",
+    fast: bool = False,
+    image_size: Tuple[int, int] = (512, 512),
+    features=None,
 ):
     from .augmentations import get_augmentations
 
