@@ -9,7 +9,7 @@ from alaska2.dataset import *
 import numpy as np
 import torch.nn.functional as F
 
-__all__ = ["ycrcb_skresnext50_32x4d"]
+__all__ = ["ycrcb_skresnext50_32x4d", "ycrcb_s2d_skresnext50_32x4d"]
 
 
 class SpaceToDepth(nn.Module):
@@ -60,30 +60,29 @@ class YCrCbModel(nn.Module):
         return [INPUT_FEATURES_CHANNEL_Y_KEY, INPUT_FEATURES_CHANNEL_CR_KEY, INPUT_FEATURES_CHANNEL_CB_KEY]
 
 
-class HalvedYCrCbModel(nn.Module):
+class YCrCbS2DModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
         super().__init__()
         self.rgb_encoder = encoder
-        # YCrCB (array([-15.25726164,  -7.29664547,   3.33329585]), array([43.31931419, 10.97596226, 10.13833837]))
-        self.y_norm = Normalize()
-        self.cb_norm = Normalize()
-        self.cr_norm = Normalize()
-
-        self.s2d = SpaceToDepth(block_size=2)
-
+        self.norm = Normalize([-10.5957038, -3.62235547, 2.02056952], [42.37946293, 8.89775623, 8.94904454])
+        self.s2d = SpaceToDepth(block_size=4)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
         self.flag_classifier = nn.Linear(encoder.num_features, 1)
 
     def forward(self, **kwargs):
-        y = self.y_norm(kwargs[INPUT_FEATURES_CHANNEL_Y_KEY])
-        cb = self.cb_norm(kwargs[INPUT_FEATURES_CHANNEL_CB_KEY])
-        cr = self.cr_norm(kwargs[INPUT_FEATURES_CHANNEL_CR_KEY])
-        y = self.d2s(y)
+        y = kwargs[INPUT_FEATURES_CHANNEL_Y_KEY]
+        cb = kwargs[INPUT_FEATURES_CHANNEL_CB_KEY]
+        cr = kwargs[INPUT_FEATURES_CHANNEL_CR_KEY]
+
+        # print('y', y.mean().item(), y.std().item())
+        # print('cr', cr.mean().item(), cr.std().item())
+        # print('cb', cb.mean().item(), cb.std().item())
 
         x = torch.cat([y, cb, cr], dim=1)
         x = self.norm(x)
+        x = self.s2d(x)
         x = self.rgb_encoder.forward_features(x)
         x = self.pool(x)
         return {
@@ -105,9 +104,9 @@ def ycrcb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     return YCrCbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def ycrcb_halved_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
+def ycrcb_s2d_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(pretrained=pretrained)
     del encoder.fc
-    encoder.conv1 = make_n_channel_input(encoder.conv1, 6, "auto")
+    encoder.conv1 = make_n_channel_input(encoder.conv1, 3 * (4 ** 2), "auto")
 
-    return HalvedYCrCbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return YCrCbS2DModel(encoder, num_classes=num_classes, dropout=dropout)

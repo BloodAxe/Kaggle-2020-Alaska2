@@ -37,6 +37,7 @@ MODEL_REGISTRY = {
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
+    "ycrcb_s2d_skresnext50_32x4d": ycrcb.ycrcb_s2d_skresnext50_32x4d
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
