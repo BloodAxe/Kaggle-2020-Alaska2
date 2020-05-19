@@ -1,6 +1,6 @@
 import torch
 
-from alaska2.loss import ContrastiveCosineEmbeddingLoss, PairwiseRankingLoss
+from alaska2.loss import ContrastiveCosineEmbeddingLoss, PairwiseRankingLoss, PairwiseRankingLossV2
 
 
 def test_pairwise_rank_loss():
@@ -30,6 +30,33 @@ def test_pairwise_rank_loss():
     y = torch.tensor([0, 1])
     loss = c(x, y)
     print(loss)
+
+
+def test_pairwise_rank_loss_v2():
+    c = PairwiseRankingLossV2()
+
+    # x = torch.tensor([-10, 10, -10, 10]).float()
+    y = torch.tensor([0, 1, 0, 1])
+    # loss = c(x, y)
+    # print(loss)
+    #
+    # x = torch.tensor([10, -10, -10, 10]).float()
+    # loss = c(x, y)
+    # print(loss)
+    #
+    # x = torch.tensor([0, 0, 0, 0]).float()
+    # loss = c(x, y)
+    # print(loss)
+    #
+    # x = torch.tensor([10, 10, -10, -10]).float()
+    # loss = c(x, y)
+    # print(loss)
+
+    x = torch.tensor([-10, -1, 1, 10]).float()
+    # x = torch.tensor([-10, 0, 0, 10]).float()
+    loss = c(x, y)
+    print(loss)
+
 
 def test_ccos():
     # input = torch.ones((8, 32)).float()
