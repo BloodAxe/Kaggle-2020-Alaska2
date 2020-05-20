@@ -6,12 +6,12 @@ import gc
 import json
 import os
 from datetime import datetime
-
+import numpy as np
 import cv2
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
-from pytorch_toolbelt.utils import fs, itertools
+from pytorch_toolbelt.utils import fs, itertools, to_numpy
 from pytorch_toolbelt.utils.catalyst import (
     ShowPolarBatchesCallback,
     report_checkpoint,
@@ -31,16 +31,21 @@ def custom_collate(input):
     input = default_collate(input)
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
-    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
-    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
+
+    batch_size = len(input[INPUT_IMAGE_ID_KEY])
+    shuffle = torch.randperm(batch_size) # Shuffle batch
+
+    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)]
+    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)[shuffle]
+    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)[shuffle]
 
     if INPUT_FEATURES_ELA_KEY in input:
         _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
-        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)
+        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)[shuffle]
 
     if INPUT_IMAGE_KEY in input:
         _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
-        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
+        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)[shuffle]
 
     # images = draw_predictions(
     #     input,
