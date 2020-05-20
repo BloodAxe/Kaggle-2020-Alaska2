@@ -63,9 +63,10 @@ class YCrCbModel(nn.Module):
 class YCrCbS2DModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
         super().__init__()
-        self.rgb_encoder = encoder
+        self.encoder = encoder
         self.norm = Normalize([-10.5957038, -3.62235547, 2.02056952], [42.37946293, 8.89775623, 8.94904454])
         self.s2d = SpaceToDepth(block_size=2)
+        self.conv1 = nn.Conv2d(3 * (2**2), 64, kernel_size=1)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
@@ -83,7 +84,9 @@ class YCrCbS2DModel(nn.Module):
         x = torch.cat([y, cb, cr], dim=1)
         x = self.norm(x)
         x = self.s2d(x)
-        x = self.rgb_encoder.forward_features(x)
+        x = self.conv1(x)
+
+        x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
             OUTPUT_PRED_EMBEDDING: x,
@@ -105,8 +108,7 @@ def ycrcb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 
 def ycrcb_s2d_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(pretrained=pretrained)
+    encoder = skresnext50_32x4d(stem_type="deep", in_chans=64)
     del encoder.fc
-    encoder.conv1 = make_n_channel_input(encoder.conv1, 3 * (2 ** 2), "auto")
 
     return YCrCbS2DModel(encoder, num_classes=num_classes, dropout=dropout)
