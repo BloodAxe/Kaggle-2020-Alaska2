@@ -6,7 +6,7 @@ import gc
 import json
 import os
 from datetime import datetime
-
+import numpy as np
 import cv2
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
@@ -23,7 +23,6 @@ from pytorch_toolbelt.utils.torch_utils import count_parameters, transfer_weight
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
-import numpy as np
 
 from alaska2 import *
 
@@ -34,9 +33,9 @@ def custom_collate(input):
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
 
     batch_size = len(input[INPUT_IMAGE_ID_KEY])
-    shuffle = torch.randperm(batch_size)  # Shuffle batch
+    shuffle = torch.randperm(batch_size) # Shuffle batch
 
-    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)]
+    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)].tolist()
     input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)[shuffle]
     input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)[shuffle]
 
