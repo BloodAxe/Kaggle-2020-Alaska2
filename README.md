@@ -3,12 +3,14 @@
 1. [Rich Model for Steganalysis of Color Images](http://www.ws.binghamton.edu/fridrich/Research/color-04.pdf)
 2. [The ALASKA Steganalysis Challenge: A First Step Towards Steganalysis ”Into The Wild”](https://hal.archives-ouvertes.fr/hal-02147763/document)
 3. [Rich Models for Steganalysis of Digital Images](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.441.6997&rep=rep1&type=pdf)
+4. [Pixels-off: Data-augmentation Complementary Solution for Deep-learning Steganalysis](https://hal-lirmm.ccsd.cnrs.fr/lirmm-02559838/file/IHMMSec-2016_Yedroudj_Chaumont_Comby_Amara_Bas_Pixels-off.pdf)
 
 # Useful
 
 1. https://www.kaggle.com/remicogranne/jpeg-explanations
 2. https://github.com/digantamisra98/EvoNorm/blob/master/evonorm2d.py
 3. https://github.com/Steganalysis-CNN/residual-steganalysis/blob/master/init/res_finetune_test.m
+4. https://github.com/yedmed/steganalysis_with_CNN_Yedroudj-Net/blob/master/pytorch_version/Covariance_Pooling_Steganalytic_Network_cat.py
 
 # Models
 
