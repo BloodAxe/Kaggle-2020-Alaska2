@@ -1,13 +1,9 @@
 import os
-from functools import partial
 
 import pandas as pd
 import torch
-from plotly.tools import ALTERNATIVE_HISTNORM
 from pytorch_toolbelt.utils import logit
-import plotly.express as px
-import plotly.figure_factory as ff
-import numpy as np
+
 
 # import matplotlib.pyplot as plt
 
