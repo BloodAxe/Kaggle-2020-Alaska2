@@ -284,6 +284,9 @@ class PairedImageDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
+    def __repr__(self):
+        return f"PairedImageDataset(images={len(self.images)})"
+
     def __getitem__(self, index):
         cover_image_fname = self.images[index]
 
@@ -330,6 +333,9 @@ class QuadImageDataset(Dataset):
 
     def __len__(self):
         return len(self.images)
+
+    def __repr__(self):
+        return f"QuadImageDataset(images={len(self.images)})"
 
     def __getitem__(self, index):
         class0_fname = self.images[index]
