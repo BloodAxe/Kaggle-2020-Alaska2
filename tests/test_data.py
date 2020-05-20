@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 
 import pytest, os, cv2
@@ -10,6 +11,14 @@ import matplotlib.pyplot as plt
 from alaska2.dataset import compute_dct_fast, compute_dct_slow, idct8v2
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+
+
+def test_batched_ds():
+    train_ds, valid_ds, _ = get_datasets_batched(
+        data_dir=os.environ.get("KAGGLE_2020_ALASKA2"), fold=0, features=[INPUT_IMAGE_KEY]
+    )
+    sample = train_ds[0]
+    sample = train_ds[len(train_ds) - 1]
 
 
 def test_dct():
@@ -66,9 +75,9 @@ def test_dct_comp():
 
     imgYCC = np.dstack(
         [
-            y / 128.,
-            cv2.resize(cr / 64., None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
-            cv2.resize(cb / 64., None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
+            y / 128.0,
+            cv2.resize(cr / 64.0, None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
+            cv2.resize(cb / 64.0, None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
         ]
     )
     rgb = cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
@@ -141,3 +150,15 @@ def test_normalize_ycrcb():
     print("Y ", y.mean(), y.std())
     print("Cr", cr.mean(), cr.std())
     print("Cb", cb.mean(), cb.std())
+
+
+def test_randint():
+    import matplotlib.pyplot as plt
+
+    samples = []
+    for _ in range(10000):
+        samples.append(random.randint(0, 2))
+
+    plt.figure()
+    plt.hist(samples)
+    plt.show()

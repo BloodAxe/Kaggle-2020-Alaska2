@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 
+import cv2
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
@@ -29,7 +30,7 @@ from alaska2 import *
 def custom_collate(input):
     input = default_collate(input)
 
-    input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*input[INPUT_IMAGE_ID_KEY]))
+    input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
     input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
     input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
 
@@ -41,6 +42,16 @@ def custom_collate(input):
         _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
         input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
 
+    # images = draw_predictions(
+    #     input,
+    #     output={
+    #         OUTPUT_PRED_MODIFICATION_TYPE: torch.zeros((len(input[INPUT_IMAGE_KEY]), 4)),
+    #         OUTPUT_PRED_MODIFICATION_FLAG: torch.zeros(len(input[INPUT_IMAGE_KEY])),
+    #     },
+    # )
+    # for i, image in enumerate(images):
+    #     cv2.imshow(f"Image {i}", image)
+    #     cv2.waitKey(-1)
     return input
 
 
@@ -256,9 +267,7 @@ def main():
             collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
-        )
+        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
         parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
         optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
@@ -380,9 +389,7 @@ def main():
             collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
-        )
+        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)
@@ -506,9 +513,7 @@ def main():
             collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(
-            valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True,
-        )
+        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)

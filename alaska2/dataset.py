@@ -266,9 +266,13 @@ class TrainingValidationDataset(Dataset):
 
 
 class PairedImageDataset(Dataset):
-    def __init__(self, images: np.ndarray, transform: A.Compose, features):
+    def __init__(self, images: Union[np.ndarray, List], target: int, transform: A.Compose, features):
         self.images = images
         self.features = features
+        self.target = target
+        self.method_name = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
+
+        assert 0 < target < 4
         if isinstance(transform, A.ReplayCompose):
             self.transform = transform
         else:
@@ -280,8 +284,7 @@ class PairedImageDataset(Dataset):
     def __getitem__(self, index):
         cover_image_fname = self.images[index]
 
-        method = random.randint(0, 2)
-        method_name = ["JMiPOD", "JUNIWARD", "UERD"][method]
+        method_name = self.method_name[self.target]
         secret_image_fname = cover_image_fname.replace("Cover", method_name)
 
         cover_image = cv2.imread(cover_image_fname)
@@ -297,16 +300,18 @@ class PairedImageDataset(Dataset):
         secret_data.update(compute_features(secret_image, secret_image_fname, self.features))
         secret_data = self.transform.replay(cover_data["replay"], **secret_data)
 
+
         sample = {
             INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(secret_image_fname)],
-            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, method + 1]).long(),
+            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, self.target]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
         }
 
         for key, value in cover_data.items():
             if key in self.features:
-                sample[key] = torch.stack([tensor_from_rgb_image(cover_data[key]),
-                                           tensor_from_rgb_image(secret_data[key])])
+                sample[key] = torch.stack(
+                    [tensor_from_rgb_image(cover_data[key]), tensor_from_rgb_image(secret_data[key])]
+                )
 
         return sample
 
@@ -404,52 +409,34 @@ def get_datasets_batched(
     from .augmentations import get_augmentations
 
     train_transform = get_augmentations(augmentation, image_size)
-    valid_transform = A.NoOp()
+    valid_transform = A.ReplayCompose([A.NoOp()])
 
-    if fold is None:
-        if fast:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
-            class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
+    train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
+    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
 
-            sampler = WeightedRandomSampler(np.ones(len(class_0)), 2048)
+    train_ds = (
+        PairedImageDataset(train_images, target=1, transform=train_transform, features=features)
+        + PairedImageDataset(train_images, target=2, transform=train_transform, features=features)
+        + PairedImageDataset(train_images, target=3, transform=train_transform, features=features)
+    )
 
-            train_ds = PairedImageDataset(class_0, transform=train_transform, features=features)
-            valid_ds = PairedImageDataset(class_0, transform=valid_transform, features=features)
+    valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
+    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
-            print("Train", train_ds)
-            print("Valid", valid_ds)
+    valid_x = valid_images.copy()
+    valid_y = [0] * len(valid_images)
 
-            return train_ds, valid_ds, sampler
-        else:
-            raise ValueError("Fold must be set")
-    else:
-        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+    for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        valid_x += [fname.replace("Cover", method) for fname in valid_images]
+        valid_y += [i + 1] * len(valid_images)
+    valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
 
-        train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
-        valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
-
-        train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
-        valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
-
-        if fast:
-            train_images = train_images[::10]
-            valid_images = valid_images[::10]
-
-        train_ds = PairedImageDataset(train_images, transform=train_transform, features=features)
-
-        valid_x = valid_images.copy()
-        valid_y = [0] * len(valid_images)
-
-        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-            valid_x += [fname.replace("Cover", method) for fname in valid_images]
-            valid_y += [i + 1] * len(valid_images)
-        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
-
-        sampler = None
-        print("Train", train_ds)
-        print("Valid", valid_ds)
-        return train_ds, valid_ds, sampler
+    sampler = None
+    print("Train", train_ds)
+    print("Valid", valid_ds)
+    return train_ds, valid_ds, sampler
 
 
 def get_test_dataset(data_dir, features):

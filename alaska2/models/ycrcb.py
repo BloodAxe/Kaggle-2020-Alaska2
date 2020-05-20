@@ -65,7 +65,7 @@ class YCrCbS2DModel(nn.Module):
         super().__init__()
         self.rgb_encoder = encoder
         self.norm = Normalize([-10.5957038, -3.62235547, 2.02056952], [42.37946293, 8.89775623, 8.94904454])
-        self.s2d = SpaceToDepth(block_size=4)
+        self.s2d = SpaceToDepth(block_size=2)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
@@ -107,6 +107,6 @@ def ycrcb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 def ycrcb_s2d_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(pretrained=pretrained)
     del encoder.fc
-    encoder.conv1 = make_n_channel_input(encoder.conv1, 3 * (4 ** 2), "auto")
+    encoder.conv1 = make_n_channel_input(encoder.conv1, 3 * (2 ** 2), "auto")
 
     return YCrCbS2DModel(encoder, num_classes=num_classes, dropout=dropout)
