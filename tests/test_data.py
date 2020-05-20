@@ -14,7 +14,7 @@ TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_d
 
 
 def test_batched_ds():
-    train_ds, valid_ds, _ = get_datasets_batched(
+    train_ds, valid_ds, _ = get_datasets_paired(
         data_dir=os.environ.get("KAGGLE_2020_ALASKA2"), fold=0, features=[INPUT_IMAGE_KEY]
     )
     sample = train_ds[0]

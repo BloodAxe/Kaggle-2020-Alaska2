@@ -263,14 +263,13 @@ class PairwiseRankingLossV2(nn.Module):
         """
         input: [N,E]
         """
-        batch_size = input.size(0)
 
-        # View to [B,2], 0 are negatives, 1 are positives
-        input = input.view(batch_size // 2, 2)
-        target = target.view(batch_size)
+        # View to [B,2], 0 are negatives, 1 are positives, but we use masks
+        input = input.view(-1)
+        target = target.view(-1)
 
-        pos = input[:, 1].view(1, -1)
-        neg = input[:, 0].view(-1, 1)
+        pos = input[target == 1].view(1, -1)
+        neg = input[target == 0].view(-1, 1)
 
         pwise_dist = pos - neg
         loss = -F.logsigmoid(pwise_dist)

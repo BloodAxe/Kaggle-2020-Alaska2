@@ -40,13 +40,13 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
+    "INPUT_FEATURES_CHANNEL_CB_KEY",
+    "INPUT_FEATURES_CHANNEL_CR_KEY",
+    "INPUT_FEATURES_CHANNEL_Y_KEY",
     "INPUT_FEATURES_DCT_CB_KEY",
     "INPUT_FEATURES_DCT_CR_KEY",
     "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_ELA_KEY",
-    "INPUT_FEATURES_CHANNEL_Y_KEY",
-    "INPUT_FEATURES_CHANNEL_CB_KEY",
-    "INPUT_FEATURES_CHANNEL_CR_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
     "INPUT_IMAGE_KEY",
@@ -59,16 +59,19 @@ __all__ = [
     "OUTPUT_PRED_EMBEDDING",
     "OUTPUT_PRED_MODIFICATION_FLAG",
     "OUTPUT_PRED_MODIFICATION_TYPE",
+    "PairedImageDataset",
+    "QuadImageDataset",
     "TrainingValidationDataset",
     "compute_blur_features",
     "compute_dct_fast",
     "compute_dct_slow",
     "compute_ela",
     "dct8",
-    "idct8",
     "get_datasets",
-    "get_datasets_batched",
+    "get_datasets_paired",
+    "get_datasets_quad",
     "get_test_dataset",
+    "idct8",
 ]
 
 
@@ -300,7 +303,6 @@ class PairedImageDataset(Dataset):
         secret_data.update(compute_features(secret_image, secret_image_fname, self.features))
         secret_data = self.transform.replay(cover_data["replay"], **secret_data)
 
-
         sample = {
             INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(secret_image_fname)],
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, self.target]).long(),
@@ -311,6 +313,77 @@ class PairedImageDataset(Dataset):
             if key in self.features:
                 sample[key] = torch.stack(
                     [tensor_from_rgb_image(cover_data[key]), tensor_from_rgb_image(secret_data[key])]
+                )
+
+        return sample
+
+
+class QuadImageDataset(Dataset):
+    def __init__(self, images: Union[np.ndarray, List], transform: A.Compose, features):
+        self.images = images
+        self.features = features
+
+        if isinstance(transform, A.ReplayCompose):
+            self.transform = transform
+        else:
+            self.transform = A.ReplayCompose([transform])
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        class0_fname = self.images[index]
+        class1_fname = class0_fname.replace("Cover", "JMiPOD")
+        class2_fname = class0_fname.replace("Cover", "JUNIWARD")
+        class3_fname = class0_fname.replace("Cover", "UERD")
+
+        class0_image = cv2.imread(class0_fname)
+        class1_image = cv2.imread(class1_fname)
+        class2_image = cv2.imread(class2_fname)
+        class3_image = cv2.imread(class3_fname)
+
+        class0_data = {}
+        class0_data["image"] = class0_image
+        class0_data.update(compute_features(class0_image, class0_fname, self.features))
+        class0_data = self.transform(**class0_data)
+
+        replay = class0_data["replay"]
+
+        class1_data = {}
+        class1_data["image"] = class1_image
+        class1_data.update(compute_features(class1_image, class1_fname, self.features))
+        class1_data = self.transform(replay, **class1_data)
+
+        class2_data = {}
+        class2_data["image"] = class2_image
+        class2_data.update(compute_features(class2_image, class2_fname, self.features))
+        class2_data = self.transform(replay, **class2_data)
+
+        class3_data = {}
+        class3_data["image"] = class3_image
+        class3_data.update(compute_features(class3_image, class3_fname, self.features))
+        class3_data = self.transform(replay, **class3_data)
+
+        sample = {
+            INPUT_IMAGE_ID_KEY: [
+                fs.id_from_fname(class0_fname),
+                fs.id_from_fname(class1_fname),
+                fs.id_from_fname(class2_fname),
+                fs.id_from_fname(class3_fname),
+            ],
+            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, 1, 2, 3]).long(),
+            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1, 1, 1]).float(),
+        }
+
+        for key, value in class0_data.items():
+            if key in self.features:
+                sample[key] = torch.stack(
+                    [
+                        tensor_from_rgb_image(class0_data[key]),
+                        tensor_from_rgb_image(class1_data[key]),
+                        tensor_from_rgb_image(class2_data[key]),
+                        tensor_from_rgb_image(class3_data[key]),
+                    ]
                 )
 
         return sample
@@ -398,7 +471,7 @@ def get_datasets(
         return train_ds, valid_ds, sampler
 
 
-def get_datasets_batched(
+def get_datasets_paired(
     data_dir: str,
     fold: int,
     augmentation: str = "light",
@@ -421,6 +494,43 @@ def get_datasets_batched(
         + PairedImageDataset(train_images, target=2, transform=train_transform, features=features)
         + PairedImageDataset(train_images, target=3, transform=train_transform, features=features)
     )
+
+    valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
+    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
+
+    valid_x = valid_images.copy()
+    valid_y = [0] * len(valid_images)
+
+    for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        valid_x += [fname.replace("Cover", method) for fname in valid_images]
+        valid_y += [i + 1] * len(valid_images)
+    valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+
+    sampler = None
+    print("Train", train_ds)
+    print("Valid", valid_ds)
+    return train_ds, valid_ds, sampler
+
+
+def get_datasets_quad(
+    data_dir: str,
+    fold: int,
+    augmentation: str = "light",
+    fast: bool = False,
+    image_size: Tuple[int, int] = (512, 512),
+    features=None,
+):
+    from .augmentations import get_augmentations
+
+    train_transform = get_augmentations(augmentation, image_size)
+    valid_transform = A.ReplayCompose([A.NoOp()])
+
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+
+    train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
+    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
+
+    train_ds = QuadImageDataset(train_images, transform=train_transform, features=features)
 
     valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
     valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]

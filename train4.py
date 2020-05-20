@@ -217,7 +217,7 @@ def main():
 
     # Pretrain/warmup
     if warmup:
-        train_ds, valid_ds, train_sampler = get_datasets_paired(
+        train_ds, valid_ds, train_sampler = get_datasets_quad(
             data_dir=data_dir,
             image_size=image_size,
             augmentation="light",
@@ -339,7 +339,7 @@ def main():
         gc.collect()
 
     if run_train:
-        train_ds, valid_ds, train_sampler = get_datasets_paired(
+        train_ds, valid_ds, train_sampler = get_datasets_quad(
             data_dir=data_dir,
             image_size=image_size,
             augmentation=augmentations,
@@ -463,7 +463,7 @@ def main():
         gc.collect()
 
     if fine_tune:
-        train_ds, valid_ds, train_sampler = get_datasets_paired(
+        train_ds, valid_ds, train_sampler = get_datasets_quad(
             data_dir=data_dir,
             image_size=image_size,
             augmentation="light",
