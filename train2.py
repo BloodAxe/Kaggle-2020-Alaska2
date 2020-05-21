@@ -253,7 +253,7 @@ def main():
                         "scheduler": scheduler_name,
                         "optimizer": optimizer_name,
                         "augmentations": augmentations,
-                        "size": args.size,
+                        "size": image_size[0],
                         "weight_decay": weight_decay,
                     }
                 ),
@@ -375,7 +375,7 @@ def main():
                         "scheduler": scheduler_name,
                         "optimizer": optimizer_name,
                         "augmentations": augmentations,
-                        "size": args.size,
+                        "size": image_size[0],
                         "weight_decay": weight_decay,
                     }
                 ),
@@ -499,7 +499,7 @@ def main():
                         "scheduler": scheduler_name,
                         "optimizer": optimizer_name,
                         "augmentations": augmentations,
-                        "size": args.size,
+                        "size": image_size[0],
                         "weight_decay": weight_decay,
                     }
                 ),
