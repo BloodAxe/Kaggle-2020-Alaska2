@@ -268,7 +268,7 @@ class PairwiseRankingLossV2(nn.Module):
         input = input.view(-1)
         target = target.view(-1)
 
-        pos = input[target == 1].view(1, -1)
+        pos = input[target > 0].view(1, -1)
         neg = input[target == 0].view(-1, 1)
 
         pwise_dist = pos - neg
