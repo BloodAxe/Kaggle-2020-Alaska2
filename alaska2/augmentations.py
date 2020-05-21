@@ -88,8 +88,10 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                         A.RandomGridShuffle(grid=(2, 2)),
                         A.RandomGridShuffle(grid=(3, 3)),
                         A.RandomGridShuffle(grid=(4, 4)),
-                    ]
+                    ],
+                    p=0.1,
                 ),
+                A.CoarseDropout(max_holes=1, min_height=128, max_height=256, min_width=128, max_width=256, p=0.1),
             ],
             additional_targets=additional_targets,
         )
@@ -100,11 +102,15 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                 maybe_crop,
                 A.RandomRotate90(),
                 A.Transpose(),
-                A.RandomBrightnessContrast(p=0.3),
-                A.RandomGridShuffle(grid=(8, 8)),
-                A.ShiftScaleRotate(
-                    rotate_limit=5, shift_limit=0.05, scale_limit=0.05, border_mode=cv2.BORDER_CONSTANT
+                A.OneOf(
+                    [
+                        A.RandomGridShuffle(grid=(2, 2)),
+                        A.RandomGridShuffle(grid=(3, 3)),
+                        A.RandomGridShuffle(grid=(4, 4)),
+                    ],
+                    p=0.1,
                 ),
+                A.CoarseDropout(max_holes=1, min_height=128, max_height=256, min_width=128, max_width=256, p=0.1),
             ],
             additional_targets=additional_targets,
         )
