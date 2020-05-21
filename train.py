@@ -23,6 +23,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from alaska2 import *
+from train4 import custom_collate
 
 
 def main():
@@ -188,22 +189,20 @@ def main():
 
     # Pretrain/warmup
     if warmup:
-        train_ds, valid_ds, train_sampler = get_datasets(
+        train_ds, valid_ds, train_sampler = get_datasets_quad(
             data_dir=data_dir,
             image_size=image_size,
             augmentation="light",
-            balance=balance,
             fast=fast,
             fold=fold,
             features=required_features,
-            obliterate_p=obliterate_p,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=modification_flag_loss,
-            modification_type=modification_type_loss,
-            embedding_loss=embedding_loss,
-            feature_maps_loss=feature_maps_loss,
+            modification_flag=[["rank2", 1.0]],
+            modification_type=None,
+            embedding_loss=None,
+            feature_maps_loss=None,
             num_epochs=warmup,
             mixup=False,
             cutmix=False,
@@ -231,23 +230,19 @@ def main():
         loaders = collections.OrderedDict()
         loaders["train"] = DataLoader(
             train_ds,
-            batch_size=train_batch_size,
+            batch_size=train_batch_size // 4,
             num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
             shuffle=train_sampler is None,
             sampler=train_sampler,
+            collate_fn=custom_collate,
         )
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
-        parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
-        optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
-        scheduler = get_scheduler(
-            "poly_up", optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
-        )
-        if isinstance(scheduler, CyclicLR):
-            callbacks += [SchedulerCallback(mode="batch")]
+        optimizer = get_optimizer("RAdam", get_optimizable_parameters(model), learning_rate=learning_rate)
+        scheduler = None
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)
