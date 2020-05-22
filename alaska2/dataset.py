@@ -276,10 +276,7 @@ class PairedImageDataset(Dataset):
         self.method_name = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
 
         assert 0 < target < 4
-        if isinstance(transform, A.ReplayCompose):
-            self.transform = transform
-        else:
-            self.transform = A.ReplayCompose([transform])
+        self.transform = transform
 
     def __len__(self):
         return len(self.images)
@@ -304,7 +301,7 @@ class PairedImageDataset(Dataset):
         secret_data = {}
         secret_data["image"] = secret_image
         secret_data.update(compute_features(secret_image, secret_image_fname, self.features))
-        secret_data = self.transform.replay(cover_data["replay"], **secret_data)
+        secret_data = self.transform(**secret_data)
 
         sample = {
             INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(secret_image_fname)],
@@ -325,11 +322,7 @@ class QuadImageDataset(Dataset):
     def __init__(self, images: Union[np.ndarray, List], transform: A.Compose, features):
         self.images = images
         self.features = features
-
-        if isinstance(transform, A.ReplayCompose):
-            self.transform = transform
-        else:
-            self.transform = A.ReplayCompose([transform])
+        self.transform = transform
 
     def __len__(self):
         return len(self.images)
@@ -358,17 +351,17 @@ class QuadImageDataset(Dataset):
         class1_data = {}
         class1_data["image"] = class1_image
         class1_data.update(compute_features(class1_image, class1_fname, self.features))
-        class1_data = self.transform.replay(replay, **class1_data)
+        class1_data = self.transform(**class1_data)
 
         class2_data = {}
         class2_data["image"] = class2_image
         class2_data.update(compute_features(class2_image, class2_fname, self.features))
-        class2_data = self.transform.replay(replay, **class2_data)
+        class2_data = self.transform(**class2_data)
 
         class3_data = {}
         class3_data["image"] = class3_image
         class3_data.update(compute_features(class3_image, class3_fname, self.features))
-        class3_data = self.transform.replay(replay, **class3_data)
+        class3_data = self.transform(**class3_data)
 
         sample = {
             INPUT_IMAGE_ID_KEY: [
