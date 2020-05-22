@@ -13,7 +13,7 @@ from alaska2.dataset import (
 from alaska2.models.modules import TLU, SqrtmLayer, CovpoolLayer, TriuvecLayer
 from alaska2.models.srm_filter_kernel import all_normalized_hpf_list
 
-__all__ = ["HPFNet"]
+__all__ = ["HPFNet", "hpf_net_v2", "hpf_net"]
 
 
 class HPF(nn.Module):
@@ -46,7 +46,7 @@ class HPF(nn.Module):
 
 
 class HPF3(nn.Module):
-    def __init__(self):
+    def __init__(self, trainable_hpf=False):
         super(HPF3, self).__init__()
 
         # Load 30 SRM Filters
@@ -61,7 +61,7 @@ class HPF3(nn.Module):
         features = torch.Tensor(all_hpf_list_5x5).view(30, 1, 5, 5)
         features = torch.cat([features, features, features], dim=1)
 
-        hpf_weight = nn.Parameter(features, requires_grad=False)
+        hpf_weight = nn.Parameter(features, requires_grad=trainable_hpf)
 
         self.hpf = nn.Conv2d(3, 30, kernel_size=5, padding=2, bias=False)
         self.hpf.weight = hpf_weight
@@ -77,8 +77,16 @@ class HPF3(nn.Module):
         return output
 
 
+def hpf_net(num_classes, dropout=0, pretrained=False):
+    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained)
+
+
+def hpf_net_v2(num_classes, dropout=0, pretrained=False):
+    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained, trainable_hpf=True)
+
+
 class HPFNet(nn.Module):
-    def __init__(self, num_classes, dropout=0, pretrained=False):
+    def __init__(self, num_classes, dropout=0, pretrained=False, trainable_hpf=False):
         super(HPFNet, self).__init__()
 
         max_pixel_value = 255
@@ -87,7 +95,7 @@ class HPFNet(nn.Module):
             [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
         )
 
-        self.group1 = HPF3()
+        self.group1 = HPF3(trainable=trainable_hpf)
 
         self.group2 = nn.Sequential(
             nn.Conv2d(30, 32, kernel_size=3, padding=1),

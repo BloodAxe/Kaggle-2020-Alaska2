@@ -38,7 +38,9 @@ MODEL_REGISTRY = {
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
     "ycrcb_s2d_skresnext50_32x4d": ycrcb.ycrcb_s2d_skresnext50_32x4d,
-    "hpf_net": hpf_net.HPFNet,
+    # HPF
+    "hpf_net": hpf_net.hpf_net,
+    "hpf_net2": hpf_net.hpf_net_v2,
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
