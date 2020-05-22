@@ -165,7 +165,6 @@ class HPFNet(nn.Module):
         x = output.view(output.size(0), -1)
 
         return {
-            OUTPUT_PRED_EMBEDDING: x,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
         }
