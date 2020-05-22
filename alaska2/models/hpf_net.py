@@ -77,14 +77,6 @@ class HPF3(nn.Module):
         return output
 
 
-def hpf_net(num_classes, dropout=0, pretrained=False):
-    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained)
-
-
-def hpf_net_v2(num_classes, dropout=0, pretrained=False):
-    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained, trainable_hpf=True)
-
-
 class HPFNet(nn.Module):
     def __init__(self, num_classes, dropout=0, pretrained=False, trainable_hpf=False):
         super(HPFNet, self).__init__()
@@ -95,7 +87,7 @@ class HPFNet(nn.Module):
             [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
         )
 
-        self.group1 = HPF3(trainable=trainable_hpf)
+        self.group1 = HPF3(trainable_hpf=trainable_hpf)
 
         self.group2 = nn.Sequential(
             nn.Conv2d(30, 32, kernel_size=3, padding=1),
@@ -172,3 +164,11 @@ class HPFNet(nn.Module):
     @property
     def required_features(self):
         return [INPUT_IMAGE_KEY]
+
+
+def hpf_net(num_classes, dropout=0, pretrained=False):
+    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained)
+
+
+def hpf_net_v2(num_classes, dropout=0, pretrained=False):
+    return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained, trainable_hpf=True)
