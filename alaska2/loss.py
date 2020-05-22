@@ -268,12 +268,17 @@ class PairwiseRankingLossV2(nn.Module):
         input = input.view(-1)
         target = target.view(-1)
 
-        pos = input[target > 0].view(1, -1)
-        neg = input[target == 0].view(-1, 1)
+        pos_mask = target > 0
+        neg_mask = target == 0
+        if pos_mask.any() and neg_mask.any():
+            pos = input[pos_mask].view(1, -1)
+            neg = input[neg_mask].view(-1, 1)
 
-        pwise_dist = pos - neg
-        loss = -F.logsigmoid(pwise_dist)
-        loss = loss.mean()
+            pwise_dist = pos - neg
+            loss = -F.logsigmoid(pwise_dist)
+            loss = loss.mean()
+        else:
+            loss = 0
         return loss
 
 
