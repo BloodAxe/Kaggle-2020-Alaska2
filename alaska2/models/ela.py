@@ -119,5 +119,6 @@ def ela_wider_resnet38(num_classes=4, pretrained=True, dropout=0):
     if pretrained:
         checkpoint = torch.load(fs.auto_file("wide_resnet38_ipabn_lr_256.pth.tar"), map_location="cpu")
         transfer_weights(encoder, checkpoint["state_dict"])
+        print("Loaded weights from Mapilary")
 
     return TimmElaModel(encoder, num_classes=num_classes, dropout=dropout)
