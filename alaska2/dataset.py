@@ -13,6 +13,7 @@ from torch.utils.data import Dataset, WeightedRandomSampler
 
 INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
+INPUT_FEATURES_ELA_RICH_KEY = "input_ela_rich"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_FOLD_KEY = "fold"
@@ -41,6 +42,7 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
+    "INPUT_FEATURES_ELA_RICH_KEY",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
     "INPUT_FEATURES_CHANNEL_Y_KEY",
     "INPUT_FEATURES_DCT_CB_KEY",
@@ -69,6 +71,7 @@ __all__ = [
     "dct8",
     "get_datasets",
     "get_datasets_paired",
+    "compute_features",
     "get_datasets_quad",
     "get_test_dataset",
     "idct8",
@@ -170,6 +173,15 @@ def compute_ela(image, quality_steps=[75]):
 
     return diff
 
+def compute_ela_rich(image, quality_steps=[75,99,100]):
+    diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps)), dtype=np.float32)
+
+    for i, q in enumerate(quality_steps):
+        retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
+        image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        diff[..., i] = np.abs(np.subtract(image_lq, image, dtype=np.float32)).sum(axis=2)
+
+    return diff
 
 def compute_blur_features(image):
     image2 = cv2.pyrDown(image)
@@ -194,6 +206,9 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_FEATURES_ELA_KEY in features:
         sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
+
+    if INPUT_FEATURES_ELA_RICH_KEY in features:
+        sample[INPUT_FEATURES_ELA_RICH_KEY] = compute_ela_rich(image, quality_steps=[75,95, 99,100])
 
     if INPUT_FEATURES_BLUR_KEY in features:
         sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)

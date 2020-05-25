@@ -35,9 +35,10 @@ MODEL_REGISTRY = {
     "dct_hrnet18": dct.dct_hrnet18,
     # ELA
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
+    "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
-    "ycrcb_s2d_skresnext50_32x4d": ycrcb.ycrcb_s2d_skresnext50_32x4d,
+    "ela_s2d_skresnext50_32x4d": ycrcb.ela_s2d_skresnext50_32x4d,
     # HPF
     "hpf_net": hpf_net.hpf_net,
     "hpf_net2": hpf_net.hpf_net_v2,
