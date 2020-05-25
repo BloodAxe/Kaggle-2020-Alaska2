@@ -7,7 +7,7 @@ from torch.optim import SGD, Optimizer
 
 from alaska2 import *
 from alaska2.models.hpf_net import HPFNet
-from alaska2.models.ycrcb import ycrcb_s2d_skresnext50_32x4d
+from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
@@ -28,13 +28,14 @@ def test_hpfnet():
 
 
 @torch.no_grad()
-def test_ycrcb_s2d_skresnext50_32x4d():
-    model = ycrcb_s2d_skresnext50_32x4d().cuda()
+def test_ela_s2d_skresnext50_32x4d():
+    model = ela_s2d_skresnext50_32x4d().cuda()
 
     input = {
         INPUT_FEATURES_CHANNEL_Y_KEY: torch.randn((2, 1, 512, 512)).cuda(),
         INPUT_FEATURES_CHANNEL_CB_KEY: torch.randn((2, 1, 512, 512)).cuda(),
         INPUT_FEATURES_CHANNEL_CR_KEY: torch.randn((2, 1, 512, 512)).cuda(),
+        INPUT_FEATURES_ELA_RICH_KEY: torch.randn((2, 9, 512, 512)).cuda(),
     }
 
     print(count_parameters(model, keys=KNOWN_KEYS))
