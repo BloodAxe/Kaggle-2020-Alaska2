@@ -32,20 +32,20 @@ def custom_collate(input):
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
 
-    batch_size = len(input[INPUT_IMAGE_ID_KEY])
-    shuffle = torch.randperm(batch_size) # Shuffle batch
+    # batch_size = len(input[INPUT_IMAGE_ID_KEY])
+    # shuffle = torch.randperm(batch_size) # Shuffle batch
 
-    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)].tolist()
-    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)[shuffle]
-    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)[shuffle]
+    # input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)].tolist()
+    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
+    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
 
     if INPUT_FEATURES_ELA_KEY in input:
         _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
-        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)[shuffle]
+        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)
 
     if INPUT_IMAGE_KEY in input:
         _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
-        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)[shuffle]
+        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
 
     # images = draw_predictions(
     #     input,
@@ -114,6 +114,7 @@ def main():
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--balance", action="store_true")
     parser.add_argument("--freeze-bn", action="store_true")
+    parser.add_argument("--use-replay", action="store_true")
 
     args = parser.parse_args()
     set_manual_seed(args.seed)
@@ -137,6 +138,7 @@ def main():
     image_size = (args.size, args.size) if args.size is not None else (512, 512)
     fast = args.fast
     augmentations = args.augmentations
+    use_replay=args.use_replay
     fp16 = args.fp16
     scheduler_name = args.scheduler
     experiment = args.experiment
@@ -347,6 +349,7 @@ def main():
             data_dir=data_dir,
             image_size=image_size,
             augmentation=augmentations,
+            use_replay=use_replay,
             fast=fast,
             fold=fold,
             features=required_features,

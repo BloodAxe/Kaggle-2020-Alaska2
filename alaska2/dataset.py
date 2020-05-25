@@ -336,16 +336,17 @@ class PairedImageDataset(Dataset):
 
 
 class QuadImageDataset(Dataset):
-    def __init__(self, images: Union[np.ndarray, List], transform: A.Compose, features):
+    def __init__(self, images: Union[np.ndarray, List], transform: A.ReplayCompose, features, use_replay=False):
         self.images = images
         self.features = features
         self.transform = transform
+        self.use_replay = use_replay
 
     def __len__(self):
         return len(self.images)
 
     def __repr__(self):
-        return f"QuadImageDataset(images={len(self.images)})"
+        return f"QuadImageDataset(images={len(self.images)}, use_replay={self.use_replay})"
 
     def __getitem__(self, index):
         class0_fname = self.images[index]
@@ -368,17 +369,17 @@ class QuadImageDataset(Dataset):
         class1_data = {}
         class1_data["image"] = class1_image
         class1_data.update(compute_features(class1_image, class1_fname, self.features))
-        class1_data = self.transform.replay(replay, **class1_data)
+        class1_data = self.transform.replay(replay, **class1_data) if self.use_replay else self.transform(**class1_data)
 
         class2_data = {}
         class2_data["image"] = class2_image
         class2_data.update(compute_features(class2_image, class2_fname, self.features))
-        class2_data = self.transform.replay(replay, **class2_data)
+        class2_data = self.transform.replay(replay, **class2_data) if self.use_replay else self.transform(**class2_data)
 
         class3_data = {}
         class3_data["image"] = class3_image
         class3_data.update(compute_features(class3_image, class3_fname, self.features))
-        class3_data = self.transform.replay(replay, **class3_data)
+        class3_data = self.transform.replay(replay, **class3_data) if self.use_replay else self.transform(**class3_data)
 
         sample = {
             INPUT_IMAGE_ID_KEY: [
@@ -535,6 +536,7 @@ def get_datasets_quad(
     fast: bool = False,
     image_size: Tuple[int, int] = (512, 512),
     features=None,
+    use_replay=False
 ):
     from .augmentations import get_augmentations
 
@@ -546,7 +548,7 @@ def get_datasets_quad(
     train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
 
-    train_ds = QuadImageDataset(train_images, transform=train_transform, features=features)
+    train_ds = QuadImageDataset(train_images, transform=train_transform, features=features, use_replay=use_replay)
 
     valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
     valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
