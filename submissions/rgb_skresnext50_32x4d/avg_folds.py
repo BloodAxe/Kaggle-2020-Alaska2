@@ -32,19 +32,19 @@ def classifier_probas(x):
 
 
 May13_23_00_rgb_skresnext50_32x4d_fold0_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May13_23_00_rgb_skresnext50_32x4d_fold0_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May13_23_00_rgb_skresnext50_32x4d_fold0_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 May13_19_06_rgb_skresnext50_32x4d_fold1_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May13_19_06_rgb_skresnext50_32x4d_fold1_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May13_19_06_rgb_skresnext50_32x4d_fold1_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 May12_13_01_rgb_skresnext50_32x4d_fold2_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 May11_09_46_rgb_skresnext50_32x4d_fold3_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 # ELA

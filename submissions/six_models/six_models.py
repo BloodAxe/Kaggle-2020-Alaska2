@@ -24,45 +24,45 @@ def sigmoid(x):
 
 
 May08_22_42_rgb_resnet34_fold1 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May08_22_42_rgb_resnet34_fold1/main/checkpoints_auc/best_test_predictions.csv"
+    "/old_models/May08_22_42_rgb_resnet34_fold1/main/checkpoints_auc/best_test_predictions.csv"
 )
 May08_22_42_rgb_resnet34_fold1_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May08_22_42_rgb_resnet34_fold1/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May08_22_42_rgb_resnet34_fold1/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
 )
 
 May07_16_48_rgb_resnet34_fold0 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May07_16_48_rgb_resnet34_fold0/main/checkpoints_auc/best_test_predictions.csv"
+    "/old_models/May07_16_48_rgb_resnet34_fold0/main/checkpoints_auc/best_test_predictions.csv"
 )
 May07_16_48_rgb_resnet34_fold0_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May07_16_48_rgb_resnet34_fold0/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May07_16_48_rgb_resnet34_fold0/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
 )
 
 May09_15_13_rgb_densenet121_fold0_fp16 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May09_15_13_rgb_densenet121_fold0_fp16/main/checkpoints_auc/best_test_predictions.csv"
+    "/old_models/May09_15_13_rgb_densenet121_fold0_fp16/main/checkpoints_auc/best_test_predictions.csv"
 )
 May09_15_13_rgb_densenet121_fold0_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May09_15_13_rgb_densenet121_fold0_fp16/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May09_15_13_rgb_densenet121_fold0_fp16/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
 )
 
 May11_08_49_rgb_densenet201_fold3_fp16 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May11_08_49_rgb_densenet201_fold3_fp16/main/checkpoints_auc/best_test_predictions.csv"
+    "/old_models/May11_08_49_rgb_densenet201_fold3_fp16/main/checkpoints_auc/best_test_predictions.csv"
 )
 May11_08_49_rgb_densenet201_fold3_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May11_08_49_rgb_densenet201_fold3_fp16/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May11_08_49_rgb_densenet201_fold3_fp16/main/checkpoints_auc/best_test_predictions_flip_hv_tta.csv"
 )
 
 May11_09_46_rgb_skresnext50_32x4d_fold3_fp16 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions.csv"
+    "/old_models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions.csv"
 )
 May11_09_46_rgb_skresnext50_32x4d_fold3_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May11_09_46_rgb_skresnext50_32x4d_fold3_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 May12_13_01_rgb_skresnext50_32x4d_fold2_fp16 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions.csv"
+    "/old_models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions.csv"
 )
 May12_13_01_rgb_skresnext50_32x4d_fold2_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 predictions = {
