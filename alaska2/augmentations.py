@@ -78,7 +78,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         )
 
     if augmentations_level == "medium":
-        return A.Compose(
+        return A.ReplayCompose(
             [
                 maybe_crop,
                 A.RandomRotate90(p=1.0),

@@ -368,17 +368,17 @@ class QuadImageDataset(Dataset):
         class1_data = {}
         class1_data["image"] = class1_image
         class1_data.update(compute_features(class1_image, class1_fname, self.features))
-        class1_data = self.transform(**class1_data)
+        class1_data = self.transform.replay(replay, **class1_data)
 
         class2_data = {}
         class2_data["image"] = class2_image
         class2_data.update(compute_features(class2_image, class2_fname, self.features))
-        class2_data = self.transform(**class2_data)
+        class2_data = self.transform.replay(replay, **class2_data)
 
         class3_data = {}
         class3_data["image"] = class3_image
         class3_data.update(compute_features(class3_image, class3_fname, self.features))
-        class3_data = self.transform(**class3_data)
+        class3_data = self.transform.replay(replay, **class3_data)
 
         sample = {
             INPUT_IMAGE_ID_KEY: [
