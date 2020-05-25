@@ -43,7 +43,7 @@ class TimmElaModel(nn.Module):
         x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
-            OUTPUT_PRED_EMBEDDING: x,
+            # OUTPUT_PRED_EMBEDDING: x,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
         }
