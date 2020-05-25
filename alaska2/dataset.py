@@ -539,7 +539,7 @@ def get_datasets_quad(
     from .augmentations import get_augmentations
 
     train_transform = get_augmentations(augmentation, image_size)
-    valid_transform = A.ReplayCompose([A.NoOp()])
+    valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 

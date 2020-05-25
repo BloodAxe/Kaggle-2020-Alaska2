@@ -274,8 +274,7 @@ def main():
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
-        parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
-        optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
+        optimizer = get_optimizer("RAdam", get_optimizable_parameters(model), learning_rate=learning_rate)
         scheduler = get_scheduler(
             "poly_up", optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
         )
@@ -580,7 +579,7 @@ def main():
         )
 
         best_checkpoint = os.path.join(log_dir, "finetune", "checkpoints", "best.pth")
-        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}.pth")
+        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}_finetune.pth")
 
         clean_checkpoint(best_checkpoint, model_checkpoint)
         unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
