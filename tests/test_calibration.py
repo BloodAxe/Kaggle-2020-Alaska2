@@ -10,7 +10,7 @@ from sklearn.isotonic import IsotonicRegression as IR
 
 def test_calibartion():
     oof_predictions = pd.read_csv(
-        "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May07_16_48_rgb_resnet34_fold0/oof_predictions.csv"
+        "/old_models/May07_16_48_rgb_resnet34_fold0/oof_predictions.csv"
     )
 
     print("Uncalibrated", alaska_weighted_auc(oof_predictions["y_true"].values, oof_predictions["y_pred"].values))

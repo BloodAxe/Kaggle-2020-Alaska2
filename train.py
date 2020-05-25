@@ -436,7 +436,7 @@ def main():
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
             image_size=image_size,
-            augmentation="medium",
+            augmentation="light",
             balance=balance,
             fast=fast,
             fold=fold,
@@ -547,7 +547,7 @@ def main():
         )
 
         best_checkpoint = os.path.join(log_dir, "finetune", "checkpoints", "best.pth")
-        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}.pth")
+        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}_finetune.pth")
 
         clean_checkpoint(best_checkpoint, model_checkpoint)
         unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)

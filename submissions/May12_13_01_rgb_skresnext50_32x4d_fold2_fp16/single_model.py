@@ -32,10 +32,10 @@ def classifier_probas(x):
 
 
 May12_13_01_rgb_skresnext50_32x4d_fold2_fp16 = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions.csv"
+    "/old_models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions.csv"
 )
 May12_13_01_rgb_skresnext50_32x4d_fold2_fp16_tta = pd.read_csv(
-    "D:/Develop/Kaggle/Kaggle-2020-Alaska2/models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
+    "/old_models/May12_13_01_rgb_skresnext50_32x4d_fold2_fp16/best_test_predictions_flip_hv_tta.csv"
 )
 
 
