@@ -13,7 +13,7 @@ from alaska2.dataset import (
     OUTPUT_PRED_MODIFICATION_TYPE,
     INPUT_IMAGE_KEY,
     INPUT_FEATURES_ELA_KEY,
-    INPUT_FEATURES_ELA_RICH_KEY
+    INPUT_FEATURES_ELA_RICH_KEY,
 )
 
 __all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d"]
@@ -50,6 +50,7 @@ class TimmElaModel(nn.Module):
     def required_features(self):
         return [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_KEY]
 
+
 class TimmElaRichModel(nn.Module):
     def __init__(self, encoder, num_classes, dropout=0):
         super().__init__()
@@ -81,6 +82,7 @@ class TimmElaRichModel(nn.Module):
     def required_features(self):
         return [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_RICH_KEY]
 
+
 def ela_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(stem_type="deep", in_chans=6)
     del encoder.fc
@@ -94,10 +96,14 @@ def ela_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 def ela_rich_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     encoder = skresnext50_32x4d(stem_type="deep", in_chans=7)
-
     del encoder.fc
 
+    if pretrained:
+        donor = skresnext50_32x4d(pretrained=True)
+        transfer_weights(encoder, donor.state_dict())
+
     return TimmElaRichModel(encoder, num_classes=num_classes, dropout=dropout)
+
 
 def ela_tresnet_m(num_classes=4, pretrained=True, dropout=0):
     encoder = tresnet.tresnet_m(pretrained=pretrained)
