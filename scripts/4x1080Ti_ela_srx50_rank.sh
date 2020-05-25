@@ -1,7 +1,9 @@
 export KAGGLE_2020_ALASKA2=/home/bloodaxe/datasets/ALASKA2
 
-python train4.py -m ela_rich_skresnext50_32x4d -b 19 -w 8 -d 0.2 -s flat_cos -o Ranger --epochs 25 -a light\
-  --modification-flag-loss bce 1 --modification-type-loss ce 1 -lr 1e-4 --fold 1 --seed 1 --fp16\
-  --transfer /home/bloodaxe/develop/Kaggle-2020-Alaska2/models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/best.pth
+python train.py -m ela_wider_resnet38 -b 80 -w 16 -d 0.2 -s flat_cos -o Ranger --epochs 75 -a light\
+  --modification-flag-loss bce 1 --modification-type-loss ce 1 -lr 1e-3 --fold 0 --seed 0 -v --fp16
 
+
+python train4.py -m ela_wider_resnet38 -b 32 -w 16 -d 0.2 -s flat_cos -o Ranger --epochs 75 -a light\
+  --modification-flag-loss rank2 1 --modification-type-loss ce 0.1 -lr 3e-4 --fold 0 --seed 0 -v --fp16
 
