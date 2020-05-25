@@ -1,7 +1,7 @@
 import torch
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
-from pytorch_toolbelt.utils import transfer_weights
+from pytorch_toolbelt.utils import transfer_weights, fs
 from timm.models import skresnext50_32x4d, tresnet
 from timm.models import dpn
 
@@ -16,7 +16,9 @@ from alaska2.dataset import (
     INPUT_FEATURES_ELA_RICH_KEY,
 )
 
-__all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d"]
+__all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d", "ela_wider_resnet38"]
+
+from alaska2.models.backbones.wider_resnet import wider_resnet38
 
 
 class TimmElaModel(nn.Module):
@@ -108,5 +110,14 @@ def ela_rich_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 def ela_tresnet_m(num_classes=4, pretrained=True, dropout=0):
     encoder = tresnet.tresnet_m(pretrained=pretrained)
     del encoder.fc
+
+    return TimmElaModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def ela_wider_resnet38(num_classes=4, pretrained=True, dropout=0):
+    encoder = wider_resnet38(in_chans=6)
+    if pretrained:
+        checkpoint = torch.load(fs.auto_file("wide_resnet38_ipabn_lr_256.pth.tar"), map_location="cpu")
+        transfer_weights(encoder, checkpoint["state_dict"])
 
     return TimmElaModel(encoder, num_classes=num_classes, dropout=dropout)

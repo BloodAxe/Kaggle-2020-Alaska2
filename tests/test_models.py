@@ -46,6 +46,25 @@ def test_ela_s2d_skresnext50_32x4d():
 
 
 @torch.no_grad()
+def test_ela_wider_resnet38():
+    model = get_model("ela_wider_resnet38").cuda().eval()
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
+    ela = compute_ela(image)
+    blur = compute_blur_features(image)
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
+    input = {
+        INPUT_IMAGE_KEY: tensor_from_rgb_image(image).unsqueeze(0).cuda(),
+        INPUT_FEATURES_BLUR_KEY: tensor_from_rgb_image(blur).unsqueeze(0).cuda().float(),
+        INPUT_FEATURES_ELA_KEY: tensor_from_rgb_image(ela).unsqueeze(0).cuda().float(),
+    }
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
+
+@torch.no_grad()
 @pytest.mark.parametrize("model_name", MODEL_REGISTRY.keys())
 def test_models_forward(model_name):
     model = get_model(model_name).cuda().eval()
