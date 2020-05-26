@@ -53,13 +53,13 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
-    del encoder.fc
+    del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
     encoder = resnet.swsl_resnext101_32x8d(pretrained=pretrained)
-    del encoder.classifier
+    del encoder.fc
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
