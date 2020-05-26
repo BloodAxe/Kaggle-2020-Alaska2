@@ -377,8 +377,8 @@ def main():
             num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
-            shuffle=train_sampler is None,
-            sampler=train_sampler,
+            shuffle=False,
+            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
         )
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
@@ -507,8 +507,8 @@ def main():
             num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
-            shuffle=train_sampler is None,
-            sampler=train_sampler,
+            shuffle=False,
+            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
         )
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
