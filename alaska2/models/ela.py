@@ -2,7 +2,7 @@ import torch
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
 from pytorch_toolbelt.utils import transfer_weights, fs
-from timm.models import skresnext50_32x4d, tresnet
+from timm.models import skresnext50_32x4d, tresnet, resnet, res2net
 from timm.models import dpn
 
 from torch import nn
@@ -16,7 +16,7 @@ from alaska2.dataset import (
     INPUT_FEATURES_ELA_RICH_KEY,
 )
 
-__all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d", "ela_wider_resnet38"]
+__all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d", "ela_wider_resnet38", "ela_ecaresnext26tn_32x4d"]
 
 from alaska2.models.backbones.wider_resnet import wider_resnet38
 
@@ -110,6 +110,17 @@ def ela_rich_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
 def ela_tresnet_m(num_classes=4, pretrained=True, dropout=0):
     encoder = tresnet.tresnet_m(pretrained=pretrained)
     del encoder.fc
+
+    return TimmElaModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def ela_ecaresnext26tn_32x4d(num_classes=4, pretrained=True, dropout=0):
+    encoder = resnet.ecaresnext26tn_32x4d(in_chans=6)
+    del encoder.fc
+
+    if pretrained:
+        donor = resnet.ecaresnext26tn_32x4d(pretrained=True)
+        transfer_weights(encoder, donor.state_dict())
 
     return TimmElaModel(encoder, num_classes=num_classes, dropout=dropout)
 

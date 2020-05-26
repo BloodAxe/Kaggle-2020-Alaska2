@@ -37,6 +37,7 @@ MODEL_REGISTRY = {
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,
     "ela_wider_resnet38": ela.ela_wider_resnet38,
+    "ela_ecaresnext26tn_32x4d": ela.ela_ecaresnext26tn_32x4d,
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
     "ela_s2d_skresnext50_32x4d": ycrcb.ela_s2d_skresnext50_32x4d,
