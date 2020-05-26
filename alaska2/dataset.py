@@ -218,14 +218,15 @@ def compute_features(image: np.ndarray, image_fname: str, features):
         sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
 
     if INPUT_FEATURES_DCT_KEY in features:
-        dct_y, dct_cb, dct_cr = compute_dct_fast(image)
+        dct_file = np.load(fs.change_extension(image_fname, ".npz"))
+        dct_y, dct_cb, dct_cr = dct_file["dct_y"], dct_file["dct_cb"], dct_file["dct_cr"]
         sample[INPUT_FEATURES_DCT_KEY] = np.dstack([dct_y, dct_cb, dct_cr])
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
-        dct_y, dct_cb, dct_cr = compute_dct_fast(image)
-        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_y
-        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_cb
-        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_cr
+        dct_file = np.load(fs.change_extension(image_fname, ".npz"))
+        sample[INPUT_FEATURES_DCT_Y_KEY] = dct_file["dct_y"]
+        sample[INPUT_FEATURES_DCT_CB_KEY] = dct_file["dct_cb"]
+        sample[INPUT_FEATURES_DCT_CR_KEY] = dct_file["dct_cr"]
 
     if INPUT_FEATURES_CHANNEL_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))

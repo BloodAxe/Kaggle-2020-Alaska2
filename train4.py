@@ -43,6 +43,10 @@ def custom_collate(input):
         _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
         input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)
 
+    if INPUT_FEATURES_DCT_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_FEATURES_DCT_KEY].size()
+        input[INPUT_FEATURES_DCT_KEY] = input[INPUT_FEATURES_DCT_KEY].view(-1, channels, rows, cols)
+
     if INPUT_IMAGE_KEY in input:
         _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
         input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)

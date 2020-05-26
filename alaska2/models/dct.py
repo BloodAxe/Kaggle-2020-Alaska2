@@ -7,6 +7,19 @@ from alaska2.dataset import *
 __all__ = ["dct_seresnext50"]
 
 
+class SpaceToDepth(nn.Module):
+    def __init__(self, block_size=4):
+        super().__init__()
+        self.bs = block_size
+
+    def forward(self, x):
+        N, C, H, W = x.size()
+        x = x.view(N, C, H // self.bs, self.bs, W // self.bs, self.bs)  # (N, C, H//bs, bs, W//bs, bs)
+        x = x.permute(0, 3, 5, 1, 2, 4).contiguous()  # (N, bs, bs, C, H//bs, W//bs)
+        x = x.view(N, C * (self.bs ** 2), H // self.bs, W // self.bs)  # (N, C*bs^2, H//bs, W//bs)
+        return x
+
+
 class DCTModel(nn.Module):
     def __init__(self, dct_encoder: EncoderModule, num_classes: int, dropout=0):
         super().__init__()
@@ -35,7 +48,9 @@ class DCTModel(nn.Module):
 def dct_seresnext50(num_classes=4, dropout=0, pretrained=True):
     dct_encoder = SEResNeXt50Encoder(pretrained=pretrained)
     dct_encoder.layer0 = nn.Sequential(
-        OrderedDict([("conv1", nn.Conv2d(64 * 3, 64, kernel_size=1)), ("abn1", ABN(64)),])
+        OrderedDict(
+            [("s2d", SpaceToDepth(block_size=8)), ("conv1", nn.Conv2d(64 * 3, 64, kernel_size=1)), ("abn1", ABN(64))]
+        )
     )
 
     return DCTModel(dct_encoder, num_classes=num_classes, dropout=dropout)
