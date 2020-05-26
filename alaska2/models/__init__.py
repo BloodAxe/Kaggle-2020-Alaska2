@@ -13,9 +13,8 @@ from ..predict import *
 MODEL_REGISTRY = {
     # TIMM
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
-    "rgb_skresnext50_32x4d_mish": timm.rgb_skresnext50_32x4d_mish,
-    "rgb_dpn92": timm.rgb_dpn92,
-    "rgb_tresnet_m": timm.rgb_tresnet_m,
+    "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,
+    "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
