@@ -2,7 +2,7 @@ import torch
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
 from pytorch_toolbelt.utils import transfer_weights, fs
-from timm.models import skresnext50_32x4d, tresnet, resnet, res2net
+from timm.models import skresnext50_32x4d, tresnet, resnet, res2net, efficientnet
 from timm.models import dpn
 
 from torch import nn

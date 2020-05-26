@@ -20,7 +20,6 @@ from .dataset import (
 
 __all__ = ["get_augmentations", "get_obliterate_augs"]
 
-
 def get_obliterate_augs():
     """
     Get the augmentation that can obliterate the hidden signal.

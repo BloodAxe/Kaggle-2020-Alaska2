@@ -1,7 +1,7 @@
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
 from timm.models import skresnext50_32x4d
-from timm.models import dpn, tresnet
+from timm.models import dpn, tresnet, efficientnet, res2net, resnet
 
 from torch import nn
 
@@ -12,7 +12,7 @@ from alaska2.dataset import (
     INPUT_IMAGE_KEY,
 )
 
-__all__ = ["rgb_skresnext50_32x4d", "rgb_skresnext50_32x4d_mish", "rgb_dpn92", "rgb_tresnet_m"]
+__all__ = ["rgb_skresnext50_32x4d", "rgb_tf_efficientnet_b6_ns", "rgb_swsl_resnext101_32x8d"]
 
 
 class TimmRgbModel(nn.Module):
@@ -35,7 +35,6 @@ class TimmRgbModel(nn.Module):
         x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
-            OUTPUT_PRED_EMBEDDING: x,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
         }
@@ -52,22 +51,15 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def rgb_skresnext50_32x4d_mish(num_classes=4, pretrained=True, dropout=0):
-    encoder = skresnext50_32x4d(pretrained=pretrained, act_layer=Mish)
+def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
     del encoder.fc
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def rgb_tresnet_m(num_classes=4, pretrained=True, dropout=0):
-    encoder = tresnet.tresnet_m(pretrained=pretrained)
-    del encoder.fc
-
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
-def rgb_dpn92(num_classes=4, pretrained=True, dropout=0):
-    encoder = dpn.dpn92(pretrained=pretrained)
+def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
+    encoder = resnet.swsl_resnext101_32x8d(pretrained=pretrained)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
