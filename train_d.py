@@ -98,7 +98,7 @@ def main():
         print("Initializing init_process_group", args.local_rank)
 
         torch.cuda.set_device(args.local_rank)
-        torch.distributed.init_process_group(backend="nccl", init_method="env://")
+        # torch.distributed.init_process_group(backend="nccl", init_method="env://")
         print("Initialized init_process_group", args.local_rank)
 
     set_manual_seed(args.seed)
