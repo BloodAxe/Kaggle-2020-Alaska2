@@ -18,7 +18,6 @@ from alaska2.dataset import (
 
 __all__ = ["ela_skresnext50_32x4d", "ela_rich_skresnext50_32x4d", "ela_wider_resnet38", "ela_ecaresnext26tn_32x4d"]
 
-from alaska2.models.backbones.wider_resnet import wider_resnet38
 
 
 class TimmElaModel(nn.Module):
@@ -126,6 +125,8 @@ def ela_ecaresnext26tn_32x4d(num_classes=4, pretrained=True, dropout=0):
 
 
 def ela_wider_resnet38(num_classes=4, pretrained=True, dropout=0):
+    from alaska2.models.backbones.wider_resnet import wider_resnet38
+
     encoder = wider_resnet38(in_chans=6)
     if pretrained:
         checkpoint = torch.load(fs.auto_file("wide_resnet38_ipabn_lr_256.pth.tar"), map_location="cpu")

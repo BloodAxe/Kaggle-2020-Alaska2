@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch.optim import SGD, Optimizer
 
 from alaska2 import *
+from alaska2.models.dct import dct_seresnext50
 from alaska2.models.hpf_net import HPFNet
 from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
 
@@ -58,6 +59,21 @@ def test_ela_wider_resnet38():
         INPUT_FEATURES_BLUR_KEY: tensor_from_rgb_image(blur).unsqueeze(0).cuda().float(),
         INPUT_FEATURES_ELA_KEY: tensor_from_rgb_image(ela).unsqueeze(0).cuda().float(),
     }
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
+
+@torch.no_grad()
+def test_dct_seresnext50():
+    model = dct_seresnext50().cuda()
+
+    input = {
+        INPUT_FEATURES_DCT_KEY: torch.randn((2, 64 * 3, 512 // 8, 512 // 8)).cuda(),
+    }
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
 
     output = model(**input)
     for output_name, output_value in output.items():
