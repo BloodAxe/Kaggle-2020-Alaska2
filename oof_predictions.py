@@ -7,8 +7,13 @@ from collections import defaultdict
 from catalyst.utils import any2device
 from pytorch_toolbelt.utils import to_numpy, fs
 from pytorch_toolbelt.utils.catalyst import report_checkpoint
+
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", FutureWarning)
+
 import argparse
 import os
+
 import pandas as pd
 import numpy as np
 from torch import nn
@@ -70,7 +75,7 @@ def main():
     for checkpoint_fname in checkpoint_fnames:
 
         model, checkpoints, required_features = ensemble_from_checkpoints(
-            [checkpoint_fname], strict=True, outputs=outputs, activation=None, tta=None, temperature=1
+            [checkpoint_fname], strict=True, outputs=outputs, activation=None, tta=None
         )
 
         report_checkpoint(checkpoints[0])
@@ -85,12 +90,6 @@ def main():
 
         oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
         oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
-        oof_predictions.to_csv(oof_predictions_csv, index=False)
-
-        tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-
-        oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
-        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
         oof_predictions.to_csv(oof_predictions_csv, index=False)
 
 

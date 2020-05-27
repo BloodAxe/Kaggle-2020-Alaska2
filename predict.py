@@ -1,6 +1,9 @@
 import warnings
-from collections import defaultdict
 
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", FutureWarning)
+
+from collections import defaultdict
 from catalyst.utils import any2device
 from pytorch_toolbelt.utils import to_numpy, fs
 from pytorch_toolbelt.utils.catalyst import report_checkpoint
