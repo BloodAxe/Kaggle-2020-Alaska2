@@ -230,6 +230,7 @@ def main():
             mixup=False,
             cutmix=False,
             tsa=False,
+            distributed=True,
         )
 
         callbacks = (
@@ -262,7 +263,15 @@ def main():
             collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds,
+            batch_size=valid_batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            drop_last=False,
+            shuffle=False,
+            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+        )
 
         optimizer = get_optimizer("RAdam", get_optimizable_parameters(model), learning_rate=learning_rate)
         scheduler = None
@@ -350,6 +359,7 @@ def main():
             mixup=mixup,
             cutmix=cutmix,
             tsa=tsa,
+            distributed=True,
         )
 
         callbacks = (
@@ -381,7 +391,15 @@ def main():
             sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds,
+            batch_size=valid_batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            drop_last=False,
+            shuffle=False,
+            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+        )
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)
@@ -480,6 +498,7 @@ def main():
             mixup=False,
             cutmix=False,
             tsa=False,
+            distributed=True,
         )
 
         callbacks = (
@@ -511,7 +530,15 @@ def main():
             sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(
+            valid_ds,
+            batch_size=valid_batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            drop_last=False,
+            shuffle=False,
+            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+        )
 
         print("Train session    :", checkpoint_prefix)
         print("  FP16 mode      :", fp16)

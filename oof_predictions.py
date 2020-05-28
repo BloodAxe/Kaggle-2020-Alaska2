@@ -92,6 +92,16 @@ def main():
         oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
         oof_predictions.to_csv(oof_predictions_csv, index=False)
 
+        tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+        oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
+        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
+        oof_predictions.to_csv(oof_predictions_csv, index=False)
+
+        tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+        oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
+        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
+        oof_predictions.to_csv(oof_predictions_csv, index=False)
+
 
 if __name__ == "__main__":
     main()

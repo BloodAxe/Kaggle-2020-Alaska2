@@ -17,6 +17,8 @@ __all__ = [
     "embedding_to_probas",
 ]
 
+from alaska2 import du
+
 
 def alaska_weighted_auc(y_true, y_pred):
     try:
@@ -70,7 +72,7 @@ def embedding_to_probas(x: torch.Tensor):
 
 
 class CompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc"):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc", distributed=False):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.input_key = input_key
@@ -78,6 +80,7 @@ class CompetitionMetricCallback(Callback):
         self.true_labels = []
         self.pred_labels = []
         self.output_activation = output_activation
+        self.distributed = distributed
 
     def on_loader_start(self, state: RunnerState):
         self.true_labels = []
@@ -92,6 +95,14 @@ class CompetitionMetricCallback(Callback):
     def on_loader_end(self, state: RunnerState):
         true_labels = np.array(self.true_labels)
         pred_labels = np.array(self.pred_labels)
+
+        if self.distributed:
+            true_labels = du.all_gather(true_labels)
+            true_labels = np.concatenate(true_labels)
+
+            pred_labels = du.all_gather(pred_labels)
+            pred_labels = np.concatenate(pred_labels)
+
         score = alaska_weighted_auc(true_labels, pred_labels)
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
 

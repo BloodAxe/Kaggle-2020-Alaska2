@@ -408,6 +408,7 @@ def get_criterions(
     mixup=False,
     cutmix=False,
     tsa=False,
+    distributed=False,
 ):
     criterions_dict = {}
     callbacks = []
@@ -430,6 +431,7 @@ def get_criterions(
                 output_key=OUTPUT_PRED_MODIFICATION_FLAG,
                 prefix="auc",
                 output_activation=binary_logits_to_probas,
+                distributed=distributed,
             ),
             OutputDistributionCallback(
                 input_key=INPUT_TRUE_MODIFICATION_FLAG,
@@ -481,6 +483,7 @@ def get_criterions(
                 output_key=OUTPUT_PRED_MODIFICATION_TYPE,
                 output_activation=classifier_logits_to_probas,
                 prefix="auc_classifier",
+                distributed=distributed,
             ),
             OutputDistributionCallback(
                 input_key=INPUT_TRUE_MODIFICATION_FLAG,
@@ -553,6 +556,7 @@ def get_criterions(
                     output_key=OUTPUT_PRED_EMBEDDING,
                     prefix="auc_embedding",
                     output_activation=embedding_to_probas,
+                    distributed=distributed,
                 ),
             ]
 
