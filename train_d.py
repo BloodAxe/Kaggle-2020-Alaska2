@@ -270,7 +270,7 @@ def main():
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+            sampler=DistributedSampler(valid_ds, args.world_size, args.local_rank),
         )
 
         optimizer = get_optimizer("RAdam", get_optimizable_parameters(model), learning_rate=learning_rate)
@@ -398,7 +398,7 @@ def main():
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+            sampler=DistributedSampler(valid_ds, args.world_size, args.local_rank),
         )
 
         print("Train session    :", checkpoint_prefix)
@@ -537,7 +537,7 @@ def main():
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
+            sampler=DistributedSampler(valid_ds, args.world_size, args.local_rank),
         )
 
         print("Train session    :", checkpoint_prefix)
