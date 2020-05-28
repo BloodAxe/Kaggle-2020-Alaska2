@@ -35,3 +35,10 @@
 | May18_20_10_ycrcb_skresnext50_32x4d_fold0_fp16 | ycrcb_skresnext50_32x4d | 0    | 8266 | 8271 | 55.34 | 
 |------------------------------------------------|-------------------------|------|------|------|-------|-------|-------|-------|
 | 
+
+# ela_skresnext50_32x4d
+
+Average of 4 folds (best loss): 
+Average of 4 folds (best auc b): 
+Average of 4 folds (best auc c): 
+Average of 4 folds (average of all 3): 

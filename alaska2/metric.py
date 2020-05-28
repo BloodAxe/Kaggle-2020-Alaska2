@@ -39,10 +39,16 @@ def alaska_weighted_auc(y_true, y_pred):
             y_max = tpr_thresholds[idx + 1]
             mask = (y_min < tpr) & (tpr < y_max)
 
-            x_padding = np.linspace(fpr[mask][-1], 1, 100)
+            if mask.any():
+                x_padding = np.linspace(fpr[mask][-1], 1, 100)
 
-            x = np.concatenate([fpr[mask], x_padding])
-            y = np.concatenate([tpr[mask], [y_max] * len(x_padding)])
+                x = np.concatenate([fpr[mask], x_padding])
+                y = np.concatenate([tpr[mask], [y_max] * len(x_padding)])
+            else:
+                x_padding = np.arange(1, 100)
+                x = np.concatenate([x_padding])
+                y = np.concatenate([[y_max] * len(x_padding)])
+
             y = y - y_min  # normalize such that curve starts at y=0
             score = metrics.auc(x, y)
             submetric = score * weight
