@@ -475,8 +475,8 @@ def get_datasets(
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
         if fast:
-            train_images = train_images[::10]
-            valid_images = valid_images[::10]
+            train_images = train_images[::50]
+            valid_images = valid_images[::50]
 
         train_x = train_images.copy()
         train_y = [0] * len(train_images)
