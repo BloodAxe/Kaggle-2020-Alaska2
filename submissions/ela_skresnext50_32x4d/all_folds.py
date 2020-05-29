@@ -127,6 +127,13 @@ best_loss = [
     "models/May26_12_58_ela_skresnext50_32x4d_fold3_fp16/main/checkpoints/best_test_predictions.csv",
 ]
 
+best_loss_d4 = [
+    "models/May24_11_08_ela_skresnext50_32x4d_fold0_fp16/main/checkpoints/best_test_predictions_d4_tta.csv",
+    "models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/main/checkpoints/best_test_predictions_d4_tta.csv",
+    "models/May21_13_28_ela_skresnext50_32x4d_fold2_fp16/main/checkpoints/best_test_predictions_d4_tta.csv",
+    "models/May26_12_58_ela_skresnext50_32x4d_fold3_fp16/main/checkpoints/best_test_predictions_d4_tta.csv",
+]
+
 best_loss_oof = [
     "models/May24_11_08_ela_skresnext50_32x4d_fold0_fp16/main/checkpoints/best_oof_predictions.csv",
     "models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/main/checkpoints/best_oof_predictions.csv",
@@ -156,6 +163,20 @@ best_auc_c = [
     "models/May26_12_58_ela_skresnext50_32x4d_fold3_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
 ]
 
+best_auc_c_hv = [
+    "models/May24_11_08_ela_skresnext50_32x4d_fold0_fp16/main/checkpoints_auc_classifier/best_test_predictions_flip_hv_tta.csv",
+    "models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/main/checkpoints_auc_classifier/best_test_predictions_flip_hv_tta.csv",
+    "models/May21_13_28_ela_skresnext50_32x4d_fold2_fp16/main/checkpoints_auc_classifier/best_test_predictions_flip_hv_tta.csv",
+    "models/May26_12_58_ela_skresnext50_32x4d_fold3_fp16/main/checkpoints_auc_classifier/best_test_predictions_flip_hv_tta.csv",
+]
+
+best_auc_c_d4 = [
+    "models/May24_11_08_ela_skresnext50_32x4d_fold0_fp16/main/checkpoints_auc_classifier/best_test_predictions_d4_tta.csv",
+    "models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/main/checkpoints_auc_classifier/best_test_predictions_d4_tta.csv",
+    "models/May21_13_28_ela_skresnext50_32x4d_fold2_fp16/main/checkpoints_auc_classifier/best_test_predictions_d4_tta.csv",
+    "models/May26_12_58_ela_skresnext50_32x4d_fold3_fp16/main/checkpoints_auc_classifier/best_test_predictions_d4_tta.csv",
+]
+
 best_auc_c_oof = [
     "models/May24_11_08_ela_skresnext50_32x4d_fold0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
     "models/May15_17_03_ela_skresnext50_32x4d_fold1_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
@@ -179,4 +200,25 @@ submit_from_average_classifier(best_auc_c).to_csv(
 
 submit_from_classifier_calibrated(best_auc_c, best_auc_c_oof).to_csv(
     os.path.join(output_dir, "ela_skresnext50_32x4d_fold0123_best_auc_c_calibrated.csv"), index=None
+)
+
+submit_from_average_classifier(best_auc_c_d4).to_csv(
+    os.path.join(output_dir, "ela_skresnext50_32x4d_fold0123_best_auc_c_d4_tta.csv"), index=None
+)
+
+submit_from_average_classifier(best_auc_c_hv).to_csv(
+    os.path.join(output_dir, "ela_skresnext50_32x4d_fold0123_best_auc_c_hv_tta.csv"), index=None
+)
+submit_from_classifier_calibrated(best_auc_c_d4, best_auc_c_oof).to_csv(
+    os.path.join(output_dir, "ela_skresnext50_32x4d_fold0123_best_auc_c_d4_tta_calibrated.csv"), index=None
+)
+
+# Fold 3
+
+submit_from_average_classifier([best_loss[3]]).to_csv(
+    os.path.join(output_dir, "ela_skresnext50_32x4d_fold3_best_loss_classifier.csv"), index=None
+)
+
+submit_from_average_classifier([best_auc_c_d4[3]]).to_csv(
+    os.path.join(output_dir, "ela_skresnext50_32x4d_fold3_best_auc_classifier.csv"), index=None
 )
