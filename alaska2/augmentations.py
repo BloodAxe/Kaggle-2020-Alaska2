@@ -20,6 +20,7 @@ from .dataset import (
 
 __all__ = ["get_augmentations", "get_obliterate_augs"]
 
+
 def get_obliterate_augs():
     """
     Get the augmentation that can obliterate the hidden signal.
@@ -82,15 +83,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                 maybe_crop,
                 A.RandomRotate90(p=1.0),
                 A.Transpose(p=0.5),
-                A.OneOf(
-                    [
-                        A.RandomGridShuffle(grid=(2, 2)),
-                        A.RandomGridShuffle(grid=(3, 3)),
-                        A.RandomGridShuffle(grid=(4, 4)),
-                    ],
-                    p=0.1,
-                ),
-                A.CoarseDropout(max_holes=1, min_height=128, max_height=256, min_width=128, max_width=256, p=0.1),
+                A.CoarseDropout(max_holes=1, min_height=32, max_height=256, min_width=32, max_width=256, p=0.2),
             ],
             additional_targets=additional_targets,
         )
@@ -109,7 +102,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
                     ],
                     p=0.1,
                 ),
-                A.CoarseDropout(max_holes=1, min_height=128, max_height=256, min_width=128, max_width=256, p=0.1),
+                A.CoarseDropout(max_holes=1, min_height=32, max_height=256, min_width=32, max_width=256, p=0.2),
             ],
             additional_targets=additional_targets,
         )
