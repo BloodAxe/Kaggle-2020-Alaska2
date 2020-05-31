@@ -150,36 +150,6 @@ class DCTModel(nn.Module):
 
 
 
-class DCTModelV2(nn.Module):
-    def __init__(self, dct_encoder: EncoderModule, num_classes: int, dropout=0):
-        super().__init__()
-        self.s2d = SpaceToDepth(block_size=8)
-        self.dct_norm = DCTNormalize()
-        self.encoder = dct_encoder
-        self.pool = GlobalAvgPool2d(flatten=True)
-        self.dropout = nn.Dropout(dropout)
-
-        self.type_classifier = nn.Linear(dct_encoder.channels[-1], num_classes)
-        self.flag_classifier = nn.Linear(dct_encoder.channels[-1], 1)
-
-    def forward(self, **kwargs):
-        dct = kwargs[INPUT_FEATURES_DCT_KEY].float()
-        dct = self.s2d(dct)
-        dct = self.dct_norm(dct)
-        # print(dct.mean(dim=(0, 2, 3)), dct.std(dim=(0, 2, 3)))
-        features = self.encoder(dct)
-        x = self.pool(features[-1])
-
-        return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.dropout(x)),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.dropout(x)),
-        }
-
-    @property
-    def required_features(self):
-        return [INPUT_FEATURES_DCT_KEY]
-
-
 class SRNetEncoder(nn.Module):
     def __init__(self, in_chanels):
         super(SRNetEncoder, self).__init__()
