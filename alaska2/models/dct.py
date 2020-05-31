@@ -315,9 +315,13 @@ class SRNetEncoder(nn.Module):
 def dct_seresnext50(num_classes=4, dropout=0, pretrained=True):
     dct_encoder = SEResNeXt50Encoder(pretrained=pretrained)
     dct_encoder.layer0 = nn.Sequential(
-        OrderedDict([("conv1", nn.Conv2d(64 * 3, 64, kernel_size=1)), ("abn1", ABN(64))])
+        OrderedDict([("conv1", nn.Conv2d(64 * 3, 64, kernel_size=1)),
+                     ("abn1", ABN(64)),
+                     ("conv2", nn.Conv2d(64, 64, kernel_size=1)),
+                     ("abn2", ABN(64)),
+                     ])
     )
-
+    dct_encoder.maxpool = nn.Identity()
     return DCTModel(dct_encoder, num_classes=num_classes, dropout=dropout)
 
 
