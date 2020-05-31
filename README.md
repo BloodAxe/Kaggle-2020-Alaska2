@@ -12,6 +12,11 @@
 3. https://github.com/Steganalysis-CNN/residual-steganalysis/blob/master/init/res_finetune_test.m
 4. https://github.com/yedmed/steganalysis_with_CNN_Yedroudj-Net/blob/master/pytorch_version/Covariance_Pooling_Steganalytic_Network_cat.py
 
+https://github.com/facebookresearch/detr/tree/master/models
+https://www.youtube.com/watch?v=v8U9mM1Vwv0
+https://github.com/mahyarnajibi/FreeAdversarialTraining/blob/master/configs.yml
+https://github.com/TAMU-VITA/Adv-SS-Pretraining/tree/master/pretraining
+
 # Models
 
 |Experiment Name                               | Model                  | Fold | bAUC | cAUC | Acc01 | LB    | LB (Flip) | LB (D4) |

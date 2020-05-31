@@ -20,6 +20,20 @@ def test_batched_ds():
     sample = train_ds[0]
     sample = train_ds[len(train_ds) - 1]
 
+def test_dct_flip():
+    image_fname = os.path.join(TEST_DATA_DIR, "Cover", "00002.jpg")
+    image = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE)
+
+    image = image[256:256+8, 256:256+8] / 255.
+    image_lr = np.fliplr(image)
+    image_ud = np.flipud(image)
+    dct88 = cv2.dct(image )
+    dct88_lr = cv2.dct(image_lr)
+    dct88_ud = cv2.dct(image_ud)
+
+    d_lr = dct88 / dct88_lr
+    d_ud = dct88 / dct88_ud
+    print(image)
 
 def test_dct():
     import jpegio as jpio
