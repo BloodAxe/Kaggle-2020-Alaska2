@@ -1,3 +1,6 @@
+import argparse
+import os
+
 import numpy as np
 import cv2
 import torch
@@ -110,14 +113,30 @@ def compute_mean_std(dataset):
 
 
 def main():
-    dataset = fs.find_images_in_dir("d:\\datasets\\ALASKA2\\Cover")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
+
+    args = parser.parse_args()
+    data_dir = args.data_dir
+
+    cover = os.path.join(data_dir, "Cover")
+    JMiPOD = os.path.join(data_dir, "JMiPOD")
+    JUNIWARD = os.path.join(data_dir, "JUNIWARD")
+    UERD = os.path.join(data_dir, "UERD")
+
+    dataset = (
+        fs.find_images_in_dir(cover)
+        + fs.find_images_in_dir(JMiPOD)
+        + fs.find_images_in_dir(JUNIWARD)
+        + fs.find_images_in_dir(UERD)
+    )
     # dataset = dataset[:500]
 
     mean, std = compute_mean_std(tqdm(dataset))
     print(mean.size())
     print(std.size())
-    print("Mean", to_numpy(mean))
-    print("Std", to_numpy(std))
+    print("Mean", np.array2string(to_numpy(mean), precision=2, separator=",", max_line_width=119))
+    print("Std ", np.array2string(to_numpy(std), precision=2, separator=",", max_line_width=119))
 
 
 if __name__ == "__main__":
