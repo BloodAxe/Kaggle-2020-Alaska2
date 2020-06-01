@@ -39,7 +39,8 @@ https://github.com/TAMU-VITA/Adv-SS-Pretraining/tree/master/pretraining
 |------------------------------------------------|-------------------------|------|------|------|-------|-------|-------|-------|
 | May18_20_10_ycrcb_skresnext50_32x4d_fold0_fp16 | ycrcb_skresnext50_32x4d | 0    | 8266 | 8271 | 55.34 | 
 |------------------------------------------------|-------------------------|------|------|------|-------|-------|-------|-------|
-| 
+| May28_13_04_rgb_tf_efficientnet_b6_ns_fold0    | rgb_tf_efficientnet_b6  | 0    |      |      |       | 0.917 |
+| May28_18_49_rgb_tf_efficientnet_b6_ns_fold1    | rgb_tf_efficientnet_b6  | 1    |      |      |       | 0.923
 
 # ela_skresnext50_32x4d
 

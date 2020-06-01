@@ -5,10 +5,11 @@ import pytest, os, cv2
 import numpy as np
 import torch
 
+from alaska2.augmentations import dct_rot90_block, dct_rot90, dct_transpose, dct_transpose_block
 from alaska2.dataset import *
 import matplotlib.pyplot as plt
 
-from alaska2.dataset import compute_dct_fast, compute_dct_slow, idct8v2
+from alaska2.dataset import compute_dct_fast, compute_dct_slow, idct8v2, dct2spatial, dct2channels_last
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
@@ -20,20 +21,113 @@ def test_batched_ds():
     sample = train_ds[0]
     sample = train_ds[len(train_ds) - 1]
 
-def test_dct_flip():
+
+import matplotlib.pyplot as plt
+
+
+def test_dct_rot90():
     image_fname = os.path.join(TEST_DATA_DIR, "Cover", "00002.jpg")
-    image = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE)
+    image_0 = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE) / 255.0
 
-    image = image[256:256+8, 256:256+8] / 255.
-    image_lr = np.fliplr(image)
-    image_ud = np.flipud(image)
-    dct88 = cv2.dct(image )
-    dct88_lr = cv2.dct(image_lr)
-    dct88_ud = cv2.dct(image_ud)
+    f, ax = plt.subplots(1, 2)
+    ax[0].imshow(image_0, cmap="gray")
+    ax[1].imshow(idct8(dct2channels_last(dct2spatial(dct8(image_0)))), cmap="gray")
+    plt.show()
 
-    d_lr = dct88 / dct88_lr
-    d_ud = dct88 / dct88_ud
-    print(image)
+    # dct_cv = dct2spatial(dct8(image_0))
+    # dct_cv = np.dstack([dct_cv, dct_cv, dct_cv])
+    dct_cv = compute_features(None, image_fname, [INPUT_FEATURES_DCT_KEY])[INPUT_FEATURES_DCT_KEY]
+
+    image_0 = image_0[256 : 256 + 8, 256 : 256 + 8]
+    image_1 = np.rot90(image_0, 1)
+    image_2 = np.rot90(image_0, 2)
+    image_3 = np.rot90(image_0, 3)
+
+    expected_dct88_0 = cv2.dct(image_0)
+    expected_dct88_1 = cv2.dct(image_1)
+    expected_dct88_2 = cv2.dct(image_2)
+    expected_dct88_3 = cv2.dct(image_3)
+
+    actual_dct88_0 = dct_rot90_block(expected_dct88_0, 0)
+    actual_dct88_1 = dct_rot90_block(expected_dct88_0, 1)
+    actual_dct88_2 = dct_rot90_block(expected_dct88_0, 2)
+    actual_dct88_3 = dct_rot90_block(expected_dct88_0, 3)
+    f, ax = plt.subplots(3, 4)
+    ax[0, 0].imshow(image_0)
+    ax[0, 1].imshow(image_1)
+    ax[0, 2].imshow(image_2)
+    ax[0, 3].imshow(image_3)
+    ax[1, 0].imshow(cv2.idct(expected_dct88_0))
+    ax[1, 1].imshow(cv2.idct(expected_dct88_1))
+    ax[1, 2].imshow(cv2.idct(expected_dct88_2))
+    ax[1, 3].imshow(cv2.idct(expected_dct88_3))
+
+    ax[2, 0].imshow(cv2.idct(actual_dct88_0))
+    ax[2, 1].imshow(cv2.idct(actual_dct88_1))
+    ax[2, 2].imshow(cv2.idct(actual_dct88_2))
+    ax[2, 3].imshow(cv2.idct(actual_dct88_3))
+    f.show()
+
+    # dct_000 = dct_rot90(dct, 1)
+    dct_1 = dct_rot90(dct_cv, 0)
+    dct_2 = dct_rot90(dct_cv, 1)
+    dct_3 = dct_rot90(dct_cv, 2)
+    dct_4 = dct_rot90(dct_cv, 3)
+
+    f, ax = plt.subplots(2, 2, figsize=(16, 16))
+    ax[0, 0].imshow(idct8(dct2channels_last(dct_1[..., 0])), cmap="gray")
+    ax[0, 0].axis("off")
+    ax[0, 1].imshow(idct8(dct2channels_last(dct_2[..., 0])), cmap="gray")
+    ax[0, 1].axis("off")
+    ax[1, 0].imshow(idct8(dct2channels_last(dct_3[..., 0])), cmap="gray")
+    ax[1, 0].axis("off")
+    ax[1, 1].imshow(idct8(dct2channels_last(dct_4[..., 0])), cmap="gray")
+    ax[1, 1].axis("off")
+    f.show()
+
+
+def test_dct_transpose():
+    image_fname = os.path.join(TEST_DATA_DIR, "Cover", "00002.jpg")
+    image_0 = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE) / 255.0
+
+    f, ax = plt.subplots(1, 2)
+    ax[0].imshow(image_0, cmap="gray")
+    ax[1].imshow(idct8(dct2channels_last(dct2spatial(dct8(image_0)))), cmap="gray")
+    plt.show()
+
+    # dct_cv = dct2spatial(dct8(image_0))
+    # dct_cv = np.dstack([dct_cv, dct_cv, dct_cv])
+    dct_cv = compute_features(None, image_fname, [INPUT_FEATURES_DCT_KEY])[INPUT_FEATURES_DCT_KEY]
+
+    image_0 = image_0[256 : 256 + 8, 256 : 256 + 8]
+    image_1 = np.transpose(image_0)
+
+    expected_dct88_0 = cv2.dct(image_0)
+    expected_dct88_1 = cv2.dct(image_1)
+
+    actual_dct88_1 = dct_transpose_block(expected_dct88_0)
+    f, ax = plt.subplots(3, 2)
+    ax[0, 0].imshow(image_0)
+    ax[0, 1].imshow(image_1)
+
+    ax[1, 0].imshow(cv2.idct(expected_dct88_0))
+    ax[1, 1].imshow(cv2.idct(expected_dct88_1))
+
+    ax[2, 0].imshow(cv2.idct(expected_dct88_0))
+    ax[2, 1].imshow(cv2.idct(actual_dct88_1))
+    f.show()
+
+    # dct_000 = dct_rot90(dct, 1)
+    dct_1 = dct_cv
+    dct_2 = dct_transpose(dct_cv)
+
+    f, ax = plt.subplots(1, 2, figsize=(16, 8))
+    ax[0].imshow(idct8(dct2channels_last(dct_1[..., 0])), cmap="gray")
+    ax[0].axis("off")
+    ax[1].imshow(idct8(dct2channels_last(dct_2[..., 0])), cmap="gray")
+    ax[1].axis("off")
+    f.show()
+
 
 def test_dct():
     import jpegio as jpio

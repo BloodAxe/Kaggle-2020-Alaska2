@@ -116,15 +116,44 @@ def compute_dct_slow(jpeg_file):
     image = cv2.imread(jpeg_file)
     ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCR_CB)
     y, cr, cb = cv2.split(ycrcb)
-    cr = cv2.pyrDown(cr)
-    cb = cv2.pyrDown(cb)
     return dct8(y), dct8(cr), dct8(cb)
+
+
+def dct2channels_last(image):
+    """
+    Rearrange DCT image from [H,W] to [H//8, W//8, 64]
+    """
+    assert len(image.shape) == 2, f"{image.shape}"
+    assert image.shape[0] % 8 == 0, f"{image.shape}"
+    assert image.shape[1] % 8 == 0, f"{image.shape}"
+
+    block_view = (image.shape[0] // 8, 8, image.shape[1] // 8, 8)
+    dct_shape = (image.shape[0] // 8, image.shape[1] // 8, 64)
+    block_permute = 0, 2, 1, 3
+
+    result = image.reshape(block_view).transpose(*block_permute).reshape(dct_shape)
+    return result
+
+
+def dct2spatial(image):
+    """
+    Rearrange DCT image from [H//8, W//8, 64] to [H,W]
+    """
+    assert image.shape[2] == 64
+
+    block_view = (image.shape[0], image.shape[1], 8, 8)
+    image_shape = (image.shape[0] * 8, image.shape[1] * 8)
+    block_permute = 0, 2, 1, 3
+
+    result = image.reshape(block_view).transpose(*block_permute).reshape(image_shape)
+    return result
 
 
 def dct8(image):
     assert image.shape[0] % 8 == 0
     assert image.shape[1] % 8 == 0
-    dct_image = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 64), dtype=np.float32)
+    dct_shape = (image.shape[0] // 8, image.shape[1] // 8, 64)
+    dct_image = np.zeros(dct_shape, dtype=np.float32)
 
     one_over_255 = np.float32(1.0 / 255.0)
     image = image * one_over_255
@@ -138,12 +167,13 @@ def dct8(image):
 
 
 def idct8(dct):
-    dct_image = np.zeros((dct.shape[0] * 8, dct.shape[1] * 8, 1), dtype=np.float32)
+    assert dct.shape[2] == 64
+    dct_image = np.zeros((dct.shape[0] * 8, dct.shape[1] * 8), dtype=np.float32)
 
     for i in range(0, dct.shape[0]):
         for j in range(0, dct.shape[1]):
             img = DCTMTX.T @ dct[i, j].reshape((8, 8)) @ DCTMTX
-            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
+            dct_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8] = img
 
     return dct_image
 

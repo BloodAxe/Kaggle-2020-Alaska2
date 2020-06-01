@@ -16,9 +16,171 @@ from .dataset import (
     INPUT_FEATURES_CHANNEL_CR_KEY,
     INPUT_FEATURES_CHANNEL_CB_KEY,
     INPUT_FEATURES_CHANNEL_Y_KEY,
+    dct2channels_last,
+    dct2spatial,
 )
 
-__all__ = ["get_augmentations", "get_obliterate_augs"]
+__all__ = [
+    "get_augmentations",
+    "get_obliterate_augs",
+    "DctTranspose",
+    "DctRandomRotate90",
+    "dct_transpose",
+    "dct_rot90",
+]
+
+
+def change_even_rows_sign(dct_block):
+    mask = np.ones_like(dct_block)
+    mask[1::2, :] = -1
+    return dct_block * mask
+
+
+def change_even_cols_sign(dct_block):
+    mask = np.ones_like(dct_block)
+    mask[:, 1::2] = -1
+    return dct_block * mask
+
+
+def dct_transpose_block(dct_block: np.ndarray) -> np.ndarray:
+    result = dct_block.transpose(1, 0)
+    return result
+
+
+def dct_rot90_block(dct_block: np.ndarray, k: int) -> np.ndarray:
+    assert 0 <= k < 4
+    if k == 1:
+        dct_block = change_even_cols_sign(dct_block)
+        dct_block = np.ascontiguousarray(np.transpose(dct_block))
+
+    if k == 2:
+        dct_block = change_even_cols_sign(dct_block)
+        dct_block = change_even_rows_sign(dct_block)
+
+    if k == 3:
+        dct_block = change_even_rows_sign(dct_block)
+        dct_block = np.ascontiguousarray(np.transpose(dct_block))
+
+    return dct_block
+
+
+def dct_rot90(dct_image: np.ndarray, k: int) -> np.ndarray:
+    if k == 0:
+        return dct_image
+
+    # Extract image planes
+    y, cb, cr = dct_image[..., 0], dct_image[..., 1], dct_image[..., 2]
+
+    # Reshape & permute to get [H//8, W//8, 64]
+    y = dct2channels_last(y)
+    cb = dct2channels_last(cb)
+    cr = dct2channels_last(cr)
+
+    # Now do spatial rotation of all 8x8 blocks
+    y = np.rot90(y, k)
+    cb = np.rot90(cb, k)
+    cr = np.rot90(cr, k)
+
+    # Now rotate each dct block individually
+    for i in range(y.shape[0]):
+        for j in range(y.shape[1]):
+            y[i, j] = dct_rot90_block(y[i, j].reshape((8, 8)), k).flatten()
+            cb[i, j] = dct_rot90_block(cb[i, j].reshape((8, 8)), k).flatten()
+            cr[i, j] = dct_rot90_block(cr[i, j].reshape((8, 8)), k).flatten()
+
+    # Now reshape & permute back to 512x512 size
+    y = dct2spatial(y)
+    cb = dct2spatial(cb)
+    cr = dct2spatial(cr)
+    return np.dstack([y, cb, cr])
+
+
+def dct_transpose(dct_image: np.ndarray) -> np.ndarray:
+    # Extract image planes
+    y, cb, cr = dct_image[..., 0], dct_image[..., 1], dct_image[..., 2]
+
+    # Reshape & permute to get [H//8, W//8, 64]
+    y = dct2channels_last(y)
+    cb = dct2channels_last(cb)
+    cr = dct2channels_last(cr)
+
+    # Now do spatial transpose of all 8x8 blocks
+    y = y.transpose(1, 0, 2)
+    cb = cb.transpose(1, 0, 2)
+    cr = cr.transpose(1, 0, 2)
+
+    # Now rotate each dct block individually
+    for i in range(y.shape[0]):
+        for j in range(y.shape[1]):
+            y[i, j] = dct_transpose_block(y[i, j].reshape((8, 8))).flatten()
+            cb[i, j] = dct_transpose_block(cb[i, j].reshape((8, 8))).flatten()
+            cr[i, j] = dct_transpose_block(cr[i, j].reshape((8, 8))).flatten()
+
+    # Now reshape & permute back to 512x512 size
+    y = dct2spatial(y)
+    cb = dct2spatial(cb)
+    cr = dct2spatial(cr)
+    return np.dstack([y, cb, cr])
+
+
+class DctRandomRotate90(A.RandomRotate90):
+    """Randomly rotate the input by 90 degrees zero or more times.
+
+    Args:
+        p (float): probability of applying the transform. Default: 0.5.
+
+    Targets:
+        image, mask, bboxes, keypoints
+
+    Image types:
+        uint8, float32
+    """
+
+    @property
+    def targets(self):
+        return {
+            "image": self.apply,
+            "mask": self.apply_to_mask,
+            "masks": self.apply_to_masks,
+            "bboxes": self.apply_to_bboxes,
+            "keypoints": self.apply_to_keypoints,
+            "input_dct": self.apply_dct,
+        }
+
+    def apply_dct(self, img, factor=0, **params):
+        """
+        Args:
+            factor (int): number of times the input will be rotated by 90 degrees.
+        """
+        return dct_rot90(img, factor)
+
+
+class DctTranspose(A.Transpose):
+    """Transpose the input by swapping rows and columns.
+
+    Args:
+        p (float): probability of applying the transform. Default: 0.5.
+
+    Targets:
+        image, mask, bboxes, keypoints
+
+    Image types:
+        uint8, float32
+    """
+
+    def apply_dct(self, img, **params):
+        return dct_transpose(img)
+
+    @property
+    def targets(self):
+        return {
+            "image": self.apply,
+            "mask": self.apply_to_mask,
+            "masks": self.apply_to_masks,
+            "bboxes": self.apply_to_bboxes,
+            "keypoints": self.apply_to_keypoints,
+            "input_dct": self.apply_dct,
+        }
 
 
 def get_obliterate_augs():
@@ -71,8 +233,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
             [
                 maybe_crop,
                 # D4
-                A.RandomRotate90(p=1.0),
-                A.Transpose(p=0.5),
+                DctRandomRotate90(p=1.0),
+                DctTranspose(p=0.5),
             ],
             additional_targets=additional_targets,
         )
@@ -81,8 +243,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         return A.ReplayCompose(
             [
                 maybe_crop,
-                A.RandomRotate90(p=1.0),
-                A.Transpose(p=0.5),
+                DctRandomRotate90(p=1.0),
+                DctTranspose(p=0.5),
                 A.CoarseDropout(max_holes=1, min_height=32, max_height=256, min_width=32, max_width=256, p=0.2),
             ],
             additional_targets=additional_targets,
@@ -92,8 +254,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         return A.ReplayCompose(
             [
                 maybe_crop,
-                A.RandomRotate90(),
-                A.Transpose(),
+                DctRandomRotate90(),
+                DctTranspose(),
                 A.OneOf(
                     [
                         A.RandomGridShuffle(grid=(2, 2)),
