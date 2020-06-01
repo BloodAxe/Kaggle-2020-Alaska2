@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from catalyst.dl import AccuracyCallback
 from catalyst.dl.callbacks import CriterionAggregatorCallback
-from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss
+from pytorch_toolbelt.losses import FocalLoss, BinaryFocalLoss, SoftBCEWithLogitsLoss, SoftCrossEntropyLoss
 from pytorch_toolbelt.utils.catalyst import (
     BestMetricCheckpointCallback,
     ConfusionMatrixCallback,
@@ -309,6 +309,12 @@ def get_loss(loss_name: str, tsa=False):
 
     if loss_name.lower() == "ce":
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
+
+    if loss_name.lower() == "soft_ce":
+        return SoftCrossEntropyLoss(reduction="none" if tsa else "mean", smooth_factor=0.1)
+
+    if loss_name.lower() == "soft_bce":
+        return SoftBCEWithLogitsLoss(reduction="none" if tsa else "mean", smooth_factor=0.1)
 
     if loss_name.lower() == "wce":
         return nn.CrossEntropyLoss(
