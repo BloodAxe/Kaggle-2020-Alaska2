@@ -72,6 +72,6 @@ def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
 
 def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
-    del encoder.fc
+    del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
