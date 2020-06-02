@@ -295,6 +295,8 @@ def roc_auc_score(y_pred, y_true):
     """
     # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
 
+    eps = 1e-4
+    y_pred = torch.sigmoid(y_pred).clamp(eps, 1 - eps)
     pos = y_pred[y_true == 1]
     neg = y_pred[y_true == 0]
 
