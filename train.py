@@ -30,7 +30,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-acc", "--accumulation-steps", type=int, default=1, help="Number of batches to process")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--obliterate-p", type=float, default=0, help="Change of obliteration")
+    parser.add_argument("--obliterate", type=float, default=0, help="Change of obliteration")
     parser.add_argument("-nid", "--negative-image-dir", type=str, default=None, help="Change of obliteration")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--fast", action="store_true")
@@ -120,7 +120,7 @@ def main():
     cutmix = args.cutmix
     tsa = args.tsa
     fine_tune = args.fine_tune
-    obliterate_p = args.obliterate_p
+    obliterate_p = args.obliterate
     negative_image_dir = args.negative_image_dir
 
     # Compute batch size for validation
