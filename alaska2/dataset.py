@@ -18,6 +18,8 @@ INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_FOLD_KEY = "fold"
 
+HOLDOUT_FOLD = -1
+
 INPUT_FEATURES_DCT_KEY = "input_dct"
 INPUT_FEATURES_DCT_Y_KEY = "input_dct_y"
 INPUT_FEATURES_DCT_CR_KEY = "input_dct_cr"
@@ -498,6 +500,9 @@ def get_datasets(
     else:
         data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
+        # Ignore holdout fold
+        data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
+
         train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
         valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
 
@@ -552,6 +557,9 @@ def get_datasets_paired(
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
 
+    # Ignore holdout fold
+    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
+
     train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
 
@@ -593,6 +601,9 @@ def get_datasets_quad(
     valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+
+    # Ignore holdout fold
+    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
 
     train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
