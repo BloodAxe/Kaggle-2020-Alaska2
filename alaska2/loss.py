@@ -345,7 +345,7 @@ def get_loss(loss_name: str, tsa=False):
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
 
     if loss_name.lower() == "soft_ce":
-        return SoftCrossEntropyLoss(reduction="none" if tsa else "mean", smooth_factor=0.1, ignore_index=-100)
+        return SoftCrossEntropyLoss(reduction="none" if tsa else "mean", smooth_factor=0.1)
 
     if loss_name.lower() == "soft_bce":
         return SoftBCEWithLogitsLoss(reduction="none" if tsa else "mean", smooth_factor=0.1, ignore_index=None)
