@@ -286,7 +286,7 @@ class RocAucLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(y_pred, y_true):
+    def forward(self, y_pred, y_true):
         """ ROC AUC Score.
         Approximates the Area Under Curve score, using approximation based on
         the Wilcoxon-Mann-Whitney U statistic.
