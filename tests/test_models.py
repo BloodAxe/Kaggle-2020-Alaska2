@@ -8,6 +8,7 @@ from torch.optim import SGD, Optimizer
 from alaska2 import *
 from alaska2.models.dct import dct_seresnext50
 from alaska2.models.hpf_net import HPFNet
+from alaska2.models.srnet import SRNetModel, srnet
 from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
@@ -18,6 +19,19 @@ KNOWN_KEYS = ["encoder", "rgb_encoder", "dct_encoder", "embedding", "type_classi
 @torch.no_grad()
 def test_hpfnet():
     model = HPFNet(num_classes=4).cuda()
+
+    input = {INPUT_IMAGE_KEY: torch.randn((2, 3, 512, 512)).cuda()}
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
+
+@torch.no_grad()
+def test_srnet():
+    model = srnet().cuda()
 
     input = {INPUT_IMAGE_KEY: torch.randn((2, 3, 512, 512)).cuda()}
 
