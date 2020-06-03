@@ -16,19 +16,6 @@ import jpegio as jpio
 # !pip install jpegio/.
 
 
-def extract_and_save_dct_uber(fname, output_dir):
-    dct_y, dct_cb, dct_cr = compute_dct_fast(fname)
-
-    image_id = fs.id_from_fname(fname) + ".npz"
-    method = os.path.split(os.path.split(fname)[0])[1]
-    dct_fname = os.path.join(output_dir, method, image_id)
-
-    np.savez_compressed(dct_fname,
-                        dct_y=dct_y,
-                        dct_cb=dct_cb,
-                        dct_cr=dct_cr)
-
-
 def extract_and_save_dct_jpegio(fname, output_dir):
     # dct_y, dct_cr, dct_cb = compute_dct_fast(fname)
 
