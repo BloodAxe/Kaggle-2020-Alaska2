@@ -191,7 +191,7 @@ def get_obliterate_augs():
     """
     return A.OneOf(
         [
-            A.ImageCompression(quality_lower=70, quality_upper=90, p=1),
+            A.ImageCompression(quality_lower=70, quality_upper=95, p=1),
             A.RandomSizedCrop((256, 384), 512, 512, interpolation=cv2.INTER_CUBIC, p=1),
             A.RandomSizedCrop((256, 384), 512, 512, interpolation=cv2.INTER_LINEAR, p=1),
             A.Downscale(p=1),
