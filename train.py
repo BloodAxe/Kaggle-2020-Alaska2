@@ -199,7 +199,7 @@ def main():
         )
 
         criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=[["rank2", 1.0]],
+            modification_flag=[["roc_auc", 1.0]],
             modification_type=None,
             embedding_loss=None,
             feature_maps_loss=None,
@@ -254,7 +254,6 @@ def main():
         print("  Cache          :", cache)
         print("Data              ")
         print("  Augmentations  :", augmentations)
-        print("  Obliterate (%) :", obliterate_p)
         print("  Negative images:", negative_image_dir)
         print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
         print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")

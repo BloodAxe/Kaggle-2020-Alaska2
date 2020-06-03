@@ -294,7 +294,10 @@ def roc_auc_score(y_pred, y_true):
         y_true: `Tensor` . Targets (labels), a probability distribution.
     """
     # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
+    # https://pdfs.semanticscholar.org/df27/dde10589455d290eeee6d0ae6ceeb83d0c6b.pdf
 
+    eps = 1e-4
+    y_pred = y_pred.sigmoid().clamp(eps, 1 - eps)
     pos = y_pred[y_true == 1]
     neg = y_pred[y_true == 0]
 
