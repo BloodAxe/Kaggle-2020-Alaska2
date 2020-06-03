@@ -23,13 +23,15 @@ class Layer1(nn.Module):
 class Layer2(nn.Module):
     def __init__(self, channels, abn=ABN):
         super().__init__()
-        self.conv = Layer1(channels, channels, abn)
-        self.abn = abn(channels)
+        self.conv1 = Layer1(channels, channels, abn)
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False), nn.BatchNorm2d(channels)
+        )
 
     def forward(self, x):
         skip = x
-        x = self.conv(x)
-        x = self.abn(x)
+        x = self.conv1(x)
+        x = self.conv2(x)
         return x + skip
 
 
@@ -57,10 +59,10 @@ class SRNetEncoder(EncoderModule):
         # Layer 1
         self.layer1 = nn.Sequential(Layer1(in_chanels, 64, abn), Layer1(64, 16, abn))
         self.layer2 = nn.Sequential(
-            Layer2(16, abn), Layer2(16, abn), Layer2(16, abn), Layer2(16, abn), Layer2(16, abn),
+            Layer2(16, abn), Layer2(16, abn), Layer2(16, abn), Layer2(16, abn), Layer2(16, abn)
         )
         self.layer3 = nn.Sequential(
-            Layer3(16, 64, abn), Layer3(64, 128, abn), Layer3(128, 256, abn), Layer3(256, 512, abn),
+            Layer3(16, 64, abn), Layer3(64, 128, abn), Layer3(128, 256, abn), Layer3(256, 512, abn)
         )
         self.layer4 = nn.Sequential(
             Layer1(512, 512), nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.BatchNorm2d(512)
@@ -113,6 +115,6 @@ def srnet(num_classes=4, pretrained=True, dropout=0):
 
 
 def srnet_inplace(num_classes=4, pretrained=True, dropout=0):
-    from inplace_abn import ABN as InplaceABN
+    import inplace_abn
 
-    return SRNetModel(encoder=SRNetEncoder(3, abn=InplaceABN), num_classes=num_classes, dropout=dropout)
+    return SRNetModel(encoder=SRNetEncoder(3, abn=inplace_abn.InPlaceABN), num_classes=num_classes, dropout=dropout)

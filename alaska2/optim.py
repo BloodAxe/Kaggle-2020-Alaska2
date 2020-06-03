@@ -243,7 +243,7 @@ class Novograd(Optimizer):
 
 def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_decay=1e-5, **kwargs):
     if optimizer_name.lower() == "sgd":
-        return SGD(parameters, learning_rate, momentum=0.9, nesterov=True, weight_decay=weight_decay, **kwargs)
+        return SGD(parameters, learning_rate, momentum=0.9, weight_decay=weight_decay, **kwargs)
 
     if optimizer_name.lower() == "adam":
         return Adam(parameters, learning_rate, weight_decay=weight_decay, eps=1e-5, **kwargs)  # As Jeremy suggests
