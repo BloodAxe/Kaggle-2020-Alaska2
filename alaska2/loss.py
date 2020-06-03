@@ -282,7 +282,7 @@ class PairwiseRankingLossV2(nn.Module):
         return loss
 
 
-def roc_auc_score(y_pred, y_true):
+class RocAucLoss(nn.Module):
     """ ROC AUC Score.
     Approximates the Area Under Curve score, using approximation based on
     the Wilcoxon-Mann-Whitney U statistic.
@@ -293,8 +293,9 @@ def roc_auc_score(y_pred, y_true):
         y_pred: `Tensor`. Predicted values.
         y_true: `Tensor` . Targets (labels), a probability distribution.
     """
-    # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
 
+    # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
+    def forward(self, y_pred, y_true):
         eps = 1e-4
         y_pred = torch.sigmoid(y_pred).clamp(eps, 1 - eps)
         pos = y_pred[y_true == 1]
@@ -308,9 +309,7 @@ def roc_auc_score(y_pred, y_true):
         p = 3
 
         difference = torch.zeros_like(pos * neg) + pos - neg - gamma
-
         masked = difference[difference < 0.0]
-
         return torch.sum(torch.pow(-masked, p))
 
 
