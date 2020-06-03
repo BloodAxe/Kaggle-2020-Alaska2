@@ -282,36 +282,40 @@ class PairwiseRankingLossV2(nn.Module):
         return loss
 
 
-def roc_auc_score(y_pred, y_true):
-    """ ROC AUC Score.
-    Approximates the Area Under Curve score, using approximation based on
-    the Wilcoxon-Mann-Whitney U statistic.
-    Yan, L., Dodier, R., Mozer, M. C., & Wolniewicz, R. (2003).
-    Optimizing Classifier Performance via an Approximation to the Wilcoxon-Mann-Whitney Statistic.
-    Measures overall performance for a full range of threshold levels.
-    Arguments:
-        y_pred: `Tensor`. Predicted values.
-        y_true: `Tensor` . Targets (labels), a probability distribution.
-    """
-    # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
+class RocAucLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
 
-    eps = 1e-4
-    y_pred = torch.sigmoid(y_pred).clamp(eps, 1 - eps)
-    pos = y_pred[y_true == 1]
-    neg = y_pred[y_true == 0]
+    def forward(y_pred, y_true):
+        """ ROC AUC Score.
+        Approximates the Area Under Curve score, using approximation based on
+        the Wilcoxon-Mann-Whitney U statistic.
+        Yan, L., Dodier, R., Mozer, M. C., & Wolniewicz, R. (2003).
+        Optimizing Classifier Performance via an Approximation to the Wilcoxon-Mann-Whitney Statistic.
+        Measures overall performance for a full range of threshold levels.
+        Arguments:
+            y_pred: `Tensor`. Predicted values.
+            y_true: `Tensor` . Targets (labels), a probability distribution.
+        """
+        # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
 
-    pos = torch.unsqueeze(pos, 0)
-    neg = torch.unsqueeze(neg, 1)
+        eps = 1e-4
+        y_pred = torch.sigmoid(y_pred).clamp(eps, 1 - eps)
+        pos = y_pred[y_true == 1]
+        neg = y_pred[y_true == 0]
 
-    # original paper suggests performance is robust to exact parameter choice
-    gamma = 0.2
-    p = 3
+        pos = torch.unsqueeze(pos, 0)
+        neg = torch.unsqueeze(neg, 1)
 
-    difference = torch.zeros_like(pos * neg) + pos - neg - gamma
+        # original paper suggests performance is robust to exact parameter choice
+        gamma = 0.2
+        p = 3
 
-    masked = difference[difference < 0.0]
+        difference = torch.zeros_like(pos * neg) + pos - neg - gamma
 
-    return torch.sum(torch.pow(-masked, p))
+        masked = difference[difference < 0.0]
+
+        return torch.sum(torch.pow(-masked, p))
 
 
 def get_loss(loss_name: str, tsa=False):
@@ -328,7 +332,7 @@ def get_loss(loss_name: str, tsa=False):
         return EmbeddingLoss()
 
     if loss_name.lower() == "roc_auc":
-        return roc_auc_score
+        return RocAucLoss()
 
     if loss_name.lower() == "cntrv2":
         return EmbeddingLossV2()
