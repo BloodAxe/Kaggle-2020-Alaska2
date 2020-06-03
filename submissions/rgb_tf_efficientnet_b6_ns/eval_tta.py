@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import torch
-from pytorch_toolbelt.utils import logit, fs
+from pytorch_toolbelt.utils import logit
 from typing import List, Union
 import numpy as np
 
@@ -84,17 +84,12 @@ def submit_from_binary_calibrated(test_predictions: List[str], oof_predictions: 
     return submission
 
 
-def submit_from_classifier_calibrated(test_predictions: List[str], oof_predictions: List[str], winsorized=False):
-    if winsorized:
-        op = winsorize
-    else:
-        op = noop
-
+def submit_from_classifier_calibrated(test_predictions: List[str], oof_predictions: List[str]):
     preds_df = [calibrated(pd.read_csv(x), pd.read_csv(y)) for x, y in zip(test_predictions, oof_predictions)]
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
     submission["Id"] = submission["Id"].apply(stringify_image_id)
-    submission["Label"] = sum([op(df["pred_modification_type"].values) for df in preds_df]) / len(preds_df)
+    submission["Label"] = sum([df["pred_modification_type"].values for df in preds_df]) / len(preds_df)
     return submission
 
 
@@ -110,12 +105,6 @@ def submit_from_sum_calibrated(test_predictions: List[str], oof_predictions: Lis
 def noop(x):
     return x
 
-
-def winsorize(x):
-    import scipy.stats
-
-    x_w = scipy.stats.mstats.winsorize(x, [0.05, 0.05])
-    return x_w
 
 def calibrated(test_predictions, oof_predictions, flag_transform=noop, type_transform=classifier_probas):
     """
@@ -277,160 +266,93 @@ def calibrated_raw(test_predictions, oof_predictions, flag_transform=noop, type_
     return test_predictions
 
 
-def as_hv_tta(predictions):
-    return [fs.change_extension(x, "_flip_hv_tta.csv") for x in predictions]
-
-
-def as_d4_tta(predictions):
-    return [fs.change_extension(x, "_d4_tta.csv") for x in predictions]
-
-
-best_loss = [
-    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints/best_test_predictions.csv",
-]
-
 best_loss_oof = [
     "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
     "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints/best_oof_predictions.csv",
 ]
 
-best_auc_b = [
-    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc/best_test_predictions.csv",
+best_loss_oof_hv = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions_flip_hv_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints/best_oof_predictions_flip_hv_tta.csv",
 ]
+
+best_loss_oof_d4 = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions_d4_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints/best_oof_predictions_d4_tta.csv",
+]
+
 
 best_auc_b_oof = [
     "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
     "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc/best_oof_predictions.csv",
 ]
 
-best_auc_c = [
-    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc_classifier/best_test_predictions.csv",
+best_auc_b_oof_hv = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions_flip_hv_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc/best_oof_predictions_flip_hv_tta.csv",
 ]
+
+best_auc_b_oof_d4 = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions_d4_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc/best_oof_predictions_d4_tta.csv",
+]
+
 
 best_auc_c_oof = [
     "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
     "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc_classifier/best_oof_predictions.csv",
 ]
 
-# for t, v in zip(best_auc_c, best_auc_c_oof):
-#     print("Default")
-#     calibrated(pd.read_csv(t), pd.read_csv(v))
-#     print("calibrated_sum")
-#     calibrated_raw(pd.read_csv(t), pd.read_csv(v))
+best_auc_c_oof_hv = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions_flip_hv_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc_classifier/best_oof_predictions_flip_hv_tta.csv",
+]
 
-# submit_from_average_classifier(best_loss).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_ns_best_loss_classifier.csv"), index=None
-# )
+best_auc_c_oof_d4 = [
+    "models/May28_13_04_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions_d4_tta.csv",
+    "models/May28_18_49_rgb_tf_efficientnet_b6_ns_fold1/main/checkpoints_auc_classifier/best_oof_predictions_d4_tta.csv",
+]
 
-# submit_from_average_classifier([best_auc_c[0]]).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold0_ns_best_auc_classifier.csv"), index=None
-# )
+print("Best loss")
+for no_tta, flip_tta, d4_tta in zip(best_loss_oof, best_loss_oof_hv, best_loss_oof_d4):
+    try:
+        print("Default -> HV", flip_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(flip_tta))
+    except:
+        print("Error", flip_tta)
 
-# submit_from_average_classifier([best_auc_c[1]]).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold1_ns_best_auc_classifier.csv"), index=None
-# )
-
-# submit_from_classifier_calibrated(best_auc_c, best_auc_c_oof).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_ns_best_auc_classifier_calibrated.csv"), index=None
-# )
-
-from submissions.ela_skresnext50_32x4d import all_folds as ela_skresnext50_32x4d
-
-# submit_from_classifier_calibrated(
-#     best_auc_c + ela_skresnext50_32x4d.best_auc_c, best_auc_c_oof + ela_skresnext50_32x4d.best_auc_c_oof
-# ).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_ela_skresnext50_32x4d_fold0123_best_c_calibrated.csv"),
-#     index=None,
-# )
-
-# submit_from_classifier_calibrated(
-#     best_auc_c
-#     + best_auc_b
-#     + ela_skresnext50_32x4d.best_auc_c
-#     + ela_skresnext50_32x4d.best_auc_b
-#     + ela_skresnext50_32x4d.best_loss,
-#     best_auc_c_oof
-#     + best_auc_b_oof
-#     + ela_skresnext50_32x4d.best_auc_c_oof
-#     + ela_skresnext50_32x4d.best_auc_b_oof
-#     + ela_skresnext50_32x4d.best_loss_oof,
-# ).to_csv(
-#     os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_ela_skresnext50_32x4d_fold0123_best_bcl_calibrated.csv"),
-#     index=None,
-# )
+    try:
+        print("Default -> D4", d4_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(d4_tta))
+    except:
+        print("Error", d4_tta)
 
 
-def average_predictions(predictions, winsorized=False):
+print("Best (AUC B)")
+for no_tta, flip_tta, d4_tta in zip(best_auc_b_oof, best_auc_b_oof_hv, best_auc_b_oof_d4):
+    try:
+        print("Default -> HV", flip_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(flip_tta))
+    except:
+        print("Error", flip_tta)
 
-    if winsorized:
-        op = winsorize
-    else:
-        op = noop
-
-    df = [pd.read_csv(x).sort_values(by="Id") for x in predictions]
-    return pd.DataFrame.from_dict({"Id": df[0].Id.tolist(), "Label": sum([op(x.Label.values) for x in df]) / len(df)})
+    try:
+        print("Default -> D4", d4_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(d4_tta))
+    except:
+        print("Error", d4_tta)
 
 
-#
-#
-submit_from_classifier_calibrated(
-    as_hv_tta(best_loss)
-    # + as_hv_tta(best_auc_b)
-    + as_hv_tta(best_auc_c)
-    + ela_skresnext50_32x4d.best_loss
-    # + ela_skresnext50_32x4d.best_auc_b
-    + ela_skresnext50_32x4d.best_auc_c,
-    as_hv_tta(best_loss_oof)
-    # + as_hv_tta(best_auc_b_oof)
-    + as_hv_tta(best_auc_c_oof)
-    + ela_skresnext50_32x4d.best_loss_oof
-    # + ela_skresnext50_32x4d.best_auc_b_oof
-    + ela_skresnext50_32x4d.best_auc_c_oof,
-    winsorized=False
-).to_csv(
-    os.path.join(
-        output_dir, "rgb_tf_efficientnet_b6_fold01_d4_ela_skresnext50_32x4d_fold0123_best_cl_calibrated_hv_tta.csv"
-    ),
-    index=None,
-)
+print("Best (AUC C)")
+for no_tta, flip_tta, d4_tta in zip(best_auc_c_oof, best_auc_c_oof_hv, best_auc_c_oof_d4):
+    try:
+        print("Default -> HV", flip_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(flip_tta))
+    except:
+        print("Error", flip_tta)
 
-#
-# submit_from_classifier_calibrated(
-#     as_d4_tta(best_loss)
-#     + as_d4_tta(best_auc_b)
-#     + as_d4_tta(best_auc_c)
-#     + ela_skresnext50_32x4d.best_loss
-#     + ela_skresnext50_32x4d.best_auc_b
-#     + ela_skresnext50_32x4d.best_auc_c,
-#     as_d4_tta(best_loss_oof)
-#     + as_d4_tta(best_auc_b_oof)
-#     + as_d4_tta(best_auc_c_oof)
-#     + ela_skresnext50_32x4d.best_loss_oof
-#     + ela_skresnext50_32x4d.best_auc_b_oof
-#     + ela_skresnext50_32x4d.best_auc_c_oof,
-# ).to_csv(
-#     os.path.join(
-#         output_dir, "rgb_tf_efficientnet_b6_fold01_d4_ela_skresnext50_32x4d_fold0123_best_bcl_calibrated_d4_tta.csv"
-#     ),
-#     index=None,
-# )
-
-# submit_from_classifier_calibrated(
-#     as_hv_tta(best_loss) + as_hv_tta(best_auc_c) + as_hv_tta(best_auc_b),
-#     as_hv_tta(best_loss_oof) + as_hv_tta(best_auc_c_oof) + as_hv_tta(best_auc_b_oof),
-# ).to_csv(os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_best_bcl_calibrated_hv_tta.csv"), index=None)
-#
-# submit_from_classifier_calibrated(
-#     ela_skresnext50_32x4d.best_auc_c + ela_skresnext50_32x4d.best_auc_b + ela_skresnext50_32x4d.best_loss,
-#     ela_skresnext50_32x4d.best_auc_c_oof + ela_skresnext50_32x4d.best_auc_b_oof + ela_skresnext50_32x4d.best_loss_oof,
-# ).to_csv(os.path.join(output_dir, "ela_skresnext50_32x4d_fold01234_best_bcl_calibrated.csv"), index=None)
-#
-# average_predictions(
-#     [
-#         os.path.join(output_dir, "rgb_tf_efficientnet_b6_fold01_best_bcl_calibrated_hv_tta.csv"),
-#         os.path.join(output_dir, "ela_skresnext50_32x4d_fold01234_best_bcl_calibrated.csv"),
-#     ]
-# ).to_csv(os.path.join(output_dir, "ela_skresnext50_32x4d_rgb_tf_efficientnet_b6.csv"), index=False)
+    try:
+        print("Default -> D4", d4_tta)
+        calibrated(pd.read_csv(no_tta), pd.read_csv(d4_tta))
+    except:
+        print("Error", d4_tta)

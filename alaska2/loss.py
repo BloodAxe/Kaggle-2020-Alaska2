@@ -294,25 +294,24 @@ def roc_auc_score(y_pred, y_true):
         y_true: `Tensor` . Targets (labels), a probability distribution.
     """
     # https://github.com/tflearn/tflearn/blob/5a674b7f7d70064c811cbd98c4a41a17893d44ee/tflearn/objectives.py
-    # https://pdfs.semanticscholar.org/df27/dde10589455d290eeee6d0ae6ceeb83d0c6b.pdf
 
-    eps = 1e-4
-    y_pred = y_pred.sigmoid().clamp(eps, 1 - eps)
-    pos = y_pred[y_true == 1]
-    neg = y_pred[y_true == 0]
+        eps = 1e-4
+        y_pred = torch.sigmoid(y_pred).clamp(eps, 1 - eps)
+        pos = y_pred[y_true == 1]
+        neg = y_pred[y_true == 0]
 
-    pos = torch.unsqueeze(pos, 0)
-    neg = torch.unsqueeze(neg, 1)
+        pos = torch.unsqueeze(pos, 0)
+        neg = torch.unsqueeze(neg, 1)
 
-    # original paper suggests performance is robust to exact parameter choice
-    gamma = 0.2
-    p = 3
+        # original paper suggests performance is robust to exact parameter choice
+        gamma = 0.2
+        p = 3
 
-    difference = torch.zeros_like(pos * neg) + pos - neg - gamma
+        difference = torch.zeros_like(pos * neg) + pos - neg - gamma
 
-    masked = difference[difference < 0.0]
+        masked = difference[difference < 0.0]
 
-    return torch.sum(torch.pow(-masked, p))
+        return torch.sum(torch.pow(-masked, p))
 
 
 def get_loss(loss_name: str, tsa=False):
@@ -329,7 +328,7 @@ def get_loss(loss_name: str, tsa=False):
         return EmbeddingLoss()
 
     if loss_name.lower() == "roc_auc":
-        return roc_auc_score
+        return RocAucLoss()
 
     if loss_name.lower() == "cntrv2":
         return EmbeddingLossV2()
@@ -347,10 +346,10 @@ def get_loss(loss_name: str, tsa=False):
         return nn.CrossEntropyLoss(reduction="none" if tsa else "mean")
 
     if loss_name.lower() == "soft_ce":
-        return SoftCrossEntropyLoss(reduction="none" if tsa else "mean", smooth_factor=0.1)
+        return SoftCrossEntropyLoss(reduction="none" if tsa else "mean", smooth_factor=0.1, ignore_index=-100)
 
     if loss_name.lower() == "soft_bce":
-        return SoftBCEWithLogitsLoss(reduction="none" if tsa else "mean", smooth_factor=0.1)
+        return SoftBCEWithLogitsLoss(reduction="none" if tsa else "mean", smooth_factor=0.1, ignore_index=None)
 
     if loss_name.lower() == "wce":
         return nn.CrossEntropyLoss(
