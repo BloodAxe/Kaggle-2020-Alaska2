@@ -78,7 +78,7 @@ def embedding_to_probas(x: torch.Tensor):
 
 
 class CompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc", distributed=False):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc"):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.input_key = input_key
@@ -87,7 +87,6 @@ class CompetitionMetricCallback(Callback):
         self.pred_labels = []
         self.quality_factors = []
         self.output_activation = output_activation
-        self.distributed = distributed
 
     def on_loader_start(self, state: RunnerState):
         self.true_labels = []
@@ -106,15 +105,14 @@ class CompetitionMetricCallback(Callback):
         pred_labels = np.array(self.pred_labels)
         quality_factors = np.array(self.quality_factors)
 
-        if self.distributed:
-            true_labels = all_gather(true_labels)
-            true_labels = np.concatenate(true_labels)
+        true_labels = all_gather(true_labels)
+        true_labels = np.concatenate(true_labels)
 
-            pred_labels = all_gather(pred_labels)
-            pred_labels = np.concatenate(pred_labels)
+        pred_labels = all_gather(pred_labels)
+        pred_labels = np.concatenate(pred_labels)
 
-            quality_factors = all_gather(quality_factors)
-            quality_factors = np.concatenate(quality_factors)
+        quality_factors = all_gather(quality_factors)
+        quality_factors = np.concatenate(quality_factors)
 
         true_labels_b = (true_labels > 0).astype(int)
         # Just ensure true_labels are 0,1
