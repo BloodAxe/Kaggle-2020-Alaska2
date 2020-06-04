@@ -16,7 +16,6 @@ MODEL_REGISTRY = {
     "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,
     "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
     "rgb_tf_efficientnet_b2_ns": timm.rgb_tf_efficientnet_b2_ns,
-
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
@@ -31,6 +30,7 @@ MODEL_REGISTRY = {
     "rgb_hrnet18": rgb.rgb_hrnet18,
     # DCT
     "dct_seresnext50": dct.dct_seresnext50,
+    "dct_efficientnet_b6": dct.dct_efficientnet_b6,
     # ELA
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,
