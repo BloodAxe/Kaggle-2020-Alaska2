@@ -136,7 +136,7 @@ class CompetitionMetricCallback(Callback):
         score_mask = np.zeros((3, 3))
         for qf in [0, 1, 2]:
             for target in [1, 2, 3]:
-                mask = (quality_factors == qf) & (true_labels == 0 | true_labels == target)
+                mask = (quality_factors == qf) & ((true_labels == 0) | (true_labels == target))
                 score = alaska_weighted_auc(true_labels_b[mask], pred_labels[mask])
                 score_mask[qf, target] = score
 
