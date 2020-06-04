@@ -16,6 +16,7 @@ INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_ELA_RICH_KEY = "input_ela_rich"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_IMAGE_ID_KEY = "image_id"
+INPUT_IMAGE_QF_KEY = "image_qf"
 INPUT_FOLD_KEY = "fold"
 
 HOLDOUT_FOLD = -1
@@ -45,17 +46,18 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
-    "INPUT_FEATURES_ELA_RICH_KEY",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
     "INPUT_FEATURES_CHANNEL_Y_KEY",
     "INPUT_FEATURES_DCT_CB_KEY",
     "INPUT_FEATURES_DCT_CR_KEY",
-    "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_DCT_KEY",
+    "INPUT_FEATURES_DCT_Y_KEY",
     "INPUT_FEATURES_ELA_KEY",
+    "INPUT_FEATURES_ELA_RICH_KEY",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
     "INPUT_IMAGE_KEY",
+    "INPUT_IMAGE_QF_KEY",
     "INPUT_TRUE_MODIFICATION_FLAG",
     "INPUT_TRUE_MODIFICATION_TYPE",
     "OUTPUT_FEATURE_MAP_16",
@@ -72,10 +74,10 @@ __all__ = [
     "compute_dct_fast",
     "compute_dct_slow",
     "compute_ela",
+    "compute_features",
     "dct8",
     "get_datasets",
     "get_datasets_paired",
-    "compute_features",
     "get_datasets_quad",
     "get_test_dataset",
     "idct8",
@@ -273,8 +275,9 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 class TrainingValidationDataset(Dataset):
     def __init__(
         self,
-        images: np.ndarray,
+        images: Union[List, np.ndarray],
         targets: Optional[Union[List, np.ndarray]],
+        quality: np.ndarray,
         transform: A.Compose,
         features: List[str],
         obliterate: A.Compose = None,
@@ -291,6 +294,7 @@ class TrainingValidationDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.features = features
+        self.quality = quality
 
         self.obliterate = obliterate
         self.obliterate_p = obliterate_p
@@ -304,14 +308,14 @@ class TrainingValidationDataset(Dataset):
     def __getitem__(self, index):
         image_fname = self.images[index]
         image = cv2.imread(image_fname)
-
+        qf = self.quality[index]
         data = {}
         data["image"] = image
         data.update(compute_features(image, image_fname, self.features))
 
         data = self.transform(**data)
 
-        sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
+        sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index]), INPUT_IMAGE_QF_KEY: int(qf)}
 
         if self.targets is not None:
             target = int(self.targets[index])
@@ -498,43 +502,53 @@ def get_datasets(
         else:
             raise ValueError("Fold must be set")
     else:
-        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
 
         # Ignore holdout fold
         data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
 
-        train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
-        valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
+        train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
+        valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
+
+        if fast:
+            train_df = train_df[::50]
+            valid_df = valid_df[::50]
+
+        train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
+        valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
 
         train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
         valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
-        if fast:
-            train_images = train_images[::50]
-            valid_images = valid_images[::50]
-
         train_x = train_images.copy()
         train_y = [0] * len(train_images)
+        train_qf = train_df["quality"].values.tolist()
 
         valid_x = valid_images.copy()
         valid_y = [0] * len(valid_images)
+        valid_qf = valid_df["quality"].values.tolist()
 
         for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
             train_x += [fname.replace("Cover", method) for fname in train_images]
             train_y += [i + 1] * len(train_images)
+            train_qf += train_df["quality"].values.tolist()
 
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
             valid_y += [i + 1] * len(valid_images)
+            valid_qf += valid_qf["quality"].values.tolist()
 
         train_ds = TrainingValidationDataset(
-            train_x,
-            train_y,
+            images=train_x,
+            targets=train_y,
+            quality=train_qf,
             transform=train_transform,
             features=features,
             obliterate=get_obliterate_augs() if obliterate_p > 0 else None,
             obliterate_p=obliterate_p,
         )
-        valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+        valid_ds = TrainingValidationDataset(
+            images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+        )
 
         sampler = None
         print("Train", train_ds)

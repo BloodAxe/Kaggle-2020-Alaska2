@@ -467,7 +467,7 @@ def get_criterions(
                 class_names=["Original", "Modified"],
             ),
             CompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_MODIFICATION_FLAG,
                 prefix="auc",
                 output_activation=binary_logits_to_probas,
@@ -519,7 +519,7 @@ def get_criterions(
             ),
             BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
             CompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_MODIFICATION_TYPE,
                 output_activation=classifier_logits_to_probas,
                 prefix="auc_classifier",
@@ -592,7 +592,7 @@ def get_criterions(
                     prefix="distribution/embedding",
                 ),
                 CompetitionMetricCallback(
-                    input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                    input_key=INPUT_TRUE_MODIFICATION_TYPE,
                     output_key=OUTPUT_PRED_EMBEDDING,
                     prefix="auc_embedding",
                     output_activation=embedding_to_probas,

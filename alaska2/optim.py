@@ -6,6 +6,7 @@ from torch.optim import SGD, Adam, RMSprop, AdamW
 from torch.optim.optimizer import Optimizer
 
 from torch_optimizer import Ranger
+
 # import torch.optim as Optimizer
 
 # Original source:  https://github.com/shivram1987/diffGrad/blob/master/diffGrad.py
@@ -241,7 +242,7 @@ class Novograd(Optimizer):
         return loss
 
 
-def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_decay=1e-5, **kwargs):
+def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_decay=0.0, **kwargs):
     if optimizer_name.lower() == "sgd":
         return SGD(parameters, learning_rate, momentum=0.9, weight_decay=weight_decay, **kwargs)
 
@@ -258,8 +259,7 @@ def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_
         return RAdam(parameters, learning_rate, weight_decay=weight_decay, eps=1e-5, **kwargs)  # As Jeremy suggests
 
     if optimizer_name.lower() == "ranger":
-        return Ranger(parameters, learning_rate, weight_decay=weight_decay,
-                      **kwargs)
+        return Ranger(parameters, learning_rate, weight_decay=weight_decay, **kwargs)
 
     # if optimizer_name.lower() == "qhadamw":
     #     return QHAdamW(parameters, learning_rate, weight_decay=weight_decay,
