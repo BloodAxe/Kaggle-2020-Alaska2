@@ -49,13 +49,13 @@ def dct_transpose_block(dct_block: np.ndarray) -> np.ndarray:
     return result
 
 
-def get_rot90_block(k: int):
+def get_rot90_block(k: int, dtype):
     assert 0 <= k < 4
-    mask = np.ones((8, 8))
+    mask = np.ones((8, 8), dtype=dtype)
     if k == 1:
         mask[:, 1::2] = -1
     elif k == 2:
-        mask = get_rot90_block(1) * get_rot90_block(3)
+        mask = get_rot90_block(1, dtype) * get_rot90_block(3, dtype)
     elif k == 3:
         mask[1::2, :] = -1
 
@@ -122,7 +122,7 @@ def dct_rot90_fast(dct_image: np.ndarray, k: int) -> np.ndarray:
     # Now do spatial rotation
     dct_image = np.rot90(dct_image, k, axes=(0, 2))
 
-    block = get_rot90_block(k)
+    block = get_rot90_block(k, dtype=dct_image.dtype)
     block = block.reshape((1, 8, 1, 8, 1))
 
     dct_image = dct_image * block

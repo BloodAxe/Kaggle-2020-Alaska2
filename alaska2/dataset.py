@@ -254,7 +254,7 @@ def compute_features(image: np.ndarray, image_fname: str, features):
     if INPUT_FEATURES_DCT_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
         dct_y, dct_cb, dct_cr = dct_file["dct_y"], dct_file["dct_cb"], dct_file["dct_cr"]
-        sample[INPUT_FEATURES_DCT_KEY] = np.dstack([dct_y, dct_cb, dct_cr]).astype(np.float32)
+        sample[INPUT_FEATURES_DCT_KEY] = np.dstack([dct_y, dct_cb, dct_cr])
 
     if INPUT_FEATURES_DCT_Y_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))
