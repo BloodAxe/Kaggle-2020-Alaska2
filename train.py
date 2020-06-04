@@ -254,6 +254,7 @@ def main():
         print("  Cache          :", cache)
         print("Data              ")
         print("  Augmentations  :", augmentations)
+        print("  Obliterate (%) :", obliterate_p)
         print("  Negative images:", negative_image_dir)
         print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
         print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")

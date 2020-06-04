@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from torch.optim import SGD, Optimizer
 
 from alaska2 import *
-from alaska2.models.dct import dct_seresnext50
+from alaska2.models.dct import dct_seresnext50, dct_efficientnet_b6
 from alaska2.models.hpf_net import HPFNet
 from alaska2.models.srnet import SRNetModel, srnet
 from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
@@ -85,6 +85,21 @@ def test_dct_seresnext50():
 
     input = {
         INPUT_FEATURES_DCT_KEY: torch.randn((2, 64 * 3, 512 // 8, 512 // 8)).cuda(),
+    }
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
+
+@torch.no_grad()
+def test_dct_efficientnet_b6():
+    model = dct_efficientnet_b6().cuda()
+
+    input = {
+        INPUT_FEATURES_DCT_KEY: torch.randn((2, 3, 512, 512)).cuda(),
     }
 
     print(count_parameters(model, keys=KNOWN_KEYS))

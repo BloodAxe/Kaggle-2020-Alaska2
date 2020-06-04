@@ -31,7 +31,6 @@ MODEL_REGISTRY = {
     "rgb_hrnet18": rgb.rgb_hrnet18,
     # DCT
     "dct_seresnext50": dct.dct_seresnext50,
-    "dct_srnet": dct.dct_srnet,
     # ELA
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,

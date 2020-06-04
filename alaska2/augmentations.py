@@ -26,7 +26,9 @@ __all__ = [
     "DctTranspose",
     "DctRandomRotate90",
     "dct_transpose",
+    "dct_transpose_fast",
     "dct_rot90",
+    "dct_rot90_fast",
 ]
 
 
@@ -45,6 +47,19 @@ def change_even_cols_sign(dct_block):
 def dct_transpose_block(dct_block: np.ndarray) -> np.ndarray:
     result = dct_block.transpose(1, 0)
     return result
+
+
+def get_rot90_block(k: int):
+    assert 0 <= k < 4
+    mask = np.ones((8, 8))
+    if k == 1:
+        mask[:, 1::2] = -1
+    elif k == 2:
+        mask = get_rot90_block(1) * get_rot90_block(3)
+    elif k == 3:
+        mask[1::2, :] = -1
+
+    return mask
 
 
 def dct_rot90_block(dct_block: np.ndarray, k: int) -> np.ndarray:
@@ -95,6 +110,30 @@ def dct_rot90(dct_image: np.ndarray, k: int) -> np.ndarray:
     return np.dstack([y, cb, cr])
 
 
+def dct_rot90_fast(dct_image: np.ndarray, k: int) -> np.ndarray:
+    if k == 0:
+        return dct_image
+
+    # Extract image planes
+    rows, cols, ch = dct_image.shape
+
+    dct_image = dct_image.reshape((rows // 8, 8, cols // 8, 8, ch))
+
+    # Now do spatial rotation
+    dct_image = np.rot90(dct_image, k, axes=(0, 2))
+
+    block = get_rot90_block(k)
+    block = block.reshape((1, 8, 1, 8, 1))
+
+    dct_image = dct_image * block
+
+    if k == 1 or k == 3:
+        dct_image = np.transpose(dct_image, axes=(0, 3, 2, 1, 4))
+
+    dct_image = dct_image.reshape((rows, cols, ch))
+    return np.ascontiguousarray(dct_image)
+
+
 def dct_transpose(dct_image: np.ndarray) -> np.ndarray:
     # Extract image planes
     y, cb, cr = dct_image[..., 0], dct_image[..., 1], dct_image[..., 2]
@@ -121,6 +160,20 @@ def dct_transpose(dct_image: np.ndarray) -> np.ndarray:
     cb = dct2spatial(cb)
     cr = dct2spatial(cr)
     return np.dstack([y, cb, cr])
+
+
+def dct_transpose_fast(dct_image: np.ndarray) -> np.ndarray:
+    # Extract image planes
+    rows, cols, ch = dct_image.shape
+
+    dct_image = dct_image.reshape((rows // 8, 8, cols // 8, 8, ch))
+
+    # Now do spatial rotation
+    dct_image = np.transpose(dct_image, axes=(2, 1, 0, 3, 4))
+    dct_image = np.transpose(dct_image, axes=(0, 3, 2, 1, 4))
+
+    dct_image = dct_image.reshape((rows, cols, ch))
+    return np.ascontiguousarray(dct_image)
 
 
 class DctRandomRotate90(A.RandomRotate90):
@@ -152,7 +205,7 @@ class DctRandomRotate90(A.RandomRotate90):
         Args:
             factor (int): number of times the input will be rotated by 90 degrees.
         """
-        return dct_rot90(img, factor)
+        return dct_rot90_fast(img, factor)
 
 
 class DctTranspose(A.Transpose):
@@ -169,7 +222,7 @@ class DctTranspose(A.Transpose):
     """
 
     def apply_dct(self, img, **params):
-        return dct_transpose(img)
+        return dct_transpose_fast(img)
 
     @property
     def targets(self):
