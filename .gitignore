@@ -4,3 +4,5 @@
 /models/
 alaska2/__pycache__/
 alaska2/models/__pycache__/
+/dataset_qf_qt.csv
+/features.csv

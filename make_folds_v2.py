@@ -12,7 +12,7 @@ from alaska2 import INPUT_IMAGE_ID_KEY, INPUT_FOLD_KEY
 
 
 def stringify_image_id(x):
-    return f"{x:0>4}.jpg"
+    return f"{x:0>5}.jpg"
 
 
 def main():
