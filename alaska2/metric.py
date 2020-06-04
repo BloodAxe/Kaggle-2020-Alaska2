@@ -172,8 +172,8 @@ class CompetitionMetricCallback(Callback):
         plt.xticks(np.arange(len(x_names)), x_names, rotation=45, ha="right")
         plt.yticks(np.arange(len(y_names)), y_names)
 
-        fmt = ".2f" if normalize else "d"
-        thresh = cm.max() / 2.0
+        fmt = ".2f"
+        thresh = 0.5
         for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
             plt.text(
                 j,
