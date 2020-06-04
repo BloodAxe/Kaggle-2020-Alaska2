@@ -171,7 +171,7 @@ class CompetitionMetricCallback(Callback):
         plt.yticks(np.arange(len(y_names)), y_names)
 
         fmt = ".2f"
-        thresh = cm.max() / 2
+        thresh = (cm.max() + cm.min()) / 2
         for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
             plt.text(
                 j,
