@@ -314,14 +314,14 @@ class TrainingValidationDataset(Dataset):
         sample = {INPUT_IMAGE_ID_KEY: fs.id_from_fname(self.images[index])}
 
         if self.targets is not None:
-            t = self.targets[index]
+            target = int(self.targets[index])
 
             if self.obliterate_p > 0 and self.obliterate_p < random.random():
-                t = 0
+                target = 0
                 data = self.obliterate(**data)
 
-            sample[INPUT_TRUE_MODIFICATION_TYPE] = int(t)
-            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([t > 0]).float()
+            sample[INPUT_TRUE_MODIFICATION_TYPE] = target
+            sample[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([target > 0]).float()
 
         for key, value in data.items():
             if key in self.features:
