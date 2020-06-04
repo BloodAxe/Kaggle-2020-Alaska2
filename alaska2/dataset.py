@@ -535,7 +535,7 @@ def get_datasets(
 
             valid_x += [fname.replace("Cover", method) for fname in valid_images]
             valid_y += [i + 1] * len(valid_images)
-            valid_qf += valid_qf["quality"].values.tolist()
+            valid_qf += valid_df["quality"].values.tolist()
 
         train_ds = TrainingValidationDataset(
             images=train_x,
