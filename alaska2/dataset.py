@@ -316,7 +316,7 @@ class TrainingValidationDataset(Dataset):
         if self.targets is not None:
             target = int(self.targets[index])
 
-            if self.obliterate_p > 0 and self.obliterate_p < random.random():
+            if (self.obliterate_p > 0) and (random.random() < self.obliterate_p):
                 target = 0
                 data = self.obliterate(**data)
 
