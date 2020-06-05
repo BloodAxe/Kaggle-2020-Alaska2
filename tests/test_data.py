@@ -41,9 +41,9 @@ def test_dct_rot90():
     # ax[1].imshow(idct8(dct2channels_last(dct2spatial(dct8(image_0)))), cmap="gray")
     # plt.show()
 
-    dct_cv = dct2spatial(dct8(image_0))
-    dct_cv = np.dstack([dct_cv, dct_cv, dct_cv])
-    # dct_cv = compute_features(None, image_fname, [INPUT_FEATURES_DCT_KEY])[INPUT_FEATURES_DCT_KEY]
+    # dct_cv = dct2spatial(dct8(image_0))
+    # dct_cv = np.dstack([dct_cv, dct_cv, dct_cv])
+    dct_cv = compute_features(None, image_fname, [INPUT_FEATURES_DCT_KEY])[INPUT_FEATURES_DCT_KEY]
 
     image_0 = image_0[256 : 256 + 8, 256 : 256 + 8]
     image_1 = np.rot90(image_0, 1)
