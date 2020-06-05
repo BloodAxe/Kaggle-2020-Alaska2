@@ -305,8 +305,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
         return A.ReplayCompose(
             [
                 maybe_crop,
-                DctRandomRotate90(),
-                DctTranspose(),
+                DctRandomRotate90(p=1.0),
+                DctTranspose(p=0.5),
                 A.OneOf(
                     [
                         A.RandomGridShuffle(grid=(2, 2)),
