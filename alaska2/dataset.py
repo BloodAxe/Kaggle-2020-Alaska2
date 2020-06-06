@@ -503,6 +503,7 @@ def get_datasets(
             raise ValueError("Fold must be set")
     else:
         data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+        unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
         # Ignore holdout fold
         data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
@@ -528,14 +529,34 @@ def get_datasets(
         valid_y = [0] * len(valid_images)
         valid_qf = valid_df["quality"].values.tolist()
 
-        for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-            train_x += [fname.replace("Cover", method) for fname in train_images]
-            train_y += [i + 1] * len(train_images)
-            train_qf += train_df["quality"].values.tolist()
+        for method_index, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+            # Filter images that does not have any alterations DCT (there are 250 of them)
+            unchanged_files = unchanged[unchanged["method"] == method].file.values
+            unchanged_files = list(map(fs.id_from_fname, unchanged_files))
 
-            valid_x += [fname.replace("Cover", method) for fname in valid_images]
-            valid_y += [i + 1] * len(valid_images)
-            valid_qf += valid_df["quality"].values.tolist()
+            for fname, qf in zip(train_images, train_df["quality"].values):
+                if fs.id_from_fname(fname) not in unchanged_files:
+                    train_x.append(fname)
+                    train_y.append(method_index + 1)
+                    train_qf.append(qf)
+                else:
+                    print("Removed unchanged file from the train set", fname)
+
+            for fname, qf in zip(valid_images, valid_df["quality"].values):
+                if fs.id_from_fname(fname) not in unchanged_files:
+                    valid_x.append(fname)
+                    valid_y.append(method_index + 1)
+                    valid_qf.append(qf)
+                else:
+                    print("Removed unchanged file from the valid set", fname)
+
+            # train_x += [fname.replace("Cover", method) for fname in train_images]
+            # train_y += [i + 1] * len(train_images)
+            # train_qf += train_df["quality"].values.tolist()
+
+            # valid_x += [fname.replace("Cover", method) for fname in valid_images]
+            # valid_y += [i + 1] * len(valid_images)
+            # valid_qf += valid_df["quality"].values.tolist()
 
         train_ds = TrainingValidationDataset(
             images=train_x,
