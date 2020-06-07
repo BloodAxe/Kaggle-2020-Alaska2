@@ -161,6 +161,16 @@ def main():
             os.path.join(output_dir, "best_models_for_each_fold_mean.csv"), index=False
         )
 
+    if True:
+        p1 = blend_predictions_mean(make_classifier_predictions(rgb_tf_efficientnet_b6_ns_best_auc_c))
+        p2 = blend_predictions_mean(make_classifier_predictions(rgb_tf_efficientnet_b6_ns_best_loss))
+        p3 = blend_predictions_mean(make_classifier_predictions(ela_skresnext50_32x4d_best_loss))
+        p4 = blend_predictions_mean(make_classifier_predictions(rgb_tf_efficientnet_b2_ns_best_auc_c))
+
+        blend_predictions_ranked([p1,p2,p3,p4]).to_csv(
+            os.path.join(output_dir, "averaged_folds_ensemble_ranked.csv"), index=False
+        )
+
 
 if __name__ == "__main__":
     main()
