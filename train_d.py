@@ -212,24 +212,26 @@ def main():
 
     # Pretrain/warmup
     if warmup:
-        train_ds, valid_ds, train_sampler = get_datasets_quad(
+        train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
             image_size=image_size,
-            augmentation="light",
+            augmentation=augmentations,
+            balance=balance,
             fast=fast,
             fold=fold,
             features=required_features,
+            obliterate_p=0,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=[["rank2", 1.0]],
-            modification_type=None,
-            embedding_loss=None,
-            feature_maps_loss=None,
+            modification_flag=modification_flag_loss,
+            modification_type=modification_type_loss,
+            embedding_loss=embedding_loss,
+            feature_maps_loss=feature_maps_loss,
             num_epochs=warmup,
-            mixup=False,
-            cutmix=False,
-            tsa=False,
+            mixup=mixup,
+            cutmix=cutmix,
+            tsa=tsa,
         )
 
         callbacks = (
@@ -272,7 +274,9 @@ def main():
             sampler=DistributedSampler(valid_ds, args.world_size, args.local_rank, shuffle=False),
         )
 
-        optimizer = get_optimizer("RAdam", get_optimizable_parameters(model), learning_rate=learning_rate)
+        optimizer = get_optimizer(
+            "Ranger", get_optimizable_parameters(model), weight_decay=weight_decay, learning_rate=3e-4
+        )
         scheduler = None
 
         print("Train session    :", checkpoint_prefix)
@@ -285,7 +289,6 @@ def main():
         print("  Cache          :", cache)
         print("Data              ")
         print("  Augmentations  :", augmentations)
-        print("  Obliterate (%) :", obliterate_p)
         print("  Negative images:", negative_image_dir)
         print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
         print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
@@ -437,7 +440,7 @@ def main():
         print("  Is master   :", args.is_master)
 
         optimizer = get_optimizer(
-            optimizer_name, get_optimizable_parameters(model), learning_rate, weight_decay=weight_decay
+            optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
         )
         scheduler = get_scheduler(
             scheduler_name, optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
@@ -575,7 +578,7 @@ def main():
         print("  Is master   :", args.is_master)
 
         optimizer = get_optimizer(
-            "SGD", get_optimizable_parameters(model), learning_rate * 0.1, weight_decay=weight_decay
+            "SGD", get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
         )
         scheduler = get_scheduler(
             "cos", optimizer, lr=learning_rate, num_epochs=fine_tune, batches_in_epoch=len(loaders["train"])

@@ -197,7 +197,7 @@ def main():
             fast=fast,
             fold=fold,
             features=required_features,
-            obliterate_p=obliterate_p,
+            obliterate_p=0,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
