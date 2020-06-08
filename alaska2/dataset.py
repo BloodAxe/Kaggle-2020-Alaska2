@@ -604,8 +604,8 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
         unchanged_files = list(map(fs.id_from_fname, unchanged_files))
 
         for fname, qf in zip(holdout_images, holdout_df["quality"].values):
-            fname = fname.replace("Cover", method_name)
             if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
                 valid_x.append(fname)
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
