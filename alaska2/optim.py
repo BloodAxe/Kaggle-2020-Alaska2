@@ -278,6 +278,11 @@ def get_optimizer(optimizer_name: str, parameters, learning_rate: float, weight_
 
         return FusedAdam(parameters, learning_rate, eps=1e-5, weight_decay=weight_decay, adam_w_mode=True, **kwargs)
 
+    if optimizer_name.lower() == "fused_sgd":
+        from apex.optimizers import FusedSGD
+
+        return FusedSGD(parameters, learning_rate, weight_decay=weight_decay, momentum=0.9, **kwargs)
+
     if optimizer_name.lower() == "diffgrad":
         return DiffGrad(parameters, learning_rate, eps=1e-5, weight_decay=weight_decay, **kwargs)
 
