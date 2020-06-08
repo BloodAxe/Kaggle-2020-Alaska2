@@ -110,7 +110,7 @@ def main():
             oof_predictions.to_csv(oof_predictions_csv, index=False)
 
         # Holdout
-        _, holdout_ds, _ = get_holdout(data_dir, features=required_features)
+        holdout_ds = get_holdout(data_dir, features=required_features)
 
         holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
         holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions.csv")

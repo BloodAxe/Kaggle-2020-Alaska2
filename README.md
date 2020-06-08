@@ -42,7 +42,18 @@ https://github.com/TAMU-VITA/Adv-SS-Pretraining/tree/master/pretraining
 | May28_13_04_rgb_tf_efficientnet_b6_ns_fold0    | rgb_tf_efficientnet_b6  | 0    |      |      |       | 0.917 |
 | May28_18_49_rgb_tf_efficientnet_b6_ns_fold1    | rgb_tf_efficientnet_b6  | 1    |      |      |       | 0.923
 
-# ela_skresnext50_32x4d
+# Models (New folds, Holdout)
+
+## rgb_tf_efficientnet_b6_ns
+
+|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
+|Experiment Name                               | Model                       | Fold | Metric | bAUC    | cAUC   | Acc01 | LB    | LB (Flip) | LB (D4) |
+|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | loss   | 0.9199  | 0.9200 | 71.36 |
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | b-auc  | 0.9205  | 0.9205 | 70.93 |
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | c-auc  | 0.9205  | 0.9205 | 70.93 |
+|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
+
 
 Average of 4 folds (best loss): 
 Average of 4 folds (best auc b): 
