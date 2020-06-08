@@ -25,9 +25,12 @@ from alaska2 import *
 
 @torch.no_grad()
 def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataFrame:
-
     df = defaultdict(list)
-    for batch in tqdm(DataLoader(dataset, batch_size=batch_size, num_workers=workers, pin_memory=True)):
+    for batch in tqdm(
+        DataLoader(
+            dataset, batch_size=batch_size, num_workers=workers, shuffle=False, drop_last=False, pin_memory=True
+        )
+    ):
         batch = any2device(batch, device="cuda")
 
         image_ids = batch[INPUT_IMAGE_ID_KEY]
@@ -79,7 +82,6 @@ def main():
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
     for checkpoint_fname in checkpoint_fnames:
-
         model, checkpoints, required_features = ensemble_from_checkpoints(
             [checkpoint_fname], strict=True, outputs=outputs, activation=None, tta=None
         )
@@ -93,25 +95,6 @@ def main():
 
         fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
         _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
-
-        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
-        if not os.path.exists(oof_predictions_csv) or force_recompute:
-            oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
-            oof_predictions.to_csv(oof_predictions_csv, index=False)
-
-        if hv_tta:
-            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
-            if not os.path.exists(oof_predictions_csv) or force_recompute:
-                tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
-                oof_predictions.to_csv(oof_predictions_csv, index=False)
-
-        if d4_tta:
-            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
-            if not os.path.exists(oof_predictions_csv) or force_recompute:
-                tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
-                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
-                oof_predictions.to_csv(oof_predictions_csv, index=False)
 
         # Holdout
         holdout_ds = get_holdout(data_dir, features=required_features)
@@ -138,6 +121,25 @@ def main():
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
                 )
                 holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+
+        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
+        if not os.path.exists(oof_predictions_csv) or force_recompute:
+            oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
+            oof_predictions.to_csv(oof_predictions_csv, index=False)
+
+        if hv_tta:
+            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
+            if not os.path.exists(oof_predictions_csv) or force_recompute:
+                tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
+                oof_predictions.to_csv(oof_predictions_csv, index=False)
+
+        if d4_tta:
+            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
+            if not os.path.exists(oof_predictions_csv) or force_recompute:
+                tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
+                oof_predictions.to_csv(oof_predictions_csv, index=False)
 
 
 if __name__ == "__main__":

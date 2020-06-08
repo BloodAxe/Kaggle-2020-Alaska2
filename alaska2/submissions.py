@@ -197,12 +197,12 @@ def blend_predictions_mean(predictions: List[pd.DataFrame], winsorized=False):
     else:
         op = noop
 
-    df = [pd.read_csv(x).sort_values(by="Id") if isinstance(x, str) else x for x in predictions]
+    df = [pd.read_csv(x) if isinstance(x, str) else x for x in predictions]
     return pd.DataFrame.from_dict({"Id": df[0].Id.tolist(), "Label": sum([op(x.Label.values) for x in df]) / len(df)})
 
 
 def blend_predictions_ranked(predictions: List[Union[str, pd.DataFrame]]):
-    df = [pd.read_csv(x).sort_values(by="Id") if isinstance(x, str) else x for x in predictions]
+    df = [pd.read_csv(x) if isinstance(x, str) else x for x in predictions]
     return pd.DataFrame.from_dict(
         {"Id": df[0].Id.tolist(), "Label": sum([rankdata(x.Label.values) for x in df]) / len(df)}
     )
@@ -214,17 +214,6 @@ def as_hv_tta(predictions):
 
 def as_d4_tta(predictions):
     return [fs.change_extension(x, "_d4_tta.csv") for x in predictions]
-
-
-def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
-    preds_df = []
-    for x in test_predictions:
-        df = pd.read_csv(x).rename(columns={"image_id": "Id"})
-        df["Id"] = df["Id"].apply(stringify_image_id)
-        df["Label"] = df["pred_modification_type"].apply(classifier_probas)
-        preds_df.append(df[["Id", "Label"]])
-
-    return preds_df
 
 
 def make_binary_predictions_calibrated(test_predictions: List[str], oof_predictions: List[str]) -> List[pd.DataFrame]:
@@ -244,6 +233,23 @@ def make_binary_predictions_calibrated(test_predictions: List[str], oof_predicti
     return preds_df
 
 
+def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
+    preds_df = []
+    for x in test_predictions:
+        df = pd.read_csv(x).rename(columns={"image_id": "Id"})
+        df["Id"] = df["Id"].apply(stringify_image_id)
+        df["Label"] = df["pred_modification_type"].apply(classifier_probas)
+
+        keys = ["Id", "Label"]
+        if "true_modification_flag" in df:
+            df["y_true"] = df["true_modification_flag"].astype(int)
+            keys.append("y_true")
+
+        preds_df.append(df[keys])
+
+    return preds_df
+
+
 def make_classifier_predictions_calibrated(
     test_predictions: List[str], oof_predictions: List[str]
 ) -> List[pd.DataFrame]:
@@ -258,6 +264,12 @@ def make_classifier_predictions_calibrated(
 
         calibrated_test["Id"] = calibrated_test["image_id"].apply(stringify_image_id)
         calibrated_test["Label"] = calibrated_test["pred_modification_type"]
-        preds_df.append(calibrated_test[["Id", "Label"]])
+
+        keys = ["Id", "Label"]
+        if "true_modification_flag" in calibrated_test:
+            calibrated_test["y_true"] = calibrated_test["true_modification_flag"].astype(int)
+            keys.append("y_true")
+
+        preds_df.append(calibrated_test[keys])
 
     return preds_df

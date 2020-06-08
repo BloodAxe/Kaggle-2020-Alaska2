@@ -1,5 +1,5 @@
 import itertools
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 
 import torch
 from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, ApplySoftmaxTo
@@ -74,7 +74,7 @@ def wrap_model_with_tta(model, tta_mode, inputs, outputs):
 
 
 def ensemble_from_checkpoints(
-    checkpoints, strict=True, outputs=None, activation: str = "after_model", tta=None, temperature=1
+    checkpoints, strict=True, outputs=None, activation: Optional[str] = "after_model", tta=None, temperature=1
 ):
     if activation not in {None, "after_model", "after_tta", "after_ensemble"}:
         raise KeyError(activation)
