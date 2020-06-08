@@ -278,7 +278,7 @@ class TrainingValidationDataset(Dataset):
         self,
         images: Union[List, np.ndarray],
         targets: Optional[Union[List, np.ndarray]],
-        quality: np.ndarray,
+        quality: Union[List, np.ndarray],
         transform: A.Compose,
         features: List[str],
         obliterate: A.Compose = None,
@@ -703,4 +703,7 @@ def get_datasets_quad(
 def get_test_dataset(data_dir, features):
     valid_transform = A.NoOp()
     images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
-    return TrainingValidationDataset(images, None, valid_transform, features=features)
+    # TODO: Temporal hack for quality factor
+    return TrainingValidationDataset(
+        images=images, targets=None, quality=[0] * len(images), transform=valid_transform, features=features
+    )
