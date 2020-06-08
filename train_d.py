@@ -273,7 +273,7 @@ def main():
         )
 
         optimizer = get_optimizer(
-            "Ranger", get_optimizable_parameters(model), weight_decay=weight_decay, learning_rate=3e-4
+            "Ranger", get_optimizable_parameters(model), weight_decay=0, learning_rate=3e-4
         )
         scheduler = None
 
