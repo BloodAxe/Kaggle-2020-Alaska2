@@ -561,6 +561,8 @@ def get_datasets(
             # valid_y += [i + 1] * len(valid_images)
             # valid_qf += valid_df["quality"].values.tolist()
 
+        assert len(set(train_x).intersection(set(valid_x))) == 0, "Train set and valid set has common elements"
+
         train_ds = TrainingValidationDataset(
             images=train_x,
             targets=train_y,
