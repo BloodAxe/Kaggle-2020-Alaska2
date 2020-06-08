@@ -58,6 +58,8 @@ def main():
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     parser.add_argument("-b", "--batch-size", type=int, default=1)
     parser.add_argument("-w", "--workers", type=int, default=0)
+    parser.add_argument("-d4", "--d4-tta", action="store_true")
+    parser.add_argument("-hv", "--hv-tta", action="store_true")
 
     args = parser.parse_args()
 
@@ -65,6 +67,9 @@ def main():
     data_dir = args.data_dir
     batch_size = args.batch_size
     workers = args.workers
+
+    d4_tta = args.d4_tta
+    hv_tta = args.hv_tta
 
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
@@ -87,15 +92,17 @@ def main():
         test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions.csv")
         test_predictions.to_csv(test_predictions_csv, index=False)
 
-        tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-        test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
-        test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
-        test_predictions.to_csv(test_predictions_csv, index=False)
+        if hv_tta:
+            tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+            test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
+            test_predictions.to_csv(test_predictions_csv, index=False)
 
-        tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
-        test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
-        test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
-        test_predictions.to_csv(test_predictions_csv, index=False)
+        if d4_tta:
+            tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+            test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
+            test_predictions.to_csv(test_predictions_csv, index=False)
 
 
 if __name__ == "__main__":
