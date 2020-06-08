@@ -605,7 +605,7 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
             else:
-                print("Removed unchanged file from the valid set", fname)
+                print("Removed unchanged file from the holdout set", fname)
 
     holdout_ds = TrainingValidationDataset(
         images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
