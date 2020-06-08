@@ -23,7 +23,6 @@ from torch import nn
 from torch.utils.data import DataLoader, DistributedSampler
 
 from alaska2 import *
-from train4 import custom_collate
 
 
 def main():
@@ -255,13 +254,12 @@ def main():
         loaders = collections.OrderedDict()
         loaders["train"] = DataLoader(
             train_ds,
-            batch_size=train_batch_size // 4,
+            batch_size=train_batch_size,
             num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
             shuffle=False,
             sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
-            collate_fn=custom_collate,
         )
 
         loaders["valid"] = DataLoader(
