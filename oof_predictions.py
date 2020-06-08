@@ -102,6 +102,23 @@ def main():
         oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
         oof_predictions.to_csv(oof_predictions_csv, index=False)
 
+        # Holdout
+        _, holdout_ds, _ = get_holdout(data_dir, features=required_features)
+
+        holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
+        holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions.csv")
+        holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+
+        tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+        holdout_predictions = compute_oof_predictions(tta_model, holdout_ds, batch_size=batch_size, workers=workers)
+        holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_flip_hv_tta.csv")
+        holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+        #
+        tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+        holdout_predictions = compute_oof_predictions(tta_model, holdout_ds, batch_size=batch_size, workers=workers)
+        holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_d4_tta.csv")
+        holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+
 
 if __name__ == "__main__":
     main()

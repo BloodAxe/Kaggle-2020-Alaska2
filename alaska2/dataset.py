@@ -81,6 +81,7 @@ __all__ = [
     "get_datasets_quad",
     "get_test_dataset",
     "idct8",
+    "get_holdout",
 ]
 
 
@@ -575,6 +576,43 @@ def get_datasets(
         print("Train", train_ds)
         print("Valid", valid_ds)
         return train_ds, valid_ds, sampler
+
+
+def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), features=None):
+    valid_transform = A.NoOp()
+
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
+
+    # Ignore holdout fold
+    holdout_df = data_folds[data_folds[INPUT_FOLD_KEY] == HOLDOUT_FOLD]
+
+    holdout_images = holdout_df[INPUT_IMAGE_ID_KEY].tolist()
+    holdout_images = [os.path.join(data_dir, "Cover", x) for x in holdout_images]
+
+    valid_x = holdout_images.copy()
+    valid_y = [0] * len(holdout_images)
+    valid_qf = holdout_df["quality"].values.tolist()
+
+    for method_index, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        # Filter images that does not have any alterations DCT (there are 250 of them)
+        unchanged_files = unchanged[unchanged["method"] == method].file.values
+        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
+
+        for fname, qf in zip(holdout_images, holdout_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                valid_x.append(fname)
+                valid_y.append(method_index + 1)
+                valid_qf.append(qf)
+            else:
+                print("Removed unchanged file from the valid set", fname)
+
+    holdout_ds = TrainingValidationDataset(
+        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+    )
+
+    print("Holdout", holdout_ds)
+    return holdout_ds
 
 
 def get_datasets_paired(
