@@ -321,6 +321,12 @@ def main():
             obliterate_p=obliterate_p,
         )
 
+        if negative_image_dir:
+            negatives_ds = get_negatives_ds(negative_image_dir, features=required_features, max_images=16536)
+            train_ds = train_ds + negatives_ds
+            train_sampler = None  # TODO: Add proper support of sampler
+            print("Adding", len(negatives_ds), "negative samples to training set")
+
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,

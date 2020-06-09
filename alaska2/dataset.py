@@ -82,6 +82,7 @@ __all__ = [
     "get_test_dataset",
     "idct8",
     "get_holdout",
+    "get_negatives_ds",
 ]
 
 
@@ -618,6 +619,30 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
 
     print("Holdout", holdout_ds)
     return holdout_ds
+
+
+def get_negatives_ds(data_dir, features, image_size=(512, 512), max_images=None):
+    negative_images = fs.find_images_in_dir(data_dir)
+    if max_images is not None:
+        negative_images = negative_images[:max_images]
+
+    return TrainingValidationDataset(
+        images=negative_images,
+        targets=[0] * len(negative_images),
+        quality=[0] * len(negative_images),
+        transform=A.Compose(
+            [
+                A.Transpose(p=0.5),
+                A.RandomRotate90(p=1.0),
+                A.ShiftScaleRotate(),
+                A.RandomBrightnessContrast(),
+                A.LongestMaxSize(max(*image_size)),
+                A.PadIfNeeded(image_size[0], image_size[0]),
+                A.ImageCompression(quality_lower=75, quality_upper=95),
+            ]
+        ),
+        features=features,
+    )
 
 
 def get_datasets_paired(
