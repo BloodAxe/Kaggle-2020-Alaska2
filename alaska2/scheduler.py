@@ -74,7 +74,9 @@ class FlatCosineAnnealingLR(_LRScheduler):
 
         if self.last_epoch == 0:
             return self.base_lrs
-        elif (max(0, self.last_epoch - self.T_flat) - 1 - max(0, self.T_max - self.T_flat)) % (2 * max(0, self.T_max - self.T_flat)) == 0:
+        elif (max(0, self.last_epoch - self.T_flat) - 1 - max(0, self.T_max - self.T_flat)) % (
+            2 * max(0, self.T_max - self.T_flat)
+        ) == 0:
             return [
                 group["lr"] + (base_lr - self.eta_min) * (1 - math.cos(math.pi / max(0, self.T_max - self.T_flat))) / 2
                 for base_lr, group in zip(self.base_lrs, self.optimizer.param_groups)
@@ -109,6 +111,9 @@ def get_scheduler(scheduler_name: str, optimizer, lr, num_epochs, batches_in_epo
 
     if scheduler_name.lower() == "flat_cos":
         return FlatCosineAnnealingLR(optimizer, num_epochs, int(num_epochs * 0.6), eta_min=5e-5)
+
+    if scheduler_name.lower() == "flat_cos2":
+        return FlatCosineAnnealingLR(optimizer, num_epochs, int(num_epochs * 0.5), eta_min=lr * 0.05)
 
     if scheduler_name.lower() == "cosr":
         return CosineAnnealingWarmRestarts(optimizer, T_0=max(2, num_epochs // 10), eta_min=5e-5)
