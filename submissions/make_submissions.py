@@ -14,7 +14,7 @@ from alaska2.submissions import (
     blend_predictions_mean,
     as_hv_tta,
     as_d4_tta,
-    classifier_probas
+    classifier_probas,
 )
 from alaska2.metric import alaska_weighted_auc
 
@@ -205,27 +205,32 @@ def main():
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv"
         ]
 
-        for p in best_loss_oof + best_loss_h + ela_skresnext50_32x4d_best_loss_oof:
+        for p in best_loss_h + best_bauc_h + best_cauc_h + best_loss_oof + best_bauc_oof + best_cauc_oof:
             print(p)
             p = pd.read_csv(p)
             print(
                 alaska_weighted_auc(p["true_modification_flag"], p["pred_modification_type"].apply(classifier_probas))
             )
 
+        blend_predictions_mean(make_classifier_predictions(best_loss + best_cauc)).to_csv(
+            os.path.join(output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_best_loss_cauc.csv"), index=False
+        )
+
         p1 = make_classifier_predictions(best_loss_h)[0]
         p2 = make_classifier_predictions(best_bauc_h)[0]
         p3 = make_classifier_predictions(best_cauc_h)[0]
-
+        #
         y_true_holdout = p1["y_true"]
         p_ranked = blend_predictions_ranked([p1, p2, p3])
         p_mean = blend_predictions_mean([p1, p2, p3])
         print("Ranked", alaska_weighted_auc(y_true_holdout, p_ranked["Label"]))
         print("Averaged", alaska_weighted_auc(y_true_holdout, p_mean["Label"]))
 
+        #
         p1 = make_classifier_predictions_calibrated(best_loss_h, best_loss_oof)[0]
         p2 = make_classifier_predictions_calibrated(best_bauc_h, best_bauc_oof)[0]
         p3 = make_classifier_predictions_calibrated(best_cauc_h, best_cauc_oof)[0]
-
+        #
         y_true_holdout = p1["y_true"]
         p_ranked = blend_predictions_ranked([p1, p2, p3])
         p_mean = blend_predictions_mean([p1, p2, p3])
@@ -233,29 +238,37 @@ def main():
         print("Averaged Calibrated", alaska_weighted_auc(y_true_holdout, p_mean["Label"]))
 
         #
-        # p1 = make_classifier_predictions_calibrated(best_loss, best_loss_oof)[0]
-        # p1.to_csv(
-        #     os.path.join(
-        #         output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_loss_calibrated.csv"
-        #     ),
-        #     index=False,
-        # )
-        #
-        # p2 = make_classifier_predictions_calibrated(best_bauc, best_bauc_oof)[0]
-        # p2.to_csv(
-        #     os.path.join(
-        #         output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_bauc_calibrated.csv"
-        #     ),
-        #     index=False,
-        # )
-        #
-        # p3 = make_classifier_predictions_calibrated(best_cauc, best_cauc_oof)[0]
-        # p3.to_csv(
-        #     os.path.join(
-        #         output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_cauc_calibrated.csv"
-        #     ),
-        #     index=False,
-        # )
+        p1 = make_classifier_predictions_calibrated(best_loss, best_loss_oof)[0]
+        p1.to_csv(
+            os.path.join(
+                output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_loss_calibrated.csv"
+            ),
+            index=False,
+        )
+
+        p2 = make_classifier_predictions_calibrated(best_bauc, best_bauc_oof)[0]
+        p2.to_csv(
+            os.path.join(
+                output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_bauc_calibrated.csv"
+            ),
+            index=False,
+        )
+
+        p3 = make_classifier_predictions_calibrated(best_cauc, best_cauc_oof)[0]
+        p3.to_csv(
+            os.path.join(
+                output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_cauc_calibrated.csv"
+            ),
+            index=False,
+        )
+
+        p_mean = blend_predictions_mean([p1, p2, p3])
+        p_mean[["Id", "Label"]].to_csv(
+            os.path.join(
+                output_dir, "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16_best_3_calibrated_mean.csv"
+            ),
+            index=False,
+        )
 
 
 if __name__ == "__main__":

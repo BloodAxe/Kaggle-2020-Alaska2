@@ -17,18 +17,24 @@ __all__ = [
     "rgb_tf_efficientnet_b6_ns",
     "rgb_swsl_resnext101_32x8d",
     "rgb_tf_efficientnet_b2_ns",
+    "rgb_tresnet_m_448",
 ]
+import numpy as np
 
 
 class TimmRgbModel(nn.Module):
-    def __init__(self, encoder, num_classes, dropout=0):
+    def __init__(
+        self,
+        encoder,
+        num_classes,
+        dropout=0,
+        mean=[0.3914976, 0.44266784, 0.46043398],
+        std=[0.17819773, 0.17319807, 0.18128773],
+    ):
         super().__init__()
         self.encoder = encoder
         max_pixel_value = 255
-        self.rgb_bn = Normalize(
-            [0.3914976 * max_pixel_value, 0.44266784 * max_pixel_value, 0.46043398 * max_pixel_value],
-            [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
-        )
+        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
@@ -61,6 +67,19 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_tresnet_m_448(num_classes=4, pretrained=True, dropout=0):
+    encoder = tresnet.tresnet_m_448(pretrained=pretrained)
+    del encoder.head
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 
 def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
