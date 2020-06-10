@@ -621,8 +621,9 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
     return holdout_ds
 
 
-def get_negatives_ds(data_dir, features, image_size=(512, 512), max_images=None):
+def get_negatives_ds(data_dir, features, fold:int, local_rank=0, image_size=(512, 512), max_images=None):
     negative_images = fs.find_images_in_dir(data_dir)
+
     if max_images is not None:
         negative_images = negative_images[:max_images]
 
