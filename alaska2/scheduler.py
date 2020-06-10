@@ -107,7 +107,7 @@ def get_scheduler(scheduler_name: str, optimizer, lr, num_epochs, batches_in_epo
         return PolyUpLR(optimizer, num_epochs, gamma=0.5)
 
     if scheduler_name.lower() == "cos":
-        return CosineAnnealingLR(optimizer, num_epochs, eta_min=5e-5)
+        return CosineAnnealingLR(optimizer, num_epochs, eta_min=lr * 0.05)
 
     if scheduler_name.lower() == "flat_cos":
         return FlatCosineAnnealingLR(optimizer, num_epochs, int(num_epochs * 0.6), eta_min=5e-5)
