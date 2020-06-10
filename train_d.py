@@ -223,7 +223,7 @@ def main():
 
         if negative_image_dir:
             negatives_ds = get_negatives_ds(
-                negative_image_dir, fold=fold, local_rank=args.local_rank, features=required_features, max_images=16536
+                negative_image_dir, fold=fold, local_rank=args.local_rank, features=required_features, max_images=25000
             )
             train_ds = train_ds + negatives_ds
             train_sampler = None  # TODO: Add proper support of sampler
