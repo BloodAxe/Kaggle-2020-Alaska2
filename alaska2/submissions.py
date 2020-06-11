@@ -13,13 +13,13 @@ from alaska2 import OUTPUT_PRED_MODIFICATION_FLAG, alaska_weighted_auc, OUTPUT_P
 __all__ = [
     "make_classifier_predictions",
     "make_classifier_predictions_calibrated",
+    "make_binary_predictions",
     "make_binary_predictions_calibrated",
     "temperature_scaling",
     "sigmoid",
     "noop",
     "winsorize",
     "classifier_probas",
-    "stringify_image_id",
     "submit_from_average_binary",
     "submit_from_average_classifier",
     "submit_from_median_classifier",
@@ -48,10 +48,6 @@ def classifier_probas(x):
     x = torch.tensor(x).softmax(dim=0)
     x = x[1:].sum()
     return float(x)
-
-
-def stringify_image_id(x):
-    return f"{x:0>4}.jpg"
 
 
 def noop(x):
@@ -128,7 +124,6 @@ def submit_from_average_binary(preds: List[str]):
     preds_df = [pd.read_csv(x) for x in preds]
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Id"] = submission["Id"].apply(stringify_image_id)
     submission["Label"] = sum([df["pred_modification_flag"].apply(sigmoid).values for df in preds_df]) / len(preds_df)
     return submission
 
@@ -138,7 +133,6 @@ def submit_from_average_classifier(preds: List[str]):
     preds_df = [pd.read_csv(x) for x in preds]
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Id"] = submission["Id"].apply(stringify_image_id)
     submission["Label"] = sum([df["pred_modification_type"].apply(classifier_probas).values for df in preds_df]) / len(
         preds_df
     )
@@ -152,7 +146,6 @@ def submit_from_median_classifier(test_predictions: List[str]):
     p = np.median(p, axis=0)
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Id"] = submission["Id"].apply(stringify_image_id)
     submission["Label"] = p
     return submission
 
@@ -169,7 +162,6 @@ def submit_from_binary_calibrated(test_predictions: List[str], oof_predictions: 
         preds_df.append(calibrated_test)
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Id"] = submission["Id"].apply(stringify_image_id)
     submission["Label"] = sum([df["pred_modification_flag"].values for df in preds_df]) / len(preds_df)
     return submission
 
@@ -186,7 +178,6 @@ def submit_from_classifier_calibrated(test_predictions: List[str], oof_predictio
         preds_df.append(calibrated_test)
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Id"] = submission["Id"].apply(stringify_image_id)
     submission["Label"] = sum([df["pred_modification_type"].values for df in preds_df]) / len(preds_df)
     return submission
 
@@ -216,6 +207,22 @@ def as_d4_tta(predictions):
     return [fs.change_extension(x, "_d4_tta.csv") for x in predictions]
 
 
+def make_binary_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
+    preds_df = []
+    for x in test_predictions:
+        df = pd.read_csv(x).rename(columns={"image_id": "Id"})
+        df["Label"] = df["pred_modification_flag"].apply(sigmoid)
+
+        keys = ["Id", "Label"]
+        if "true_modification_flag" in df:
+            df["y_true"] = df["true_modification_flag"].astype(int)
+            keys.append("y_true")
+
+        preds_df.append(df[keys])
+
+    return preds_df
+
+
 def make_binary_predictions_calibrated(test_predictions: List[str], oof_predictions: List[str]) -> List[pd.DataFrame]:
     assert isinstance(test_predictions, list)
     assert isinstance(oof_predictions, list)
@@ -226,7 +233,7 @@ def make_binary_predictions_calibrated(test_predictions: List[str], oof_predicti
         calibrated_test, scores = calibrated(pd.read_csv(x), pd.read_csv(y))
         print(scores)
 
-        calibrated_test["Id"] = calibrated_test["image_id"].apply(stringify_image_id)
+        calibrated_test["Id"] = calibrated_test["image_id"]
         calibrated_test["Label"] = calibrated_test["pred_modification_flag"]
         preds_df.append(calibrated_test[["Id", "Label"]])
 
@@ -237,7 +244,6 @@ def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFram
     preds_df = []
     for x in test_predictions:
         df = pd.read_csv(x).rename(columns={"image_id": "Id"})
-        df["Id"] = df["Id"].apply(stringify_image_id)
         df["Label"] = df["pred_modification_type"].apply(classifier_probas)
 
         keys = ["Id", "Label"]
@@ -262,7 +268,7 @@ def make_classifier_predictions_calibrated(
         calibrated_test, scores = calibrated(pd.read_csv(x), pd.read_csv(y))
         print(scores)
 
-        calibrated_test["Id"] = calibrated_test["image_id"].apply(stringify_image_id)
+        calibrated_test["Id"] = calibrated_test["image_id"]
         calibrated_test["Label"] = calibrated_test["pred_modification_type"]
 
         keys = ["Id", "Label"]

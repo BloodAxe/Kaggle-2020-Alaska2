@@ -1,5 +1,5 @@
-import os
 import pandas as pd
+import numpy as np
 
 from submissions.ela_skresnext50_32x4d import *
 from submissions.rgb_tf_efficientnet_b2_ns import *
@@ -10,6 +10,7 @@ from alaska2.submissions import (
     blend_predictions_ranked,
     make_classifier_predictions,
     make_classifier_predictions_calibrated,
+    make_binary_predictions,
     make_binary_predictions_calibrated,
     blend_predictions_mean,
     as_hv_tta,
@@ -17,6 +18,17 @@ from alaska2.submissions import (
     classifier_probas,
 )
 from alaska2.metric import alaska_weighted_auc
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import LinearSVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler, RobustScaler
 
 
 def main():
@@ -174,7 +186,7 @@ def main():
             os.path.join(output_dir, "averaged_folds_ensemble_ranked.csv"), index=False
         )
 
-    if True:
+    if False:
         best_loss = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv"
         ]
@@ -269,6 +281,107 @@ def main():
             ),
             index=False,
         )
+
+    if True:
+        best_loss = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+        ]
+        best_bauc = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
+        ]
+        best_cauc = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
+        ]
+
+        best_loss_oof = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
+        ]
+        best_bauc_oof = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
+        ]
+        best_cauc_oof = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+        ]
+
+        best_loss_h = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
+        ]
+        best_bauc_h = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
+        ]
+        best_cauc_h = [
+            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
+            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
+        ]
+
+        # for p in best_loss_h + best_bauc_h + best_cauc_h + best_loss_oof + best_bauc_oof + best_cauc_oof:
+        #     print(p)
+        #     p = pd.read_csv(p)
+        #     y_true = p["true_modification_flag"]
+        #     print(
+        #         alaska_weighted_auc(y_true, p["pred_modification_flag"]),
+        #         alaska_weighted_auc(y_true, p["pred_modification_type"].apply(classifier_probas)),
+        #     )
+
+        # p1 = blend_predictions_mean(p1)
+        # print("best_loss_h", alaska_weighted_auc(y_true_holdout, p1["Label"]))
+        #
+        p1 = make_classifier_predictions([best_loss_h[0]])
+        y_true_holdout = p1[0]["y_true"]
+        print("best_loss_h", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1)["Label"]))
+
+        p3 = make_classifier_predictions(best_cauc_h)
+        print("best_cauc_h", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p3)["Label"]))
+        #
+
+        p_mean = blend_predictions_mean(p1 + p3)
+        print("Averaged", alaska_weighted_auc(y_true_holdout, p_mean["Label"]))
+
+
+        p1 = make_classifier_predictions([best_loss[0]])
+        p3 = make_classifier_predictions(best_cauc)
+        p_mean = blend_predictions_mean(p1 + p3)
+        p_mean.to_csv(
+            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold01_blend_mean_9278_holdout.csv"), index=False
+        )
+
+        # #
+        # y_true_holdout = p1[0]["y_true"]
+        # p_ranked = blend_predictions_ranked(p1 + p2 + p3)
+        # p_mean = blend_predictions_mean(p1 + p2 + p3)
+        # print("Ranked", alaska_weighted_auc(y_true_holdout, p_ranked["Label"]))
+        # print("Averaged", alaska_weighted_auc(y_true_holdout, p_mean["Label"]))
+
+        # #
+        # p1 = make_classifier_predictions_calibrated(best_loss_h, best_loss_oof)
+        # p2 = make_classifier_predictions_calibrated(best_bauc_h, best_bauc_oof)
+        # p3 = make_classifier_predictions_calibrated(best_cauc_h, best_cauc_oof)
+        # #
+        # y_true_holdout = p1[0]["y_true"]
+        # p_ranked = blend_predictions_ranked(p1 + p2 + p3)
+        # p_mean = blend_predictions_mean(p1 + p2 + p3)
+        # print("Ranked Calibrated", alaska_weighted_auc(y_true_holdout, p_ranked["Label"]))
+        # print("Averaged Calibrated", alaska_weighted_auc(y_true_holdout, p_mean["Label"]))
+
+        blend_predictions_mean(make_classifier_predictions([best_loss[0]] + best_cauc)).to_csv(
+            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold01_best_loss_cauc.csv"), index=False
+        )
+
+
+        # p_mean = blend_predictions_mean(
+        #     make_classifier_predictions([best_loss[0]]) + make_classifier_predictions(best_cauc)
+        # )
+        # p_mean.to_csv(
+        #     os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold01_blend_mean_9274_holdout.csv"), index=False
+        # )
 
 
 if __name__ == "__main__":

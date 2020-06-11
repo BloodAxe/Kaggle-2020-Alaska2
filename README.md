@@ -46,14 +46,25 @@ https://github.com/TAMU-VITA/Adv-SS-Pretraining/tree/master/pretraining
 
 ## rgb_tf_efficientnet_b6_ns
 
-|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
-|Experiment Name                               | Model                       | Fold | Metric | bAUC    | cAUC   | Acc01 | LB    | LB (Flip) | LB (D4) |
-|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
-| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | loss   | 0.9199  | 0.9200 | 71.36 |
-| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | b-auc  | 0.9205  | 0.9205 | 70.93 |
-| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | c-auc  | 0.9205  | 0.9205 | 70.93 |
-|----------------------------------------------|-----------------------------|------|--------|---------|--------|-------|-------|-----------|---------|
-
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
+|Experiment Name                               | Model                       | Fold | Metric | bAUC   | cAUC   | Acc01 | LB    | LB (Flip) | LB (D4) |
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | loss   | 0.9199 | 0.9200 | 71.36 |
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | b-auc  | 0.9205 | 0.9205 | 70.93 |
+| Jun05_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | c-auc  | 0.9205 | 0.9205 | 70.93 |
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
+| Jun09_16_38_rgb_tf_efficientnet_b6_ns *      | rgb_tf_efficientnet_b6_ns   | 1    | loss   | 0.9237 | 0.9238 | 72.29 |
+| Jun09_16_38_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 1    | b-auc  | 0.9237 | 0.9238 | 72.29 |
+| Jun09_16_38_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 1    | c-auc  | 0.9237 | 0.9238 | 72.29 |
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
+| Jun11_08_51_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 2    | loss   | 
+| Jun11_08_51_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 2    | b-auc  | 
+| Jun11_08_51_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 2    | c-auc  | 
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
+| Jun10_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 3    | loss   | 
+| Jun10_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 3    | b-auc  | 
+| Jun10_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 3    | c-auc  | 
+|----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
 
 Average of 4 folds (best loss): 
 Average of 4 folds (best auc b): 
