@@ -21,17 +21,6 @@ def quality_factror_from_qm(qm):
         raise ValueError("Unknown quality factor" + str(qm[0, 0]))
 
 
-def target_from_fname(image_fname):
-    if "Cover" in image_fname:
-        return 0
-    if "JMiPOD" in image_fname:
-        return 1
-    if "JUNIWARD" in image_fname:
-        return 2
-    if "UERD" in image_fname:
-        return 3
-    raise KeyError(image_fname)
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -46,7 +35,6 @@ def main():
     # dataset = dataset[:500]
     df = defaultdict(list)
     for image_fname in tqdm(dataset):
-        target = target_from_fname(image_fname)
         dct_fname = fs.change_extension(image_fname, ".npz")
         dct_data = np.load(dct_fname)
         qm0 = dct_data["qm0"]
@@ -55,7 +43,6 @@ def main():
         fsize = os.stat(image_fname).st_size
 
         df["image_id"].append(fs.id_from_fname(image_fname))
-        df["target"].append(target)
         df["quality"].append(qf)
         df["qm0"].append(qm0.flatten().tolist())
         df["qm1"].append(qm1.flatten().tolist())
