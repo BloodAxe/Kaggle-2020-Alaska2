@@ -42,7 +42,7 @@ def main():
         qf = quality_factror_from_qm(qm0)
         fsize = os.stat(image_fname).st_size
 
-        df["image_id"].append(fs.id_from_fname(image_fname))
+        df["image_id"].append(os.path.basename(image_fname))
         df["quality"].append(qf)
         df["qm0"].append(qm0.flatten().tolist())
         df["qm1"].append(qm1.flatten().tolist())
