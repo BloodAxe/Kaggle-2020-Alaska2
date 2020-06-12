@@ -735,7 +735,7 @@ def get_test_dataset(data_dir, features):
     valid_transform = A.NoOp()
     # images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
     test_df = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_dataset_qf_qt.csv"))
-    test_df["image_fname"] = test_df[""].apply(lambda x: os.path.join(data_dir, "Test", x))
+    test_df["image_fname"] = test_df["image_id"].apply(lambda x: os.path.join(data_dir, "Test", x))
 
     return TrainingValidationDataset(
         images=test_df["image_fname"].values.tolist(),

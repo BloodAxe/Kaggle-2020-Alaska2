@@ -15,39 +15,66 @@ def main():
     summary_df = defaultdict(list)
 
     all_predictions = [
+        # (
+        #     "loss",
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_loss,
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_loss_oof,
+        # ),
+        # (
+        #     "b_auc",
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_b,
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c_oof,
+        # ),
+        # (
+        #     "c_auc",
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c,
+        #     ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c_oof,
+        # ),
+        # # B6
+        # (
+        #     "loss",
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_loss,
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_loss_oof,
+        # ),
+        # (
+        #     "b_auc",
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_b,
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_b_oof,
+        # ),
+        # (
+        #     "c_auc",
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_c,
+        #     rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_c_oof,
+        # ),
+        # # B2
+        # (
+        #     "c_auc",
+        #     rgb_tf_efficientnet_b2_ns.rgb_tf_efficientnet_b2_ns_best_auc_c,
+        #     rgb_tf_efficientnet_b2_ns.rgb_tf_efficientnet_b2_ns_best_auc_c_oof,
+        # ),
+        # New
         (
             "loss",
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_loss,
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_loss_oof,
-        ),
-        (
-            "b_auc",
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_b,
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c_oof,
+            [
+                # "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+                "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+            ],
+            [
+                # "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
+                "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
+            ],
         ),
         (
             "c_auc",
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c,
-            ela_skresnext50_32x4d.ela_skresnext50_32x4d_best_auc_c_oof,
+            [
+                "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
+                "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
+            ],
+            [
+                "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+                "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+            ],
         ),
-        # B6
-        (
-            "loss",
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_loss,
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_loss_oof,
-        ),
-        (
-            "b_auc",
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_b,
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_b_oof,
-        ),
-        (
-            "c_auc",
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_c,
-            rgb_tf_efficientnet_b6_ns.rgb_tf_efficientnet_b6_ns_best_auc_c_oof,
-        ),
-        # B2
-        ("c_auc", rgb_tf_efficientnet_b2_ns.rgb_tf_efficientnet_b2_ns_best_auc_c, rgb_tf_efficientnet_b2_ns.rgb_tf_efficientnet_b2_ns_best_auc_c_oof,),
     ]
 
     for checkpoint_metric, test_predictions, oof_predictions in all_predictions:

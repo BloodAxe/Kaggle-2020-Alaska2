@@ -1,5 +1,7 @@
 import warnings
 
+from predict import compute_test_predictions
+
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
 
@@ -98,45 +100,62 @@ def main():
 
         # Holdout
         holdout_ds = get_holdout(data_dir, features=required_features)
-
         holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions.csv")
-        if not os.path.exists(holdout_predictions_csv) or force_recompute:
+        if force_recompute or not os.path.exists(holdout_predictions_csv):
             holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
             holdout_predictions.to_csv(holdout_predictions_csv, index=False)
 
+        # Also compute test predictions
+        test_ds = get_test_dataset(data_dir, features=required_features)
+        test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions.csv")
+        if force_recompute or not os.path.exists(test_predictions_csv):
+            test_predictions = compute_test_predictions(model, test_ds, batch_size=batch_size, workers=workers)
+            test_predictions.to_csv(test_predictions_csv, index=False)
+
         if hv_tta:
+            tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+
             holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_flip_hv_tta.csv")
-            if not os.path.exists(holdout_predictions_csv) or force_recompute:
-                tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+            if force_recompute or not os.path.exists(holdout_predictions_csv):
                 holdout_predictions = compute_oof_predictions(
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
                 )
                 holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+
+            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
+            if force_recompute or not os.path.exists(test_predictions_csv):
+                test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+                test_predictions.to_csv(test_predictions_csv, index=False)
 
         if d4_tta:
+            tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
             holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_d4_tta.csv")
-            if not os.path.exists(holdout_predictions_csv) or force_recompute:
-                tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+            if force_recompute or not os.path.exists(holdout_predictions_csv):
                 holdout_predictions = compute_oof_predictions(
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
                 )
                 holdout_predictions.to_csv(holdout_predictions_csv, index=False)
 
+            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
+            if force_recompute or not os.path.exists(test_predictions_csv):
+                test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+                test_predictions.to_csv(test_predictions_csv, index=False)
+
         oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
-        if not os.path.exists(oof_predictions_csv) or force_recompute:
+        if force_recompute or not os.path.exists(oof_predictions_csv):
             oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
             oof_predictions.to_csv(oof_predictions_csv, index=False)
 
         if hv_tta:
             oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
-            if not os.path.exists(oof_predictions_csv) or force_recompute:
+            if force_recompute or not os.path.exists(oof_predictions_csv):
                 tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
                 oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
                 oof_predictions.to_csv(oof_predictions_csv, index=False)
 
         if d4_tta:
             oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
-            if not os.path.exists(oof_predictions_csv) or force_recompute:
+            if force_recompute or not os.path.exists(oof_predictions_csv):
                 tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
                 oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
                 oof_predictions.to_csv(oof_predictions_csv, index=False)

@@ -61,7 +61,7 @@ def winsorize(x):
     return x_w
 
 
-def calibrated(test_predictions, oof_predictions, flag_transform=noop, type_transform=classifier_probas):
+def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_transform=classifier_probas):
     """
     Update test predictions w.r.t to calibration trained on OOF predictions
     :param test_predictions:
@@ -91,11 +91,12 @@ def calibrated(test_predictions, oof_predictions, flag_transform=noop, type_tran
     print("Calibration results")
 
     if True:
+        y_pred_raw = oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
+        b_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
+
         ir_flag = IR(out_of_bounds="clip")
-        ir_flag.fit(oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values, y_true)
-        flag_calibrated = ir_flag.transform(oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values)
-        b_auc_before = alaska_weighted_auc(y_true, oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values)
-        b_auc_after = alaska_weighted_auc(y_true, flag_calibrated)
+        y_pred_cal = ir_flag.fit_transform(y_pred_raw, y_true)
+        b_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
         print("Flag", b_auc_before, b_auc_after, (b_auc_after - b_auc_before))
         test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
             test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
@@ -103,10 +104,10 @@ def calibrated(test_predictions, oof_predictions, flag_transform=noop, type_tran
 
     if True:
         ir_type = IR(out_of_bounds="clip")
-        ir_type.fit(oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values, y_true)
-        type_calibrated = ir_type.transform(oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values)
-        c_auc_before = alaska_weighted_auc(y_true, oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values)
-        c_auc_after = alaska_weighted_auc(y_true, type_calibrated)
+        y_pred_raw = oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
+        c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
+        y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
+        c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
         print("Type", c_auc_before, c_auc_after, c_auc_after - c_auc_before)
         test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
             test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
