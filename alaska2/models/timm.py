@@ -77,7 +77,7 @@ class ImageAndQFModel(nn.Module):
 
         # Recombination of embedding and quality factor
         self.fc1 = nn.Sequential(
-            nn.Linear(encoder.num_features + 3, encoder.num_features), nn.BatchNorm1d(encoder.num_features), nn.ReLU()
+            nn.Linear(encoder.num_features + 3, encoder.num_features), nn.ReLU()
         )
 
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
@@ -91,7 +91,7 @@ class ImageAndQFModel(nn.Module):
         x = self.encoder.forward_features(x)
         x = self.pool(x)
 
-        x = torch.cat([x, qf], dim=1)
+        x = torch.cat([x, qf.type_as(x)], dim=1)
         x = self.fc1(x)
 
         return {

@@ -23,7 +23,7 @@ __all__ = [
 from .dataset import INPUT_IMAGE_QF_KEY
 
 
-def alaska_weighted_auc(y_true, y_pred):
+def alaska_weighted_auc(y_true, y_pred, **kwargs):
     try:
         tpr_thresholds = [0.0, 0.4, 1.0]
         weights = [2, 1]
