@@ -621,7 +621,7 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
     return holdout_ds
 
 
-def get_negatives_ds(data_dir, features, fold:int, local_rank=0, image_size=(512, 512), max_images=None):
+def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(512, 512), max_images=None):
     negative_images = fs.find_images_in_dir(data_dir)
 
     if max_images is not None:
@@ -733,8 +733,14 @@ def get_datasets_quad(
 
 def get_test_dataset(data_dir, features):
     valid_transform = A.NoOp()
-    images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
-    # TODO: Temporal hack for quality factor
+    # images = fs.find_images_in_dir(os.path.join(data_dir, "Test"))
+    test_df = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_dataset_qf_qt.csv"))
+    test_df["image_fname"] = test_df[""].apply(lambda x: os.path.join(data_dir, "Test", x))
+
     return TrainingValidationDataset(
-        images=images, targets=None, quality=[0] * len(images), transform=valid_transform, features=features
+        images=test_df["image_fname"].values.tolist(),
+        targets=None,
+        quality=test_df["quality"].values.tolist(),
+        transform=valid_transform,
+        features=features,
     )
