@@ -22,6 +22,7 @@ __all__ = [
     "rgb_tresnet_m_448",
     "rgb_qf_tf_efficientnet_b2_ns",
     "rgb_qf_tf_efficientnet_b6_ns",
+    "rgb_qf_swsl_resnext101_32x8d",
 ]
 import numpy as np
 
@@ -76,9 +77,7 @@ class ImageAndQFModel(nn.Module):
         self.drop = nn.Dropout(dropout)
 
         # Recombination of embedding and quality factor
-        self.fc1 = nn.Sequential(
-            nn.Linear(encoder.num_features + 3, encoder.num_features), nn.ReLU()
-        )
+        self.fc1 = nn.Sequential(nn.Linear(encoder.num_features + 3, encoder.num_features), nn.ReLU())
 
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
         self.flag_classifier = nn.Linear(encoder.num_features, 1)
@@ -158,3 +157,16 @@ def rgb_qf_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return ImageAndQFModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_qf_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
+    encoder = resnet.swsl_resnext101_32x8d(pretrained=pretrained)
+    del encoder.fc
+
+    return ImageAndQFModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
