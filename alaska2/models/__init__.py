@@ -17,11 +17,9 @@ MODEL_REGISTRY = {
     "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
     "rgb_tf_efficientnet_b2_ns": timm.rgb_tf_efficientnet_b2_ns,
     "rgb_tresnet_m_448": timm.rgb_tresnet_m_448,
-
     "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
     "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,
     "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
-
     "frank": rgb_ela_blur.frank,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
@@ -72,9 +70,10 @@ def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, s
 def wrap_model_with_tta(model, tta_mode, inputs, outputs):
     if tta_mode == "flip-hv":
         model = HVFlipTTA(model, inputs=inputs, outputs=outputs, average=True)
-
-    if tta_mode == "d4":
+    elif tta_mode == "d4":
         model = D4TTA(model, inputs=inputs, outputs=outputs, average=True)
+    else:
+        pass
 
     return model
 
