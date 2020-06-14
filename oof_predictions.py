@@ -44,11 +44,23 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
         df[INPUT_TRUE_MODIFICATION_TYPE].extend(y_labels)
 
         outputs = model(**batch)
+
         if OUTPUT_PRED_MODIFICATION_FLAG in outputs:
             df[OUTPUT_PRED_MODIFICATION_FLAG].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG]).flatten())
 
         if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
             df[OUTPUT_PRED_MODIFICATION_TYPE].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE]).tolist())
+
+        # Save also TTA predictions for future use
+        if OUTPUT_PRED_MODIFICATION_FLAG + "_tta" in outputs:
+            df[OUTPUT_PRED_MODIFICATION_FLAG + "_tta"].extend(
+                to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG + "_tta"]).flatten()
+            )
+
+        if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
+            df[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"].extend(
+                to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"]).tolist()
+            )
 
     df = pd.DataFrame.from_dict(df)
     return df
