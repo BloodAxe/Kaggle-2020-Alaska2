@@ -41,6 +41,10 @@ def temperature_scaling(x, t):
 def sigmoid(x):
     return torch.sigmoid(torch.tensor(x)).item()
 
+def parse_array(x):
+    x = x.replace("[", "").replace("]", "").split(",")
+    x = [float(i) for i in x]
+    return x
 
 def classifier_probas(x):
     x = x.replace("[", "").replace("]", "").split(",")

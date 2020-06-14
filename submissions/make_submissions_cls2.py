@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-import torch
 
-from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from submissions.ela_skresnext50_32x4d import *
 from submissions.rgb_tf_efficientnet_b2_ns import *
 from submissions.rgb_tf_efficientnet_b6_ns import *
@@ -19,7 +17,6 @@ from alaska2.submissions import (
     as_d4_tta,
     classifier_probas,
     sigmoid,
-    parse_array,
 )
 from alaska2.metric import alaska_weighted_auc
 import os
@@ -30,7 +27,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, make_scorer
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, RobustScaler
 
@@ -57,26 +54,6 @@ from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
 import warnings
 
 warnings.simplefilter("ignore")
-
-
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values
-
-        X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-
-    X = np.column_stack(X)
-    return X, y
 
 
 def main():
@@ -140,87 +117,178 @@ def main():
             "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
         ]
 
-        import torch.nn.functional as F
+        print("Holdout")
+        y = None
+        X = []
 
-        holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-        quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float)
+        for p in best_loss_h + best_bauc_h + best_cauc_h:
+            p = pd.read_csv(p)
+            y = p["true_modification_flag"]
 
-        test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
-        quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float)
+            p["pred_modification_flag"] = p["pred_modification_flag"].apply(sigmoid)
+            p["pred_modification_type"] = p["pred_modification_type"].apply(classifier_probas)
 
-        X, y = get_x_y(best_loss_h + best_bauc_h + best_cauc_h)
+            X.append(p["pred_modification_flag"].values)
+            X.append(p["pred_modification_type"].values)
+
+        X = np.dstack(X).squeeze(0)
         print(X.shape, y.shape)
 
-        X_public_lb, _ = get_x_y(best_loss + best_bauc + best_cauc)
-        print(X_public_lb.shape)
-
-        X_train, X_test, y_train, y_test, quality_train, quality_test = train_test_split(
-            X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, stratify=y, test_size=0.20, random_state=1000, shuffle=True
         )
 
         sc = StandardScaler()
         X_train = sc.fit_transform(X_train)
         X_test = sc.transform(X_test)
-        X_public_lb = sc.transform(X_public_lb)
 
-        X_train = np.column_stack([X_train, quality_train])
-        X_test = np.column_stack([X_test, quality_test])
-        X_public_lb = np.column_stack([X_public_lb, quality_t])
+        # Initializing Support Vector classifier
+        classifier1 = SVC(C=50, degree=3, tol=1e-4, gamma="auto", kernel="rbf", probability=True)
 
         # Initializing Multi-layer perceptron  classifier
-        # 'activation': 'logistic', 'alpha': 0.3, 'hidden_layer_sizes': (64, 64, 64), 'learning_rate': 'invscaling'
-        # [CV]  activation=logistic, alpha=0.05, hidden_layer_sizes=(16, 24, 32), learning_rate=invscaling, score=0.935, total=   7.2s
-        # activation=relu, alpha=0.05, hidden_layer_sizes=10, learning_rate=invscaling, score=0.935, total=   3.5s
         classifier2 = MLPClassifier(
             activation="relu",
-            alpha=0.05,
-            hidden_layer_sizes=(10,),
-            learning_rate="invscaling",
-            max_iter=200000,
+            alpha=0.1,
+            hidden_layer_sizes=(10, 10, 10),
+            learning_rate="constant",
+            max_iter=20000,
             random_state=1000,
         )
 
-        classifier2.fit(X_train, y_train)
+        # Initialing Nu Support Vector classifier
+        classifier3 = NuSVC(degree=1, kernel="rbf", nu=0.25, probability=True)
 
-        auc = alaska_weighted_auc(y_train, classifier2.predict_proba(X_train)[:, 1])
-        print(f"The AUC of the baseline classifier on train {auc:.3f}")
+        # Initializing Random Forest classifier
+        classifier4 = RandomForestClassifier(
+            n_estimators=128,
+            criterion="gini",
+            max_depth=10,
+            max_features="auto",
+            min_samples_leaf=0.005,
+            min_samples_split=0.005,
+            n_jobs=-1,
+            random_state=1000,
+        )
 
-        auc = alaska_weighted_auc(y_test, classifier2.predict_proba(X_test)[:, 1])
-        print(f"The AUC of the baseline classifier on validation {auc:.3f}")
+        sclf = StackingCVClassifier(
+            classifiers=[classifier1, classifier2, classifier3, classifier4],
+            shuffle=False,
+            use_probas=True,
+            cv=5,
+            meta_classifier=SVC(probability=True),
+        )
 
-        df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-        df["Label"] = classifier2.predict_proba(X_public_lb)[:, 1]
-        df[["Id", "Label"]].to_csv(os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_stacked.csv"), index=False)
+        classifiers = {"SVC": classifier1, "MLP": classifier2, "NuSVC": classifier3, "RF": classifier4, "Stack": sclf}
 
-        # Initialize GridSearchCV
-        parameters = {
-            "learning_rate": ["constant", "invscaling", "adaptive"],
-            "solver": ["lbfgs", "sgd", "adam"],
-            "hidden_layer_sizes": [(16, 24, 32), (64, 16), (16), (32, 32, 32), (64, 64, 64)],
-            "alpha": [0.01, 0.05],
-            "learning_rate_init": [1e-5, 1e-4, 1e-3],
-            "activation": ["logistic", "relu"],
+        # Train classifiers
+        for key in classifiers:
+            print("Fitting", key)
+            # Get classifier
+            classifier = classifiers[key]
+
+            # Fit classifier
+            classifier.fit(X_train, y_train)
+
+            # Save fitted classifier
+            classifiers[key] = classifier
+            print("Fitting", key, "finished")
+
+        results = pd.DataFrame()
+        for key in classifiers:
+            # Make prediction on test set
+            y_pred = classifiers[key].predict_proba(X_test)[:, 1]
+
+            # Save results in pandas dataframe object
+            results[f"{key}"] = y_pred
+
+        # Add the test set to the results object
+        results["Target"] = y_test
+
+        # Probability Distributions Figure
+        # Set graph style
+        sns.set(font_scale=1)
+        sns.set_style(
+            {
+                "axes.facecolor": "1.0",
+                "axes.edgecolor": "0.85",
+                "grid.color": "0.85",
+                "grid.linestyle": "-",
+                "axes.labelcolor": "0.4",
+                "xtick.color": "0.4",
+                "ytick.color": "0.4",
+            }
+        )
+
+        # Plot
+        f, ax = plt.subplots(figsize=(13, 4), nrows=1, ncols=5)
+
+        for key, counter in zip(classifiers, range(5)):
+            # Get predictions
+            y_pred = results[key]
+
+            # Get AUC
+            auc = alaska_weighted_auc(y_test, y_pred)
+            textstr = f"AUC: {auc:.3f}"
+
+            # Plot false distribution
+            false_pred = results[results["Target"] == 0]
+            sns.distplot(
+                false_pred[key],
+                hist=True,
+                kde=False,
+                bins=int(25),
+                color="red",
+                hist_kws={"edgecolor": "black"},
+                ax=ax[counter],
+            )
+
+            # Plot true distribution
+            true_pred = results[results["Target"] == 1]
+            sns.distplot(
+                results[key],
+                hist=True,
+                kde=False,
+                bins=int(25),
+                color="green",
+                hist_kws={"edgecolor": "black"},
+                ax=ax[counter],
+            )
+
+            # These are matplotlib.patch.Patch properties
+            props = dict(boxstyle="round", facecolor="white", alpha=0.5)
+
+            # Place a text box in upper left in axes coords
+            ax[counter].text(
+                0.05, 0.95, textstr, transform=ax[counter].transAxes, fontsize=14, verticalalignment="top", bbox=props
+            )
+
+            # Set axis limits and labels
+            ax[counter].set_title(f"{key} Distribution")
+            ax[counter].set_xlim(0, 1)
+            ax[counter].set_xlabel("Probability")
+
+        # Tight layout
+        plt.tight_layout()
+
+        # Save Figure
+        plt.savefig("Probability Distribution for each Classifier.png", dpi=1080)
+
+        # Define parameter grid
+        params = {
+            "meta_classifier__kernel": ["linear", "rbf", "poly"],
+            "meta_classifier__C": [1, 2],
+            "meta_classifier__degree": [3, 4, 5],
+            "meta_classifier__probability": [True],
         }
 
+        # Initialize GridSearchCV
         grid = GridSearchCV(
-            estimator=MLPClassifier(
-                activation="relu",
-                alpha=0.2,
-                hidden_layer_sizes=(32, 32, 16),
-                learning_rate="constant",
-                max_iter=200000,
-            ),
-            param_grid=parameters,
-            cv=5,
-            scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
-            verbose=10,
-            n_jobs=-1,
+            estimator=sclf, param_grid=params, cv=5, scoring=alaska_weighted_auc, verbose=10, n_jobs=-1
         )
 
         # Fit GridSearchCV
         grid.fit(X_train, y_train)
 
-        print(grid.best_params_)
         # Making prediction on test set
         y_pred = grid.predict_proba(X_test)[:, 1]
 
@@ -228,13 +296,55 @@ def main():
         auc = alaska_weighted_auc(y_test, y_pred)
 
         # Print results
-        print(f"The AUC of the tuned classifier is {auc:.3f}")
+        print(f"The AUC of the tuned Stacking classifier is {auc:.3f}")
 
-        df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-        df["Label"] = grid.predict_proba(X_public_lb)[:, 1]
-        df[["Id", "Label"]].to_csv(
-            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_best_{auc:.3f}.csv"), index=False
-        )
+        # Classifier labels
+        classifier_labels = ["SVC", "MLP", "NuSVC", "RF"]
+
+        # Get all unique combinations of classifier with a set size greater than or equal to 2
+        combo_classifiers = []
+        for ii in range(2, len(classifier_labels) + 1):
+            for subset in itertools.combinations(classifier_labels, ii):
+                combo_classifiers.append(subset)
+
+        # Stack, tune, and evaluate stack of classifiers
+        for combo in combo_classifiers:
+            # Get labels of classifier to create a stack
+            labels = list(combo)
+
+            # Get classifiers
+            classifier_combo = []
+            for ii in range(len(labels)):
+                label = classifier_labels[ii]
+                classifier = classifiers[label]
+                classifier_combo.append(classifier)
+
+            # Initializing the StackingCV classifier
+            sclf = StackingCVClassifier(
+                classifiers=classifier_combo,
+                shuffle=False,
+                use_probas=True,
+                cv=5,
+                meta_classifier=SVC(probability=True),
+                n_jobs=-1,
+            )
+
+            # Initialize GridSearchCV
+            grid = GridSearchCV(
+                estimator=sclf, param_grid=params, cv=5, scoring=alaska_weighted_auc, verbose=0, n_jobs=-1
+            )
+
+            # Fit GridSearchCV
+            grid.fit(X_train, y_train)
+
+            # Making prediction on test set
+            y_pred = grid.predict_proba(X_test)[:, 1]
+
+            # Getting AUC
+            auc = alaska_weighted_auc(y_test, y_pred)
+
+            # Print results
+            print(f"AUC of stack {combo}: {auc:.3f}")
 
 
 if __name__ == "__main__":
