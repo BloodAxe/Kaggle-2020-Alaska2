@@ -27,7 +27,7 @@ class HVFlipTTA(nn.Module):
         super().__init__()
         self.model = model
         self.inputs = inputs
-        self.outputs = outputs
+        self.output_keys = outputs
         self.average = average
 
     def augment_inputs(self, augment_fn, kwargs):
@@ -48,16 +48,16 @@ class HVFlipTTA(nn.Module):
         ]
 
         # Create extra output with _tta suffix that contains contatenated predictions
-        for output_key in self.outputs:
-            tta_outputs = [outputs[output_key]] + [out[output_key] for out in outputs]
+        for output_key in self.output_keys:
+            tta_outputs = [outputs[output_key]] + [out[output_key] for out in other_outputs]
             outputs[output_key + "_tta"] = torch.cat(tta_outputs, dim=1)
 
         for tta_outputs in other_outputs:
-            for output_key in self.outputs:
+            for output_key in self.output_keys:
                 outputs[output_key] += tta_outputs[output_key]
 
         scale = 1.0 / (1 + len(other_outputs))
-        for output_key in self.outputs:
+        for output_key in self.output_keys:
             outputs[output_key] *= scale
 
         return outputs
@@ -68,7 +68,7 @@ class D4TTA(nn.Module):
         super().__init__()
         self.model = model
         self.inputs = inputs
-        self.outputs = outputs
+        self.output_keys = outputs
         self.average = average
 
     def augment_inputs(self, augment_fn, kwargs):
@@ -94,16 +94,16 @@ class D4TTA(nn.Module):
         ]
 
         # Create extra output with _tta suffix that contains contatenated predictions
-        for output_key in self.outputs:
-            tta_outputs = [outputs[output_key]] + [out[output_key] for out in outputs]
+        for output_key in self.output_keys:
+            tta_outputs = [outputs[output_key]] + [out[output_key] for out in other_outputs]
             outputs[output_key + "_tta"] = torch.cat(tta_outputs, dim=1)
 
         for tta_outputs in other_outputs:
-            for output_key in self.outputs:
+            for output_key in self.output_keys:
                 outputs[output_key] += tta_outputs[output_key]
 
         scale = 1.0 / (1 + len(other_outputs))
-        for output_key in self.outputs:
+        for output_key in self.output_keys:
             outputs[output_key] *= scale
 
         return outputs

@@ -57,7 +57,7 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
                 to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG + "_tta"]).flatten()
             )
 
-        if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
+        if OUTPUT_PRED_MODIFICATION_TYPE + "_tta" in outputs:
             df[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"].extend(
                 to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"]).tolist()
             )
@@ -82,6 +82,7 @@ def main():
     parser.add_argument("-d4", "--d4-tta", action="store_true")
     parser.add_argument("-hv", "--hv-tta", action="store_true")
     parser.add_argument("-f", "--force-recompute", action="store_true")
+    parser.add_argument("-oof", "--need-oof", action="store_true")
 
     args = parser.parse_args()
 
@@ -106,9 +107,6 @@ def main():
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
         model = model.eval()
-
-        fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
-        _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
 
         # Holdout
         holdout_ds = get_holdout(data_dir, features=required_features)
@@ -153,24 +151,32 @@ def main():
                 test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
                 test_predictions.to_csv(test_predictions_csv, index=False)
 
-        oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
-        if force_recompute or not os.path.exists(oof_predictions_csv):
-            oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
-            oof_predictions.to_csv(oof_predictions_csv, index=False)
+        if args.need_oof:
+            fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
+            _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
 
-        if hv_tta:
-            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
+            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
             if force_recompute or not os.path.exists(oof_predictions_csv):
-                tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
+                oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
                 oof_predictions.to_csv(oof_predictions_csv, index=False)
 
-        if d4_tta:
-            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
-            if force_recompute or not os.path.exists(oof_predictions_csv):
-                tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
-                oof_predictions = compute_oof_predictions(tta_model, valid_ds, batch_size=batch_size, workers=workers)
-                oof_predictions.to_csv(oof_predictions_csv, index=False)
+            if hv_tta:
+                oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
+                if force_recompute or not os.path.exists(oof_predictions_csv):
+                    tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
+                    oof_predictions = compute_oof_predictions(
+                        tta_model, valid_ds, batch_size=batch_size, workers=workers
+                    )
+                    oof_predictions.to_csv(oof_predictions_csv, index=False)
+
+            if d4_tta:
+                oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
+                if force_recompute or not os.path.exists(oof_predictions_csv):
+                    tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+                    oof_predictions = compute_oof_predictions(
+                        tta_model, valid_ds, batch_size=batch_size, workers=workers
+                    )
+                    oof_predictions.to_csv(oof_predictions_csv, index=False)
 
 
 if __name__ == "__main__":

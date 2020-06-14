@@ -47,7 +47,7 @@ def compute_test_predictions(model, dataset, batch_size=1, workers=0) -> pd.Data
                 to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG + "_tta"]).flatten()
             )
 
-        if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
+        if OUTPUT_PRED_MODIFICATION_TYPE + "_tta" in outputs:
             df[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"].extend(
                 to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE + "_tta"]).tolist()
             )
