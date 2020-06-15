@@ -36,6 +36,7 @@ MODEL_REGISTRY = {
     "dct_seresnext50": dct.dct_seresnext50,
     "dct_efficientnet_b6": dct.dct_efficientnet_b6,
     # ELA
+    "ela_tf_efficientnet_b6_ns": ela.ela_tf_efficientnet_b6_ns,
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,
     "ela_wider_resnet38": ela.ela_wider_resnet38,
