@@ -12,6 +12,8 @@ from alaska2.dataset import (
     OUTPUT_PRED_MODIFICATION_TYPE,
     INPUT_IMAGE_KEY,
     INPUT_IMAGE_QF_KEY,
+    INPUT_FEATURES_ELA_KEY,
+    INPUT_FEATURES_ELA_RICH_KEY,
 )
 
 __all__ = [
@@ -110,13 +112,6 @@ def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
-    del encoder.classifier
-
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
 def rgb_tresnet_m_448(num_classes=4, pretrained=True, dropout=0):
     encoder = tresnet.tresnet_m_448(pretrained=pretrained)
     del encoder.head
@@ -134,11 +129,24 @@ def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
     encoder = resnet.swsl_resnext101_32x8d(pretrained=pretrained)
     del encoder.fc
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 
 def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
+    del encoder.classifier
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)

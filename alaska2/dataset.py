@@ -212,7 +212,7 @@ def compute_ela(image, quality_steps=[75]):
     return diff
 
 
-def compute_ela_rich(image, quality_steps=[75, 99, 100]):
+def compute_ela_rich(image, quality_steps=[75, 90, 95]):
     diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps)), dtype=np.float32)
 
     for i, q in enumerate(quality_steps):
@@ -248,7 +248,7 @@ def compute_features(image: np.ndarray, image_fname: str, features):
         sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
 
     if INPUT_FEATURES_ELA_RICH_KEY in features:
-        sample[INPUT_FEATURES_ELA_RICH_KEY] = compute_ela_rich(image, quality_steps=[75, 95, 99, 100])
+        sample[INPUT_FEATURES_ELA_RICH_KEY] = compute_ela_rich(image, quality_steps=[75, 90, 95])
 
     if INPUT_FEATURES_BLUR_KEY in features:
         sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
