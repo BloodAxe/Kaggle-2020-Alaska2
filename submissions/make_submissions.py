@@ -1,34 +1,22 @@
-import pandas as pd
-import numpy as np
+import os
 
-from submissions.ela_skresnext50_32x4d import *
-from submissions.rgb_tf_efficientnet_b2_ns import *
-from submissions.rgb_tf_efficientnet_b6_ns import *
+from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import (
-    submit_from_classifier_calibrated,
-    submit_from_average_classifier,
-    blend_predictions_ranked,
     make_classifier_predictions,
-    make_classifier_predictions_calibrated,
     make_binary_predictions,
-    make_binary_predictions_calibrated,
     blend_predictions_mean,
     as_hv_tta,
     as_d4_tta,
-    classifier_probas,
 )
-from alaska2.metric import alaska_weighted_auc
-import os
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from submissions.ela_skresnext50_32x4d import ela_skresnext50_32x4d_best_loss
+
+
+def evaluate(df):
+    p1b = make_binary_predictions(df)
+    p1c = make_classifier_predictions(df)
+    y_true_holdout = p1c[0]["y_true"]
+    print("  binary     ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1b)["Label"]))
+    print("  multiclass ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1c)["Label"]))
 
 
 def main():
@@ -287,57 +275,38 @@ def main():
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
         ]
         best_bauc = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
         ]
         best_cauc = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        ]
-
-        best_loss_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-        ]
-        best_bauc_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-        ]
-        best_cauc_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
         ]
 
         best_loss_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
         ]
         best_bauc_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
         ]
         best_cauc_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
         ]
 
         # print("OOF")
@@ -359,106 +328,42 @@ def main():
         #         alaska_weighted_auc(y_true, p["pred_modification_flag"]),
         #         alaska_weighted_auc(y_true, p["pred_modification_type"].apply(classifier_probas)),
         #     )
-
-        # Best Loss
-        p1c = make_classifier_predictions(best_loss_h)
-        y_true_holdout = p1c[0]["y_true"]
-        print("p1c ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1c)["Label"]))
-
-        p1b = make_binary_predictions(best_loss_h)
-        print("p1b ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1b)["Label"]))
-
-        p1cc = make_classifier_predictions_calibrated(best_loss_h, best_loss_oof)
-        print("p1cc", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1cc)["Label"]))
-
-        p1bc = make_binary_predictions_calibrated(best_loss_h, best_loss_oof)
-        print("p1bc", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p1bc)["Label"]))
-
-        blend_predictions_mean(make_classifier_predictions(best_loss)).to_csv(
-            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold0123_blend_mean_9277_holdout.csv"), index=False
-        )
-
-        # Best B-AUC
-        p2c = make_classifier_predictions(best_bauc_h)
-        print("p2c ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p2c)["Label"]))
-
-        p2b = make_binary_predictions(best_bauc_h)
-        print("p2b ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p2b)["Label"]))
-
-        p2cc = make_classifier_predictions_calibrated(best_bauc_h, best_bauc_oof)
-        print("p2cc ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p2cc)["Label"]))
-
-        p2bc = make_binary_predictions_calibrated(best_bauc_h, best_bauc_oof)
-        print("p2bc", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p2bc)["Label"]))
-
-        # Best C-AUC
-        p3c = make_classifier_predictions(best_cauc_h)
-        print("p3c", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p3c)["Label"]))
-
-        blend_predictions_mean(make_classifier_predictions(best_cauc)).to_csv(
-            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold0123_blend_mean_9295_holdout.csv"), index=False
-        )
-
-        p3cc = make_classifier_predictions_calibrated(best_cauc_h, best_cauc_oof)
-        print("p3cc", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p3cc)["Label"]))
-
-        p3b = make_binary_predictions(best_cauc_h)
-        print("p3b ", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p3b)["Label"]))
-
-        p3bc = make_binary_predictions_calibrated(best_cauc_h, best_cauc_oof)
-        print("p3bc", alaska_weighted_auc(y_true_holdout, blend_predictions_mean(p3bc)["Label"]))
+        # print("Loss")
+        # print("  No TTA")
+        # evaluate(best_loss_h)
+        # print("  HV TTA")
+        # evaluate(as_hv_tta(best_loss_h))
+        # print("  D4 TTA")
+        # evaluate(as_d4_tta(best_loss_h))
+        #
+        # print("B-AUC")
+        # print("  No TTA")
+        # evaluate(best_bauc_h)
+        # print("  HV TTA")
+        # evaluate(as_hv_tta(best_bauc_h))
+        # print("  D4 TTA")
+        # evaluate(as_d4_tta(best_bauc_h))
+        #
+        # print("C-AUC")
+        # print("  No TTA")
+        # evaluate(best_cauc_h)
+        # print("  HV TTA")
+        # evaluate(as_hv_tta(best_cauc_h))
+        # print("  D4 TTA")
+        # evaluate(as_d4_tta(best_cauc_h))
 
         # Blends
-
-        pb_mean = blend_predictions_mean(p1b + p2b + p3b)
-        print("pb_mean", alaska_weighted_auc(y_true_holdout, pb_mean["Label"]))
-
-        pc_mean = blend_predictions_mean(p1c + p2c + p3c)
-        print("pc_mean", alaska_weighted_auc(y_true_holdout, pc_mean["Label"]))
-
-        pcc_mean = blend_predictions_mean(p1cc + p3cc)
-        print("pcc_mean", alaska_weighted_auc(y_true_holdout, pcc_mean["Label"]))
-
-        pcc_pcb_ranked = blend_predictions_ranked(p1b + p2b + p3b + p1c + p2c + p3c)
-        print("pcc_pcb_ranked", alaska_weighted_auc(y_true_holdout, pcc_pcb_ranked["Label"]))
-
-        pcc_pcb_mean = blend_predictions_mean(p1b + p2b + p3b + p1c + p2c + p3c)
-        print("pcc_pcb_mean", alaska_weighted_auc(y_true_holdout, pcc_pcb_mean["Label"]))
-
-        ranked_mean_p1c_p3c = blend_predictions_ranked([blend_predictions_mean(p1c), blend_predictions_mean(p3c)])
-        print("ranked_mean_p1c_p3c", alaska_weighted_auc(y_true_holdout, ranked_mean_p1c_p3c["Label"]))
-
-        blend_predictions_ranked(
-            [
-                blend_predictions_mean(make_classifier_predictions(best_loss)),
-                blend_predictions_mean(make_classifier_predictions(best_cauc)),
-            ]
-        ).to_csv(
-            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold0123_blend_ranked_mean_loss_cauc_9290_holdout.csv"), index=False
+        blend_predictions_mean(make_classifier_predictions(as_d4_tta(best_cauc)))[["Id", "Label"]].to_csv(
+            os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_best_cauc_d4_mean_holdout_9349.csv"), index=False
         )
 
-        # p1 = make_classifier_predictions([best_loss[0]])
-        # p3 = make_classifier_predictions(best_cauc)
-        # p_mean = blend_predictions_mean(p1 + p3)
-        # p_mean.to_csv(
-        #     os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold01_blend_mean_9278_holdout.csv"), index=False
-        # )
-        #
-        # p1 = make_classifier_predictions(best_loss)
-        # p3 = make_classifier_predictions(best_cauc)
-        # p_mean = blend_predictions_mean(p1 + p3)
-        # p_mean.to_csv(
-        #     os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_fold01_blend_mean_9274_holdout.csv"), index=False
-        # )
-        #
-        # predictions = make_classifier_predictions(
-        #     best_loss
-        #     + best_cauc
-        #     + as_hv_tta(ela_skresnext50_32x4d_best_loss)
-        #     + as_hv_tta(rgb_tf_efficientnet_b6_ns_best_loss)
-        #     + as_hv_tta(rgb_tf_efficientnet_b2_ns_best_auc_c)
-        # )
-        # blend_predictions_mean(predictions).to_csv(os.path.join(output_dir, "ranked.csv"), index=False)
+        blend = blend_predictions_mean(make_classifier_predictions(as_d4_tta(best_cauc)) +
+                                       make_classifier_predictions(as_d4_tta(ela_skresnext50_32x4d_best_loss)))
+
+        blend[["Id", "Label"]].to_csv(
+            os.path.join(output_dir, "blend_rgb_tf_efficientnet_b6_ns_best_cauc_d4_ela_skresnext50_32x4d_best_loss_mean_holdout_XXXX.csv"), index=False
+        )
+
 
 
 if __name__ == "__main__":

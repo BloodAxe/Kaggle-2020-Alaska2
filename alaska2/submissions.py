@@ -41,10 +41,12 @@ def temperature_scaling(x, t):
 def sigmoid(x):
     return torch.sigmoid(torch.tensor(x)).item()
 
+
 def parse_array(x):
     x = x.replace("[", "").replace("]", "").split(",")
     x = [float(i) for i in x]
     return x
+
 
 def classifier_probas(x):
     x = x.replace("[", "").replace("]", "").split(",")
@@ -248,7 +250,8 @@ def make_binary_predictions_calibrated(test_predictions: List[str], oof_predicti
 def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
     preds_df = []
     for x in test_predictions:
-        df = pd.read_csv(x).rename(columns={"image_id": "Id"})
+        df = pd.read_csv(x)
+        df = df.rename(columns={"image_id": "Id"})
         df["Label"] = df["pred_modification_type"].apply(classifier_probas)
 
         keys = ["Id", "Label"]
