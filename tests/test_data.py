@@ -16,7 +16,14 @@ from alaska2.augmentations import (
 from alaska2.dataset import *
 import matplotlib.pyplot as plt
 
-from alaska2.dataset import compute_dct_fast, compute_dct_slow, idct8v2, dct2spatial, dct2channels_last
+from alaska2.dataset import (
+    compute_dct_fast,
+    compute_dct_slow,
+    idct8v2,
+    dct2spatial,
+    dct2channels_last,
+    decode_bgr_from_dct,
+)
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
 
@@ -190,47 +197,32 @@ def test_dct():
 
 
 def test_dct_comp():
-    [Col, Row] = np.meshgrid(range(8), range(8))
-    T = 0.5 * np.cos(np.pi * (2 * Col + 1) * Row / (2 * 8))
-    T[0, :] = T[0, :] / np.sqrt(2)
 
-    print(T)
+    methods = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
 
-    dct1 = np.load(os.path.join(TEST_DATA_DIR, "Cover", "00001.npz"))
+    cover_diff = None
 
-    y = idct8(dct1["dct_y"]).squeeze(-1)
-    cr = idct8(dct1["dct_cr"]).squeeze(-1)
-    cb = idct8(dct1["dct_cb"]).squeeze(-1)
+    f, ax = plt.subplots(4, 4, figsize=(8 * 4, 8 * 4))
+    for i, method in enumerate(methods):
+        bgr = cv2.imread(os.path.join(TEST_DATA_DIR, method, "00001.jpg"))
 
-    plt.figure()
-    plt.imshow(y, cmap="gray")
+        bgr_from_dct = decode_bgr_from_dct(os.path.join(TEST_DATA_DIR, method, "00001.npz"))
+        bgr_from_dct_byte = (bgr_from_dct * 255).astype(np.uint8)
+
+        if i == 0:
+            cover_diff = cv2.absdiff(bgr_from_dct * 255, bgr.astype(np.float32)).sum(axis=2)
+
+        decode_diff = cv2.absdiff(bgr_from_dct * 255, bgr.astype(np.float32)).sum(axis=2)
+        print(decode_diff.mean(), decode_diff.std())
+        ax[i, 0].imshow(bgr)
+        ax[i, 0].axis("off")
+        ax[i, 1].imshow(bgr_from_dct_byte)
+        ax[i, 1].axis("off")
+        ax[i, 2].imshow(decode_diff, cmap="gray")
+        ax[i, 2].axis("off")
+        ax[i, 3].imshow(cv2.absdiff(decode_diff, cover_diff), cmap="gray")
+        ax[i, 3].axis("off")
     plt.show()
-
-    plt.figure()
-    plt.imshow(cr)
-    plt.show()
-
-    plt.figure()
-    plt.imshow(cb)
-    plt.show()
-
-    imgYCC = np.dstack(
-        [
-            y / 128.0,
-            cv2.resize(cr / 64.0, None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
-            cv2.resize(cb / 64.0, None, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST),
-        ]
-    )
-    rgb = cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
-
-    plt.figure()
-    plt.imshow(rgb)
-    plt.show()
-
-    # dct2 = np.load(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.npz"))
-    # y1 = dct1["dct_y"]
-    # y2 = dct2["dct_y"]
-    # print(dct1)
 
 
 def test_blur_features():

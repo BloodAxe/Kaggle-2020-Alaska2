@@ -6,7 +6,7 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res
 from ..dataset import *
 from ..predict import *
 
@@ -32,18 +32,28 @@ MODEL_REGISTRY = {
     "rgb_densenet121": rgb.rgb_densenet121,
     "rgb_densenet201": rgb.rgb_densenet201,
     "rgb_hrnet18": rgb.rgb_hrnet18,
+    #
     # DCT
     "dct_seresnext50": dct.dct_seresnext50,
     "dct_efficientnet_b6": dct.dct_efficientnet_b6,
+    #
     # ELA
+    "ela_tf_efficientnet_b2_ns": ela.ela_tf_efficientnet_b2_ns,
     "ela_tf_efficientnet_b6_ns": ela.ela_tf_efficientnet_b6_ns,
     "ela_skresnext50_32x4d": ela.ela_skresnext50_32x4d,
     "ela_rich_skresnext50_32x4d": ela.ela_rich_skresnext50_32x4d,
     "ela_wider_resnet38": ela.ela_wider_resnet38,
     "ela_ecaresnext26tn_32x4d": ela.ela_ecaresnext26tn_32x4d,
+    #
+    # Residual
+    "res_tf_efficientnet_b2_ns": res.res_tf_efficientnet_b2_ns,
+    "rgb_res_tf_efficientnet_b2_ns": res.rgb_res_tf_efficientnet_b2_ns,
+    "rgb_res_sms_tf_efficientnet_b2_ns": res.rgb_res_sms_tf_efficientnet_b2_ns,
+    #
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,
     "ela_s2d_skresnext50_32x4d": ycrcb.ela_s2d_skresnext50_32x4d,
+    #
     # HPF
     "hpf_net": hpf_net.hpf_net,
     "hpf_net2": hpf_net.hpf_net_v2,

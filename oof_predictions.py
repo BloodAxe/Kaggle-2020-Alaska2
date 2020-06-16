@@ -1,7 +1,5 @@
 import warnings
 
-from predict import compute_test_predictions
-
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
 
@@ -10,12 +8,8 @@ from catalyst.utils import any2device
 from pytorch_toolbelt.utils import to_numpy, fs
 from pytorch_toolbelt.utils.catalyst import report_checkpoint
 
-warnings.simplefilter("ignore", UserWarning)
-warnings.simplefilter("ignore", FutureWarning)
-
 import argparse
 import os
-
 import pandas as pd
 import numpy as np
 from torch import nn
@@ -23,6 +17,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from alaska2 import *
+from predict import compute_test_predictions
 
 
 @torch.no_grad()

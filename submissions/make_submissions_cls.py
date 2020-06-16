@@ -75,6 +75,12 @@ def get_x_y(predictions):
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
 
+        if "pred_modification_type_tta" in p:
+            X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+
+        if "pred_modification_flag_tta" in p:
+            X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
+
     X = np.column_stack(X)
     return X, y
 
@@ -87,57 +93,38 @@ def main():
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
         ]
         best_bauc = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
         ]
         best_cauc = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        ]
-
-        best_loss_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_oof_predictions.csv",
-        ]
-        best_bauc_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_oof_predictions.csv",
-        ]
-        best_cauc_oof = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_oof_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
         ]
 
         best_loss_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
         ]
         best_bauc_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
         ]
         best_cauc_h = [
             "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
             "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
             "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun10_08_49_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
+            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
         ]
 
         import torch.nn.functional as F
@@ -148,10 +135,10 @@ def main():
         test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
         quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float)
 
-        X, y = get_x_y(best_loss_h + best_bauc_h + best_cauc_h)
+        X, y = get_x_y(as_d4_tta(best_loss_h + best_bauc_h + best_cauc_h))
         print(X.shape, y.shape)
 
-        X_public_lb, _ = get_x_y(best_loss + best_bauc + best_cauc)
+        X_public_lb, _ = get_x_y(as_d4_tta(best_loss + best_bauc + best_cauc))
         print(X_public_lb.shape)
 
         X_train, X_test, y_train, y_test, quality_train, quality_test = train_test_split(
@@ -172,10 +159,11 @@ def main():
         # [CV]  activation=logistic, alpha=0.05, hidden_layer_sizes=(16, 24, 32), learning_rate=invscaling, score=0.935, total=   7.2s
         # activation=relu, alpha=0.05, hidden_layer_sizes=10, learning_rate=invscaling, score=0.935, total=   3.5s
         classifier2 = MLPClassifier(
-            activation="relu",
-            alpha=0.05,
-            hidden_layer_sizes=(10,),
+            activation="logistic",
+            alpha=0.01,
+            hidden_layer_sizes=(8,),
             learning_rate="invscaling",
+            learning_rate_init=1e-4,
             max_iter=200000,
             random_state=1000,
         )
@@ -190,15 +178,17 @@ def main():
 
         df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
         df["Label"] = classifier2.predict_proba(X_public_lb)[:, 1]
-        df[["Id", "Label"]].to_csv(os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_stacked.csv"), index=False)
+        df[["Id", "Label"]].to_csv(
+            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_{auc:.3f}.csv"), index=False
+        )
 
         # Initialize GridSearchCV
         parameters = {
-            "learning_rate": ["constant", "invscaling", "adaptive"],
-            "solver": ["lbfgs", "sgd", "adam"],
-            "hidden_layer_sizes": [(16, 24, 32), (64, 16), (16), (32, 32, 32), (64, 64, 64)],
+            "learning_rate": ["invscaling", "adaptive"],
+            "solver": ["adam"],
+            "hidden_layer_sizes": [(8,), (32), (16, 32), (64, 16), (64, 64, 64)],
             "alpha": [0.01, 0.05],
-            "learning_rate_init": [1e-5, 1e-4, 1e-3],
+            "learning_rate_init": [1e-5, 1e-4],
             "activation": ["logistic", "relu"],
         }
 
@@ -233,7 +223,7 @@ def main():
         df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
         df["Label"] = grid.predict_proba(X_public_lb)[:, 1]
         df[["Id", "Label"]].to_csv(
-            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_best_{auc:.3f}.csv"), index=False
+            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_gridsearch_{auc:.3f}.csv"), index=False
         )
 
 

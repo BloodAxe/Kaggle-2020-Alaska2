@@ -15,6 +15,7 @@ INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_ELA_RICH_KEY = "input_ela_rich"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
+INPUT_FEATURES_DECODING_RESIDUAL_KEY = "input_residual"
 INPUT_IMAGE_ID_KEY = "image_id"
 INPUT_IMAGE_QF_KEY = "image_qf"
 INPUT_FOLD_KEY = "fold"
@@ -47,6 +48,7 @@ __all__ = [
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
+    "INPUT_FEATURES_DECODING_RESIDUAL_KEY",
     "INPUT_FEATURES_CHANNEL_Y_KEY",
     "INPUT_FEATURES_DCT_CB_KEY",
     "INPUT_FEATURES_DCT_CR_KEY",
@@ -98,7 +100,7 @@ def get_dctmtx():
     T = 0.5 * np.cos(np.pi * (2 * Col + 1) * Row / (2 * 8))
     T[0, :] = T[0, :] / np.sqrt(2)
 
-    return T
+    return T.astype(np.float32)
 
 
 # DCTMTX = np.array(
@@ -201,6 +203,35 @@ def idct8v2(dct, qm=None):
     return decoded_image
 
 
+def decode_bgr_from_dct(dct_file):
+    dct = np.load(dct_file)
+    dct_y = dct["dct_y"]
+    dct_cr = dct["dct_cr"]
+    dct_cb = dct["dct_cb"]
+
+    y = idct8v2(dct_y)
+    cr = idct8v2(dct_cr)
+    cb = idct8v2(dct_cb)
+
+    y += 128
+    y /= 255
+
+    cr += 128
+    cr /= 255
+
+    cb += 128
+    cb /= 255
+
+    img_ycrcb = np.dstack([y, cr, cb])
+    bgr_from_dct = cv2.cvtColor(img_ycrcb, cv2.COLOR_YCrCb2BGR)
+    return bgr_from_dct
+
+
+def compute_decoding_residual(image: np.ndarray, dct_fname: str) -> np.ndarray:
+    bgr_from_dct = decode_bgr_from_dct(dct_fname)
+    return bgr_from_dct * 255 - image.astype(np.float32)
+
+
 def compute_ela(image, quality_steps=[75]):
     diff = np.zeros((image.shape[0], image.shape[1], 3 * len(quality_steps)), dtype=np.float32)
 
@@ -252,6 +283,10 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_FEATURES_BLUR_KEY in features:
         sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
+
+    if INPUT_FEATURES_DECODING_RESIDUAL_KEY in features:
+        dct_file = fs.change_extension(image_fname, ".npz")
+        sample[INPUT_FEATURES_DECODING_RESIDUAL_KEY] = compute_decoding_residual(image, dct_file)
 
     if INPUT_FEATURES_DCT_KEY in features:
         dct_file = np.load(fs.change_extension(image_fname, ".npz"))

@@ -18,6 +18,7 @@ from alaska2.dataset import (
 )
 
 __all__ = [
+    "ela_tf_efficientnet_b2_ns",
     "ela_tf_efficientnet_b6_ns",
     "ela_skresnext50_32x4d",
     "ela_rich_skresnext50_32x4d",
@@ -38,6 +39,7 @@ class TimmRgbElaModel(nn.Module):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
+        self.ela_bn = Normalize([0, 0, 0], [0.2 * 127, 0.2 * 127, 0.2 * 127])
         self.encoder = encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
@@ -45,8 +47,8 @@ class TimmRgbElaModel(nn.Module):
         self.flag_classifier = nn.Linear(encoder.num_features, 1)
 
     def forward(self, **kwargs):
-        rgb = self.rgb_bn(kwargs[INPUT_IMAGE_KEY].float())
-        ela = kwargs[INPUT_FEATURES_ELA_KEY]
+        rgb = self.rgb_bn(kwargs[INPUT_IMAGE_KEY])
+        ela = self.ela_bn(kwargs[INPUT_FEATURES_ELA_KEY])
         x = torch.cat([rgb, ela], dim=1)
         x = self.encoder.forward_features(x)
         x = self.pool(x)
@@ -95,8 +97,25 @@ class TimmRgbElaRichModel(nn.Module):
         return [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_RICH_KEY]
 
 
+def ela_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b2_ns(in_chans=6, pretrained=False, drop_path_rate=0.1)
+    del encoder.classifier
+
+    if pretrained:
+        donor = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
+        transfer_weights(encoder, donor.state_dict())
+
+    return TimmRgbElaModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
+
+
 def ela_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b6_ns(in_chans=6, pretrained=False, drop_rate=dropout)
+    encoder = efficientnet.tf_efficientnet_b6_ns(in_chans=6, pretrained=False, drop_path_rate=0.2)
     del encoder.classifier
 
     if pretrained:
