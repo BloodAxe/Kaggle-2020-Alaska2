@@ -101,11 +101,8 @@ class SiameseImageAndResidualModel(nn.Module):
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.decoder = nn.Sequential(
-            nn.BatchNorm1d(rgb_encoder.num_features + res_encoder.num_features),
             nn.Linear(rgb_encoder.num_features + res_encoder.num_features, 512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(rgb_encoder.num_features + res_encoder.num_features),
             nn.ReLU(inplace=True),
         )
         self.type_classifier = nn.Linear(512, num_classes)
