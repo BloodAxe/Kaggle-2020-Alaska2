@@ -95,13 +95,7 @@ def compute_mean_std(dataset):
     for image_fname in dataset:
         dct_file = fs.change_extension(image_fname, ".npz")
         residual = compute_decoding_residual(cv2.imread(image_fname), dct_file)
-
-        s.update(torch.from_numpy(residual))
-        # dct = to_numpy()
-
-        # global_mean += dct.mean(axis=(1, 2))
-        # global_var += dct.std(axis=(1, 2)) ** 2
-        # n_items += 1
+        s.update(torch.from_numpy(residual).permute(2,0,1))
 
     return s.mean, s.std
 
@@ -119,10 +113,10 @@ def main():
     UERD = os.path.join(data_dir, "UERD")
 
     dataset = (
-        fs.find_images_in_dir(cover)
-        + fs.find_images_in_dir(JMiPOD)
-        + fs.find_images_in_dir(JUNIWARD)
-        + fs.find_images_in_dir(UERD)
+        fs.find_images_in_dir(cover)[:1000]
+        + fs.find_images_in_dir(JMiPOD)[:1000]
+        + fs.find_images_in_dir(JUNIWARD)[:1000]
+        + fs.find_images_in_dir(UERD)[:1000]
     )
     # dataset = dataset[:500]
 

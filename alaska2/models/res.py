@@ -95,8 +95,8 @@ class SiameseImageAndResidualModel(nn.Module):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.res_bn = Normalize([2, 2, 2], [1, 1, 1])
-        self.rgb_encoder = rgb_encoder
+        self.res_bn = Normalize([0.85, -0.51, 0.69], [0.68, 0.47, 0.6])
+        self.encoder = rgb_encoder
         self.res_encoder = res_encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
@@ -109,7 +109,7 @@ class SiameseImageAndResidualModel(nn.Module):
         self.flag_classifier = nn.Linear(512, 1)
 
     def forward(self, **kwargs):
-        rgb = self.rgb_encoder.forward_features(self.rgb_bn(kwargs[INPUT_IMAGE_KEY]))
+        rgb = self.encoder.forward_features(self.rgb_bn(kwargs[INPUT_IMAGE_KEY]))
         rgb = self.pool(rgb)
 
         res = self.res_encoder.forward_features(self.res_bn(kwargs[INPUT_FEATURES_DECODING_RESIDUAL_KEY]))
