@@ -66,7 +66,7 @@ def get_x_y(predictions):
     for p in predictions:
         p = pd.read_csv(p)
         if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values
+            y = p["true_modification_flag"].values.astype(np.float32)
 
         X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
         pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
@@ -81,7 +81,7 @@ def get_x_y(predictions):
         if "pred_modification_flag_tta" in p:
             X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
-    X = np.column_stack(X)
+    X = np.column_stack(X).astype(np.float32)
     return X, y
 
 
@@ -130,10 +130,10 @@ def main():
         import torch.nn.functional as F
 
         holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-        quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float)
+        quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
 
         test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
-        quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float)
+        quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
         X, y = get_x_y(as_d4_tta(best_loss_h + best_bauc_h + best_cauc_h))
         print(X.shape, y.shape)
@@ -145,86 +145,186 @@ def main():
             X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
         )
 
-        sc = StandardScaler()
+        sc = PCA(n_components=16)
         X_train = sc.fit_transform(X_train)
         X_test = sc.transform(X_test)
         X_public_lb = sc.transform(X_public_lb)
+
+        # sc = StandardScaler()
+        # X_train = sc.fit_transform(X_train)
+        # X_test = sc.transform(X_test)
+        # X_public_lb = sc.transform(X_public_lb)
 
         X_train = np.column_stack([X_train, quality_train])
         X_test = np.column_stack([X_test, quality_test])
         X_public_lb = np.column_stack([X_public_lb, quality_t])
 
-        # Initializing Multi-layer perceptron  classifier
-        # 'activation': 'logistic', 'alpha': 0.3, 'hidden_layer_sizes': (64, 64, 64), 'learning_rate': 'invscaling'
-        # [CV]  activation=logistic, alpha=0.05, hidden_layer_sizes=(16, 24, 32), learning_rate=invscaling, score=0.935, total=   7.2s
-        # activation=relu, alpha=0.05, hidden_layer_sizes=10, learning_rate=invscaling, score=0.935, total=   3.5s
-        classifier2 = MLPClassifier(
-            activation="logistic",
-            alpha=0.01,
-            hidden_layer_sizes=(8,),
-            learning_rate="invscaling",
-            learning_rate_init=1e-4,
-            max_iter=200000,
-            random_state=1000,
-        )
+        if False:
+            # MLP
+            # The AUC of the tuned MLP classifier is 0.936
+            # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': (8,), 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
+            # The AUC of the tuned MLP classifier is 0.935
+            # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': 16, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
+            mlp_grid, auc = train_mlp(X_train, y_train, X_test, y_test)
+            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
+            df["Label"] = mlp_grid.predict_proba(X_public_lb)[:, 1]
+            df[["Id", "Label"]].to_csv(
+                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_gridsearch_{auc:.4f}.csv"), index=False
+            )
 
-        classifier2.fit(X_train, y_train)
+        if False:
+            # RF
+            # The AUC of the tuned RF classifier is 0.926
+            # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
+            # The AUC of the tuned RF classifier is 0.924
+            # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
+            rf_grid, auc = train_rf(X_train, y_train, X_test, y_test)
+            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
+            df["Label"] = rf_grid.predict_proba(X_public_lb)[:, 1]
+            df[["Id", "Label"]].to_csv(
+                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_rf_{auc:.4f}.csv"), index=False
+            )
 
-        auc = alaska_weighted_auc(y_train, classifier2.predict_proba(X_train)[:, 1])
-        print(f"The AUC of the baseline classifier on train {auc:.3f}")
+        if False:
+            # SVC
+            # The AUC of the tuned SVC classifier is 0.937
+            # Best params {'C': 50, 'degree': 2, 'kernel': 'linear'}
+            svc_grid, auc = train_svc(X_train, y_train, X_test, y_test)
+            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
+            df["Label"] = svc_grid.predict_proba(X_public_lb)[:, 1]
+            df[["Id", "Label"]].to_csv(
+                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_svc_{auc:.4f}.csv"), index=False
+            )
 
-        auc = alaska_weighted_auc(y_test, classifier2.predict_proba(X_test)[:, 1])
-        print(f"The AUC of the baseline classifier on validation {auc:.3f}")
+        if False:
+            # NuSVC
+            nusvc_grid, auc = train_nusvc(X_train, y_train, X_test, y_test)
+            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
+            df["Label"] = nusvc_grid.predict_proba(X_public_lb)[:, 1]
+            df[["Id", "Label"]].to_csv(
+                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_nusvc_grid_{auc:.4f}.csv"), index=False
+            )
 
-        df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-        df["Label"] = classifier2.predict_proba(X_public_lb)[:, 1]
-        df[["Id", "Label"]].to_csv(
-            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_{auc:.3f}.csv"), index=False
-        )
 
-        # Initialize GridSearchCV
-        parameters = {
-            "learning_rate": ["invscaling", "adaptive"],
-            "solver": ["adam"],
-            "hidden_layer_sizes": [(8,), (32), (16, 32), (64, 16), (64, 64, 64)],
-            "alpha": [0.01, 0.05],
-            "learning_rate_init": [1e-5, 1e-4],
-            "activation": ["logistic", "relu"],
-        }
+def train_mlp(X_train, y_train, X_test, y_test):
+    parameters = {
+        "learning_rate": ["invscaling", "adaptive"],
+        "solver": ["adam"],
+        "hidden_layer_sizes": [(8,), (16), (8, 4), (16, 16)],
+        "alpha": [0.01, 0.05, 0.1],
+        "learning_rate_init": [1e-5, 1e-4],
+        "activation": ["logistic", "relu"],
+    }
 
-        grid = GridSearchCV(
-            estimator=MLPClassifier(
-                activation="relu",
-                alpha=0.2,
-                hidden_layer_sizes=(32, 32, 16),
-                learning_rate="constant",
-                max_iter=200000,
-            ),
-            param_grid=parameters,
-            cv=5,
-            scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
-            verbose=10,
-            n_jobs=-1,
-        )
+    grid = GridSearchCV(
+        estimator=MLPClassifier(
+            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), learning_rate="constant", max_iter=200000
+        ),
+        param_grid=parameters,
+        cv=5,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        verbose=10,
+        n_jobs=-1,
+    )
 
-        # Fit GridSearchCV
-        grid.fit(X_train, y_train)
+    # Fit GridSearchCV
+    grid.fit(X_train, y_train)
 
-        print(grid.best_params_)
-        # Making prediction on test set
-        y_pred = grid.predict_proba(X_test)[:, 1]
+    # Making prediction on test set
+    y_pred = grid.predict_proba(X_test)[:, 1]
 
-        # Getting AUC
-        auc = alaska_weighted_auc(y_test, y_pred)
+    # Getting AUC
+    auc = alaska_weighted_auc(y_test, y_pred)
 
-        # Print results
-        print(f"The AUC of the tuned classifier is {auc:.3f}")
+    # Print results
+    print(f"The AUC of the tuned MLP classifier is {auc:.3f}")
+    print("Best params", grid.best_params_)
 
-        df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-        df["Label"] = grid.predict_proba(X_public_lb)[:, 1]
-        df[["Id", "Label"]].to_csv(
-            os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_gridsearch_{auc:.3f}.csv"), index=False
-        )
+    return grid, auc
+
+
+def train_rf(X_train, y_train, X_test, y_test):
+    parameters = {"n_estimators": [32, 64, 72], "max_features": ["auto", "sqrt", "log2"], "max_depth": [3, 4, 5, 6]}
+
+    grid = GridSearchCV(
+        estimator=RandomForestClassifier(),
+        param_grid=parameters,
+        cv=5,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        verbose=10,
+        n_jobs=6,
+    )
+
+    # Fit GridSearchCV
+    grid.fit(X_train, y_train)
+
+    # Making prediction on test set
+    y_pred = grid.predict_proba(X_test)[:, 1]
+
+    # Getting AUC
+    auc = alaska_weighted_auc(y_test, y_pred)
+
+    # Print results
+    print(f"The AUC of the tuned RF classifier is {auc:.3f}")
+    print("Best params", grid.best_params_)
+
+    return grid, auc
+
+
+def train_svc(X_train, y_train, X_test, y_test):
+    parameters = {"kernel": ["linear", "rbf"], "C": [1, 10, 50], "degree": [1, 2, 3]}
+
+    grid = GridSearchCV(
+        estimator=SVC(probability=True, gamma="auto"),
+        param_grid=parameters,
+        cv=5,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        verbose=10,
+        n_jobs=6,
+    )
+
+    # Fit GridSearchCV
+    grid.fit(X_train, y_train)
+
+    # Making prediction on test set
+    y_pred = grid.predict_proba(X_test)[:, 1]
+
+    # Getting AUC
+    auc = alaska_weighted_auc(y_test, y_pred)
+
+    # Print results
+    print(f"The AUC of the tuned SVC classifier is {auc:.3f}")
+    print("Best params", grid.best_params_)
+
+    return grid, auc
+
+
+def train_nusvc(X_train, y_train, X_test, y_test):
+    parameters = {"kernel": ["linear", "sigmoid", "rbf"], "nu": [0.5, 0.25, 0.75], "gamma": ["auto", "scale"]}
+
+    grid = GridSearchCV(
+        estimator=NuSVC(probability=True, degree=3),
+        param_grid=parameters,
+        cv=5,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        verbose=10,
+        n_jobs=6,
+    )
+
+    # Fit GridSearchCV
+    grid.fit(X_train, y_train)
+
+    # Making prediction on test set
+    y_pred = grid.predict_proba(X_test)[:, 1]
+
+    # Getting AUC
+    auc = alaska_weighted_auc(y_test, y_pred)
+
+    # Print results
+    print(f"The AUC of the tuned NuSVC classifier is {auc:.3f}")
+    print("Best params", grid.best_params_)
+
+    return grid, auc
 
 
 if __name__ == "__main__":
