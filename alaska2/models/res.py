@@ -102,7 +102,7 @@ class SiameseImageAndResidualModel(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.decoder = nn.Sequential(
             nn.Linear(rgb_encoder.num_features + res_encoder.num_features, 512),
-            nn.BatchNorm1d(rgb_encoder.num_features + res_encoder.num_features),
+            nn.BatchNorm1d(512),
             nn.ReLU(inplace=True),
         )
         self.type_classifier = nn.Linear(512, num_classes)
