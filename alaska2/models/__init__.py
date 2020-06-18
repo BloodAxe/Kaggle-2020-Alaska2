@@ -49,6 +49,7 @@ MODEL_REGISTRY = {
     "res_tf_efficientnet_b2_ns": res.res_tf_efficientnet_b2_ns,
     "rgb_res_tf_efficientnet_b2_ns": res.rgb_res_tf_efficientnet_b2_ns,
     "rgb_res_sms_tf_efficientnet_b2_ns": res.rgb_res_sms_tf_efficientnet_b2_ns,
+    "rgb_res_sms_v2_tf_efficientnet_b2_ns": res.rgb_res_sms_v2_tf_efficientnet_b2_ns,
     #
     # YCrCb
     "ycrcb_skresnext50_32x4d": ycrcb.ycrcb_skresnext50_32x4d,

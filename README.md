@@ -70,3 +70,8 @@ Average of 4 folds (best loss):
 Average of 4 folds (best auc b): 
 Average of 4 folds (best auc c): 
 Average of 4 folds (average of all 3): 
+
+#
+
+https://github.com/YangzlTHU/IStego100K
+https://arxiv.org/pdf/1911.05542.pdf
