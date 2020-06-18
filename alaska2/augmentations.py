@@ -29,6 +29,7 @@ __all__ = [
     "dct_transpose_fast",
     "dct_rot90",
     "dct_rot90_fast",
+    "RandomCrop8"
 ]
 
 
@@ -234,6 +235,27 @@ class DctTranspose(A.Transpose):
             "keypoints": self.apply_to_keypoints,
             "input_dct": self.apply_dct,
         }
+
+
+class RandomCrop8(A.RandomCrop):
+    def apply(self, img, h_start=0, w_start=0, **params):
+        height, width = img.shape[:2]
+        if height < self.height or width < self.width:
+            raise ValueError(
+                "Requested crop size ({crop_height}, {crop_width}) is "
+                "larger than the image size ({height}, {width})".format(
+                    crop_height=self.height, crop_width=self.width, height=height, width=width
+                )
+            )
+        from albumentations.augmentations.functional import get_random_crop_coords
+
+        x1, y1, x2, y2 = get_random_crop_coords(height, width, self.height, self.width, h_start, w_start)
+        x1 = (x1 // 8) * 8
+        y1 = (y1 // 8) * 8
+        x2 = x1 + self.width
+        y2 = y1 + self.height
+        img = img[y1:y2, x1:x2]
+        return img
 
 
 def get_obliterate_augs():

@@ -25,6 +25,7 @@ __all__ = [
     "rgb_qf_tf_efficientnet_b2_ns",
     "rgb_qf_tf_efficientnet_b6_ns",
     "rgb_qf_swsl_resnext101_32x8d",
+    "rgb_tf_efficientnet_b7_ns",
 ]
 import numpy as np
 
@@ -150,6 +151,19 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b7_ns(pretrained=pretrained, drop_path_rate=0.2)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 
 # RGB + QF
