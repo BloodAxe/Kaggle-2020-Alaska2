@@ -169,17 +169,17 @@ class SiameseImageAndResidualModelV2(nn.Module):
         self.pool = GlobalAvgPool2d(flatten=True)
 
         self.rgb_type_classifier = WeightNormClassifier(
-            rgb_encoder.num_features, rgb_encoder.num_features // 2, num_classes, dropout
+            rgb_encoder.num_features, num_classes, rgb_encoder.num_features // 2, dropout
         )
         self.rgb_flag_classifier = WeightNormClassifier(
-            rgb_encoder.num_features, rgb_encoder.num_features // 2, 1, dropout
+            rgb_encoder.num_features, 1, rgb_encoder.num_features // 2, dropout
         )
 
         self.res_type_classifier = WeightNormClassifier(
-            res_encoder.num_features, res_encoder.num_features // 2, num_classes, dropout
+            res_encoder.num_features, num_classes, res_encoder.num_features // 2, dropout
         )
         self.res_flag_classifier = WeightNormClassifier(
-            res_encoder.num_features, res_encoder.num_features // 2, 1, dropout
+            res_encoder.num_features, 1, res_encoder.num_features // 2, dropout
         )
 
     def forward(self, **kwargs):
