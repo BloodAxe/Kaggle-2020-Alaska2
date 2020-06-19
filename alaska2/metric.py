@@ -78,7 +78,7 @@ def embedding_to_probas(x: torch.Tensor):
 
 
 class CompetitionMetricCallback(Callback):
-    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc"):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, prefix="auc", class_names=None):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.input_key = input_key
@@ -87,6 +87,10 @@ class CompetitionMetricCallback(Callback):
         self.pred_labels = []
         self.quality_factors = []
         self.output_activation = output_activation
+        if class_names is None:
+            class_names = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
+
+        self.class_names = class_names
 
     def on_loader_start(self, state: RunnerState):
         self.true_labels = []
@@ -133,7 +137,7 @@ class CompetitionMetricCallback(Callback):
 
         score_mask = np.zeros((3, 3))
         for qf in [0, 1, 2]:
-            for target in [1, 2, 3]:
+            for target in range(len(self.class_names) - 1):
                 mask = (quality_factors == qf) & ((true_labels == 0) | (true_labels == target))
                 score = alaska_weighted_auc(true_labels_b[mask], pred_labels[mask])
                 score_mask[qf, target - 1] = score
@@ -141,7 +145,7 @@ class CompetitionMetricCallback(Callback):
         fig = self.plot_matrix(
             score_mask,
             figsize=(8, 8),
-            x_names=["JMiPOD", "JUNIWARD", "UERD"],
+            x_names=self.class_names[1:],
             y_names=["75", "90", "95"],
             normalize=False,
             noshow=True,

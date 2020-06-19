@@ -1,3 +1,4 @@
+import json
 import os
 import random
 from typing import Tuple, Optional, Union, List
@@ -85,6 +86,9 @@ __all__ = [
     "idct8",
     "get_holdout",
     "get_negatives_ds",
+    "get_istego100k_test_other",
+    "get_istego100k_test_same",
+    "get_istego100k_train",
 ]
 
 
@@ -315,7 +319,7 @@ class TrainingValidationDataset(Dataset):
         images: Union[List, np.ndarray],
         targets: Optional[Union[List, np.ndarray]],
         quality: Union[List, np.ndarray],
-        transform: A.Compose,
+        transform: Union[A.Compose, A.BasicTransform],
         features: List[str],
         obliterate: A.Compose = None,
         obliterate_p=0.0,
@@ -779,3 +783,207 @@ def get_test_dataset(data_dir, features):
         transform=valid_transform,
         features=features,
     )
+
+
+METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
+
+
+def get_istego100k_test_same(data_dir: str, features, output_size="full"):
+    assert output_size in {"full", "random_crop", "center_crop", "tiles"}
+    from .augmentations import RandomCrop8
+
+    labels = json.load(open(os.path.join(data_dir, "same_source_test.parameter.json")))
+
+    image_ids = []
+    quality = []
+    methods = []
+
+    for image_id, kv in labels.items():
+        image_ids.append(os.path.join(data_dir, "test_same", image_id))
+        quality.append(int(kv["quality"]))
+        methods.append(METHOD_TO_INDEX[kv.get("steg_algorithm", "Cover")])
+
+    if output_size == "full":
+        valid_transform = A.NoOp()
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "center_crop":
+        valid_transform = A.CenterCrop(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "random_crop":
+        valid_transform = RandomCrop8(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "tiles":
+        return (
+            TrainingValidationDataset(
+                images=image_ids, targets=methods, quality=quality, transform=A.Crop(0, 0, 512, 512), features=features
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 0, 1024, 512),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(0, 512, 512, 1024),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 512, 1024, 1024),
+                features=features,
+            )
+        )
+
+    raise KeyError(output_size)
+
+
+def get_istego100k_test_other(data_dir: str, features, output_size="full"):
+    assert output_size in {"full", "random_crop", "center_crop", "tiles"}
+
+    from .augmentations import RandomCrop8
+
+    labels = json.load(open(os.path.join(data_dir, "different_source_test.parameter.json")))
+
+    image_ids = []
+    quality = []
+    methods = []
+
+    for image_id, kv in labels.items():
+        image_ids.append(os.path.join(data_dir, "test_other", image_id))
+        quality.append(int(kv["quality"]))
+        methods.append(METHOD_TO_INDEX[kv.get("steg_algorithm", "Cover")])
+
+    if output_size == "full":
+        valid_transform = A.NoOp()
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "center_crop":
+        valid_transform = A.CenterCrop(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "random_crop":
+        valid_transform = RandomCrop8(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "tiles":
+        return (
+            TrainingValidationDataset(
+                images=image_ids, targets=methods, quality=quality, transform=A.Crop(0, 0, 512, 512), features=features
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 0, 1024, 512),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(0, 512, 512, 1024),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 512, 1024, 1024),
+                features=features,
+            )
+        )
+
+    raise KeyError(output_size)
+
+
+def get_istego100k_train(data_dir: str, fold: int, features, output_size="full"):
+    assert output_size in {"full", "random_crop", "center_crop", "tiles"}
+
+    from .augmentations import RandomCrop8
+
+    labels = json.load(open(os.path.join(data_dir, "train.parameter.json")))
+
+    image_ids = []
+    quality = []
+    methods = []
+    folds = []
+
+    for i, image_id, kv in enumerate(labels.items()):
+        image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
+        quality.append(int(kv["quality"]))
+        methods.append(METHOD_TO_INDEX["Cover"])
+        folds.append(i % 4)
+
+        image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
+        quality.append(int(kv["quality"]))
+        methods.append(METHOD_TO_INDEX[kv.get("steg_algorithm", "Cover")])
+        folds.append(i % 4)
+
+    image_ids = np.array(image_ids)
+    quality = np.array(quality)
+    methods = np.array(methods)
+    folds = np.array(folds)
+
+    image_ids = image_ids[folds != fold]
+    quality = quality[folds != fold]
+    methods = methods[folds != fold]
+
+    if output_size == "full":
+        valid_transform = A.NoOp()
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "center_crop":
+        valid_transform = A.CenterCrop(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "random_crop":
+        valid_transform = RandomCrop8(512, 512)
+        return TrainingValidationDataset(
+            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+        )
+    elif output_size == "tiles":
+        return (
+            TrainingValidationDataset(
+                images=image_ids, targets=methods, quality=quality, transform=A.Crop(0, 0, 512, 512), features=features
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 0, 1024, 512),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(0, 512, 512, 1024),
+                features=features,
+            )
+            + TrainingValidationDataset(
+                images=image_ids,
+                targets=methods,
+                quality=quality,
+                transform=A.Crop(512, 512, 1024, 1024),
+                features=features,
+            )
+        )
+
+    raise KeyError(output_size)
