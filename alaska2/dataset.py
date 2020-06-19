@@ -348,7 +348,12 @@ class TrainingValidationDataset(Dataset):
 
     def __getitem__(self, index):
         image_fname = self.images[index]
-        image = cv2.imread(image_fname)
+        try:
+            image = cv2.imread(image_fname)
+        except Exception as e:
+            print("Cannot read image ", image_fname, "at index", index)
+            print(e)
+
         qf = self.quality[index]
         data = {}
         data["image"] = image
@@ -931,7 +936,7 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
 
         image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
         quality.append(int(kv["quality"]))
-        methods.append(METHOD_TO_INDEX[kv.get("steg_algorithm", "Cover")])
+        methods.append(METHOD_TO_INDEX[kv["steg_algorithm"]])
         folds.append(i % 4)
 
     image_ids = np.array(image_ids)
