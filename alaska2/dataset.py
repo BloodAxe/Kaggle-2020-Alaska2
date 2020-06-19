@@ -350,6 +350,8 @@ class TrainingValidationDataset(Dataset):
         image_fname = self.images[index]
         try:
             image = cv2.imread(image_fname)
+            if image is None:
+                raise FileNotFoundError(image_fname)
         except Exception as e:
             print("Cannot read image ", image_fname, "at index", index)
             print(e)
@@ -928,16 +930,21 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
     methods = []
     folds = []
 
-    for i, (image_id, kv) in enumerate(labels.items()):
-        image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
-        quality.append(int(kv["quality"]))
-        methods.append(METHOD_TO_INDEX["Cover"])
-        folds.append(i % 4)
+    cover_images = set([os.path.basename(x) for x in fs.id_from_fname(os.path.join(data_dir, "train", "cover"))])
+    stego_images = set([os.path.basename(x) for x in fs.id_from_fname(os.path.join(data_dir, "train", "stego"))])
+    common_images = cover_images.intersection(stego_images)
 
-        image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
-        quality.append(int(kv["quality"]))
-        methods.append(METHOD_TO_INDEX[kv["steg_algorithm"]])
-        folds.append(i % 4)
+    for i, (image_id, kv) in enumerate(labels.items()):
+        if image_id in common_images:
+            image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
+            quality.append(int(kv["quality"]))
+            methods.append(METHOD_TO_INDEX["Cover"])
+            folds.append(i % 4)
+
+            image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
+            quality.append(int(kv["quality"]))
+            methods.append(METHOD_TO_INDEX[kv["steg_algorithm"]])
+            folds.append(i % 4)
 
     image_ids = np.array(image_ids)
     quality = np.array(quality)
