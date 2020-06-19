@@ -1001,4 +1001,4 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
         )
 
     print("Extra dataset", len(train_ds))
-    raise KeyError(output_size)
+    return train_ds
