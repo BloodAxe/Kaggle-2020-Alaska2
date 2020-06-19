@@ -923,7 +923,7 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
     methods = []
     folds = []
 
-    for i, image_id, kv in enumerate(labels.items()):
+    for i, (image_id, kv) in enumerate(labels.items()):
         image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
         quality.append(int(kv["quality"]))
         methods.append(METHOD_TO_INDEX["Cover"])
