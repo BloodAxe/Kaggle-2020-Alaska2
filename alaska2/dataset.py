@@ -930,8 +930,8 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
     methods = []
     folds = []
 
-    cover_images = set([os.path.basename(x) for x in fs.id_from_fname(os.path.join(data_dir, "train", "cover"))])
-    stego_images = set([os.path.basename(x) for x in fs.id_from_fname(os.path.join(data_dir, "train", "stego"))])
+    cover_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "cover"))])
+    stego_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "stego"))])
     common_images = cover_images.intersection(stego_images)
 
     for i, (image_id, kv) in enumerate(labels.items()):
@@ -959,21 +959,21 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
 
     if output_size == "full":
         valid_transform = A.NoOp()
-        return TrainingValidationDataset(
+        train_ds = TrainingValidationDataset(
             images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
         )
     elif output_size == "center_crop":
         valid_transform = A.CenterCrop(512, 512)
-        return TrainingValidationDataset(
+        train_ds = TrainingValidationDataset(
             images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
         )
     elif output_size == "random_crop":
         valid_transform = RandomCrop8(512, 512)
-        return TrainingValidationDataset(
+        train_ds = TrainingValidationDataset(
             images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
         )
     elif output_size == "tiles":
-        return (
+        train_ds = (
             TrainingValidationDataset(
                 images=image_ids, targets=methods, quality=quality, transform=A.Crop(0, 0, 512, 512), features=features
             )
@@ -1000,4 +1000,5 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
             )
         )
 
+    print("Extra dataset", len(train_ds))
     raise KeyError(output_size)
