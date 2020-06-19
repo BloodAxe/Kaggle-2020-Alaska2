@@ -1,5 +1,7 @@
 import warnings
 
+from alaska2.submissions import sigmoid, classifier_probas
+
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
 
@@ -61,6 +63,27 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
     return df
 
 
+def score_predictions(predictions_fname):
+    holdout_predictions = pd.read_csv(predictions_fname)
+
+    print(predictions_fname)
+    print(
+        "\tbAUC",
+        alaska_weighted_auc(
+            holdout_predictions[INPUT_TRUE_MODIFICATION_FLAG].values,
+            holdout_predictions[OUTPUT_PRED_MODIFICATION_FLAG].apply(sigmoid).values,
+        ),
+    )
+
+    print(
+        "\tcAUC",
+        alaska_weighted_auc(
+            holdout_predictions[INPUT_TRUE_MODIFICATION_FLAG].values,
+            holdout_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(classifier_probas).values,
+        ),
+    )
+
+
 @torch.no_grad()
 def main():
     # Give no chance to randomness
@@ -109,6 +132,8 @@ def main():
         if force_recompute or not os.path.exists(holdout_predictions_csv):
             holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
             holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+        print("Holdout score (no TTA)")
+        score_predictions(holdout_predictions_csv)
 
         # Also compute test predictions
         test_ds = get_test_dataset(data_dir, features=required_features)
@@ -126,6 +151,8 @@ def main():
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
                 )
                 holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+            print("Holdout score with HV TTA")
+            score_predictions(holdout_predictions_csv)
 
             test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
             if force_recompute or not os.path.exists(test_predictions_csv):
@@ -140,6 +167,8 @@ def main():
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
                 )
                 holdout_predictions.to_csv(holdout_predictions_csv, index=False)
+            print("Holdout score with D4 TTA")
+            score_predictions(holdout_predictions_csv)
 
             test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
             if force_recompute or not os.path.exists(test_predictions_csv):
@@ -154,6 +183,8 @@ def main():
             if force_recompute or not os.path.exists(oof_predictions_csv):
                 oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
                 oof_predictions.to_csv(oof_predictions_csv, index=False)
+            print("OOF score (no TTA)")
+            score_predictions(oof_predictions_csv)
 
             if hv_tta:
                 oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
@@ -163,6 +194,8 @@ def main():
                         tta_model, valid_ds, batch_size=batch_size, workers=workers
                     )
                     oof_predictions.to_csv(oof_predictions_csv, index=False)
+                print("OOF score (HV TTA)")
+                score_predictions(oof_predictions_csv)
 
             if d4_tta:
                 oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
@@ -172,6 +205,8 @@ def main():
                         tta_model, valid_ds, batch_size=batch_size, workers=workers
                     )
                     oof_predictions.to_csv(oof_predictions_csv, index=False)
+                print("OOF score (D4 TTA)")
+                score_predictions(oof_predictions_csv)
 
 
 if __name__ == "__main__":
