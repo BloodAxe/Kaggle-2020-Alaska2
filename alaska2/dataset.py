@@ -937,12 +937,14 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
     for i, (image_id, kv) in enumerate(labels.items()):
         if image_id in common_images:
             image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
-            quality.append(int(kv["quality"]))
+            quality.append(0)
+            # quality.append(int(kv["quality"]))
             methods.append(METHOD_TO_INDEX["Cover"])
             folds.append(i % 4)
 
             image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
-            quality.append(int(kv["quality"]))
+            quality.append(0)
+            # quality.append(int(kv["quality"]))
             methods.append(METHOD_TO_INDEX[kv["steg_algorithm"]])
             folds.append(i % 4)
 

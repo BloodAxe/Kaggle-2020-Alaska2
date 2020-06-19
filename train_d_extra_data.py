@@ -151,13 +151,13 @@ def main():
     valid_batch_size = train_batch_size
     run_train = num_epochs > 0
 
-    model: nn.Module = get_model(model_name, num_classes=5, dropout=dropout).cuda()
+    model: nn.Module = get_model(model_name, num_classes=5, dropout=dropout)
     required_features = model.required_features
 
     if args.transfer:
         transfer_checkpoint = fs.auto_file(args.transfer)
         print("Transferring weights from model checkpoint", transfer_checkpoint)
-        checkpoint = load_checkpoint(transfer_checkpoint)
+        checkpoint = torch.load(transfer_checkpoint, map_location="cpu")
         pretrained_dict = checkpoint["model_state_dict"]
 
         transfer_weights(model, pretrained_dict)
@@ -168,6 +168,8 @@ def main():
 
         print("Loaded model weights from:", args.checkpoint)
         report_checkpoint(checkpoint)
+
+    model = model.cuda()
 
     if freeze_bn:
         from pytorch_toolbelt.optimization.functional import freeze_model
