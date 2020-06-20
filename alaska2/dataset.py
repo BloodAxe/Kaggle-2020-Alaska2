@@ -964,6 +964,8 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
     qualities = qualities[folds != fold].tolist()
     targets = targets[folds != fold].tolist()
 
+    print(len(all_images), len(image_ids))
+
     if output_size == "full":
         valid_transform = A.NoOp()
         train_ds = TrainingValidationDataset(
