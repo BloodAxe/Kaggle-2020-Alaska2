@@ -792,9 +792,6 @@ def get_test_dataset(data_dir, features):
     )
 
 
-METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
-
-
 def get_istego100k_test_same(data_dir: str, features, output_size="full"):
     assert output_size in {"full", "random_crop", "center_crop", "tiles"}
     from .augmentations import RandomCrop8
@@ -920,8 +917,9 @@ def get_istego100k_test_other(data_dir: str, features, output_size="full"):
 
 def get_istego100k_train(data_dir: str, fold: int, features, output_size="full"):
     assert output_size in {"full", "random_crop", "center_crop", "tiles"}
-
     from .augmentations import RandomCrop8
+
+    METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
 
     labels = json.load(open(os.path.join(data_dir, "train.parameter.json")))
 
@@ -932,7 +930,7 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
 
     cover_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "cover"))])
     stego_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "stego"))])
-    all_images = list(cover_images.union(stego_images))
+    all_images = list(sorted(cover_images.union(stego_images)))
 
     for i, image_id in enumerate(all_images):
         fold_index = i % 4
