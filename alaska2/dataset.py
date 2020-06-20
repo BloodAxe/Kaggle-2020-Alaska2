@@ -927,12 +927,12 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
 
     image_ids = []
     qualities = []
-    methods = []
+    targets = []
     folds = []
 
     cover_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "cover"))])
     stego_images = set([os.path.basename(x) for x in fs.find_images_in_dir(os.path.join(data_dir, "train", "stego"))])
-    all_images = cover_images.union(stego_images)
+    all_images = list(cover_images.union(stego_images))
 
     for i, image_id in enumerate(all_images):
         fold_index = i % 4
@@ -946,66 +946,70 @@ def get_istego100k_train(data_dir: str, fold: int, features, output_size="full")
         if image_id in cover_images:
             image_ids.append(os.path.join(data_dir, "train", "cover", image_id))
             qualities.append(quality)
-            methods.append(METHOD_TO_INDEX["Cover"])
+            targets.append(METHOD_TO_INDEX["Cover"])
             folds.append(fold_index)
 
         if image_id in stego_images and method in {1, 2, 3}:
             image_ids.append(os.path.join(data_dir, "train", "stego", image_id))
             qualities.append(quality)
-            methods.append(method)
+            targets.append(method)
             folds.append(fold_index)
 
     image_ids = np.array(image_ids)
-    quality = np.array(qualities)
-    methods = np.array(methods)
+    qualities = np.array(qualities)
+    targets = np.array(targets)
     folds = np.array(folds)
 
-    image_ids = image_ids[folds != fold]
-    quality = quality[folds != fold]
-    methods = methods[folds != fold]
+    image_ids = image_ids[folds != fold].tolist()
+    qualities = qualities[folds != fold].tolist()
+    targets = targets[folds != fold].tolist()
 
     if output_size == "full":
         valid_transform = A.NoOp()
         train_ds = TrainingValidationDataset(
-            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+            images=image_ids, targets=targets, quality=qualities, transform=valid_transform, features=features
         )
         print("Extra dataset", train_ds)
     elif output_size == "center_crop":
         valid_transform = A.CenterCrop(512, 512)
         train_ds = TrainingValidationDataset(
-            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+            images=image_ids, targets=targets, quality=qualities, transform=valid_transform, features=features
         )
         print("Extra dataset", train_ds)
     elif output_size == "random_crop":
         valid_transform = RandomCrop8(512, 512)
         train_ds = TrainingValidationDataset(
-            images=image_ids, targets=methods, quality=quality, transform=valid_transform, features=features
+            images=image_ids, targets=targets, quality=qualities, transform=valid_transform, features=features
         )
         print("Extra dataset", train_ds)
     elif output_size == "tiles":
 
         train_ds = [
             TrainingValidationDataset(
-                images=image_ids, targets=methods, quality=quality, transform=A.Crop(0, 0, 512, 512), features=features
+                images=image_ids,
+                targets=targets,
+                quality=qualities,
+                transform=A.Crop(0, 0, 512, 512),
+                features=features,
             ),
             TrainingValidationDataset(
                 images=image_ids,
-                targets=methods,
-                quality=quality,
+                targets=targets,
+                quality=qualities,
                 transform=A.Crop(512, 0, 1024, 512),
                 features=features,
             ),
             TrainingValidationDataset(
                 images=image_ids,
-                targets=methods,
-                quality=quality,
+                targets=targets,
+                quality=qualities,
                 transform=A.Crop(0, 512, 512, 1024),
                 features=features,
             ),
             TrainingValidationDataset(
                 images=image_ids,
-                targets=methods,
-                quality=quality,
+                targets=targets,
+                quality=qualities,
                 transform=A.Crop(512, 512, 1024, 1024),
                 features=features,
             ),
