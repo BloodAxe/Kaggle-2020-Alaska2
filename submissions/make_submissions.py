@@ -357,13 +357,77 @@ def main():
             os.path.join(output_dir, "rgb_tf_efficientnet_b6_ns_best_cauc_d4_mean_holdout_9349.csv"), index=False
         )
 
-        blend = blend_predictions_mean(make_classifier_predictions(as_d4_tta(best_cauc)) +
-                                       make_classifier_predictions(as_d4_tta(ela_skresnext50_32x4d_best_loss)))
+        # blend = blend_predictions_mean(make_classifier_predictions(as_d4_tta(best_cauc)) +
+        #                                make_classifier_predictions(as_d4_tta(ela_skresnext50_32x4d_best_loss)))
 
-        blend[["Id", "Label"]].to_csv(
-            os.path.join(output_dir, "blend_rgb_tf_efficientnet_b6_ns_best_cauc_d4_ela_skresnext50_32x4d_best_loss_mean_holdout_XXXX.csv"), index=False
+        # blend = blend_predictions_mean(
+        #     make_classifier_predictions(as_d4_tta(best_cauc))
+        #     + make_classifier_predictions(as_d4_tta(ela_skresnext50_32x4d_best_loss))
+        #     + make_binary_predictions(
+        #         as_d4_tta(
+        #             [
+        #                 "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv"
+        #             ]
+        #         )
+        #     )
+        # )
+
+        # blend[["Id", "Label"]].to_csv(
+        #     os.path.join(
+        #         output_dir,
+        #         "blend_rgb_tf_efficientnet_b6_ns_best_cauc_d4_ela_skresnext50_32x4d_best_loss_mean_holdout_XXXX_V2.csv",
+        #     ),
+        #     index=False,
+        # )
+
+        # blend = make_binary_predictions(
+        #     as_hv_tta(
+        #         [
+        #             "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv"
+        #         ]
+        #     )
+        # )
+        # blend[0][["Id", "Label"]].to_csv(
+        #     "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_submission_binary_hv_tta.csv",
+        #     index=False,
+        # )
+        #
+        # blend = make_classifier_predictions(
+        #     as_hv_tta(
+        #         [
+        #             "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv"
+        #         ]
+        #     )
+        # )
+        # blend[0][["Id", "Label"]].to_csv(
+        #     "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_submission_classifier_hv_tta.csv",
+        #     index=False,
+        # )
+        #
+
+        blend = make_binary_predictions(
+            as_hv_tta(
+                [
+                    "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv"
+                ]
+            )
+        )
+        blend[0][["Id", "Label"]].to_csv(
+            "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_submission_binary_hv_tta.csv",
+            index=False,
         )
 
+        blend = make_classifier_predictions(
+            as_hv_tta(
+                [
+                    "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv"
+                ]
+            )
+        )
+        blend[0][["Id", "Label"]].to_csv(
+            "models/Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_submission_classifier_hv_tta.csv",
+            index=False,
+        )
 
 
 if __name__ == "__main__":

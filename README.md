@@ -65,9 +65,9 @@ https://github.com/TAMU-VITA/Adv-SS-Pretraining/tree/master/pretraining
 | Jun10_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 3    | b-auc  | 
 | Jun10_08_49_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 3    | c-auc  | 
 |----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
-| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | loss   | 0.9264 | 0.9254 | 72.33 |
-| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | b-auc  | 0.9265 | 0.9253 | 72.08 |
-| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | c-auc  | 0.9264 | 0.9254 | 72.33 |
+| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | loss   | 0.9264 | 0.9254 | 72.33 |       |
+| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | b-auc  | 0.9265 | 0.9253 | 72.08 |       | 0.926 / 0.924 |    |
+| Jun18_19_24_rgb_tf_efficientnet_b6_ns        | rgb_tf_efficientnet_b6_ns   | 0    | c-auc  | 0.9264 | 0.9254 | 72.33 |       | 0.923 / 0.922 |    |
 |----------------------------------------------|-----------------------------|------|--------|--------|--------|-------|-------|-----------|---------|
 
 
