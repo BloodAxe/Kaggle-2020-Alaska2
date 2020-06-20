@@ -139,7 +139,6 @@ def main():
     mixup = args.mixup
     cutmix = args.cutmix
     tsa = args.tsa
-    fine_tune = args.fine_tune
     obliterate_p = args.obliterate
     negative_image_dir = args.negative_image_dir
 
@@ -151,7 +150,7 @@ def main():
     valid_batch_size = train_batch_size
     run_train = num_epochs > 0
 
-    model: nn.Module = get_model(model_name, num_classes=5, dropout=dropout)
+    model: nn.Module = get_model(model_name, dropout=dropout)
     required_features = model.required_features
 
     if args.transfer:
@@ -224,7 +223,9 @@ def main():
             obliterate_p=obliterate_p,
         )
 
-        extra_train_ds = get_istego100k_train(data_dir_istego, fold=fold, features=required_features, output_size="random_crop")
+        extra_train_ds = get_istego100k_train(
+            data_dir_istego, fold=fold, features=required_features, output_size="random_crop"
+        )
         train_ds = train_ds + extra_train_ds
 
         if negative_image_dir:
@@ -244,7 +245,6 @@ def main():
             mixup=mixup,
             cutmix=cutmix,
             tsa=tsa,
-            class_names=["Cover", "JMiPOD", "JUNIWARD", "UERD", "NSF5"],
         )
 
         callbacks = (
@@ -347,7 +347,7 @@ def main():
             verbose=verbose,
             main_metric=main_metric,
             minimize_metric=main_metric_minimize,
-            checkpoint_data={"cmd_args": vars(args), "num_classes": 5},
+            checkpoint_data={"cmd_args": vars(args)},
         )
 
         del optimizer, loaders, runner, callbacks
