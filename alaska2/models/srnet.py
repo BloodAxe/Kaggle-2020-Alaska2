@@ -95,7 +95,7 @@ class SRNetModel(nn.Module):
 
     def forward(self, **kwargs):
         x = kwargs[INPUT_IMAGE_KEY]
-        x = self.rgb_bn(x)
+        x = self.rgb_bn(x.float())
         x = self.encoder(x)
         x = self.pool(x[-1])
         return {
