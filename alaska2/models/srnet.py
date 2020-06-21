@@ -6,6 +6,7 @@ from pytorch_toolbelt.modules import ABN, EncoderModule, Normalize, GlobalAvgPoo
 __all__ = ["SRNetEncoder", "SRNetModel", "srnet", "srnet_inplace"]
 
 from alaska2.dataset import INPUT_IMAGE_KEY, OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE
+from .sa import SelfAttention
 
 
 class Layer1(nn.Module):
@@ -97,7 +98,7 @@ class SRNetModel(nn.Module):
 
     def forward(self, **kwargs):
         x = kwargs[INPUT_IMAGE_KEY]
-        x = self.rgb_bn(x.float())
+        x = self.rgb_bn(x)
         x = self.encoder(x)
         x = self.pool(x[-1])
         return {
