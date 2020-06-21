@@ -87,10 +87,7 @@ class SRNetModel(nn.Module):
         super().__init__()
         self.encoder = encoder
         max_pixel_value = 255
-        self.rgb_bn = Normalize(
-            [0.3914976 * max_pixel_value, 0.44266784 * max_pixel_value, 0.46043398 * max_pixel_value],
-            [0.17819773 * max_pixel_value, 0.17319807 * max_pixel_value, 0.18128773 * max_pixel_value],
-        )
+        self.rgb_bn = Normalize(max_pixel_value, 1)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.channels[-1], num_classes)
