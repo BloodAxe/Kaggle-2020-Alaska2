@@ -4,10 +4,23 @@ from collections import defaultdict
 import pandas as pd
 
 from alaska2 import alaska_weighted_auc
-from alaska2.submissions import calibrated, as_hv_tta, as_d4_tta, classifier_probas
+from alaska2.submissions import calibrated, as_hv_tta, as_d4_tta, classifier_probas, sigmoid
 from submissions import ela_skresnext50_32x4d
 from submissions import rgb_tf_efficientnet_b2_ns
 from submissions import rgb_tf_efficientnet_b6_ns
+
+
+def get_predictions_csv(experiment, metric: str, type: str, tta: str = None):
+    assert type in {"test", "holdout"}
+    assert metric in {"loss, bauc, cauc"}
+    assert tta in {None, "d4", "hv"}
+    checkpoints_dir = {"loss": "checkpoints", "bauc": None, "cauc": None}[""]
+    csv = os.path.join("models", experiment, "main", checkpoints_dir, f"best_{type}_predictions.csv")
+    if tta == "d4":
+        csv = as_d4_tta([csv])[0]
+    elif tta == "hv":
+        csv = as_hv_tta([csv])[0]
+    return csv
 
 
 def main():
@@ -15,64 +28,55 @@ def main():
 
     summary_df = defaultdict(list)
 
-    best_loss = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-    ]
-    best_bauc = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-    ]
-    best_cauc = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-    ]
-
-    best_loss_h = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-    ]
-    best_bauc_h = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-    ]
-    best_cauc_h = [
-        "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-        "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-        "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-        "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
+    experiments = [
+        "May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
+        "May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
+        "May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
+        "May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
+        #
+        "Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        #
+        "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
     ]
 
     all_predictions = [
-        ("loss", best_loss, best_loss_h),
-        ("b_auc", best_bauc, best_bauc_h),
-        ("c_auc", best_cauc, best_cauc_h),
+        (
+            "loss",
+            get_predictions_csv(experiments, "loss", "test"),
+            get_predictions_csv(experiments, "loss", "holdout"),
+        ),
+        (
+            "bauc",
+            get_predictions_csv(experiments, "bauc", "test"),
+            get_predictions_csv(experiments, "bauc", "holdout"),
+        ),
+        (
+            "cauc",
+            get_predictions_csv(experiments, "cauc", "test"),
+            get_predictions_csv(experiments, "cauc", "holdout"),
+        ),
     ]
 
     for checkpoint_metric, test_predictions, oof_predictions in all_predictions:
         keys = ["b_auc_score", "c_auc_score"]
 
-        for test_p, oof_p in zip(test_predictions, oof_predictions):
+        for oof_p, oof_p_hv_tta, oof_p_d4_tta in zip(
+            oof_predictions, as_hv_tta(oof_predictions), as_d4_tta(oof_predictions)
+        ):
             # No TTA
-            summary_df["test_predictions"].append(test_p.split('/')[1])
+            summary_df["test_predictions"].append(oof_p.split("/")[1])
             summary_df["checkpoint_metric"].append(checkpoint_metric)
             summary_df["tta"].append("none")
             try:
                 df = pd.read_csv(oof_p)
-                summary_df["b_auc_score"].append(
-                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"])
+                summary_df["bauc"].append(
+                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"].apply(sigmoid))
                 )
-                summary_df["c_auc_score"].append(
+                summary_df["cauc"].append(
                     alaska_weighted_auc(
                         df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
                     )
@@ -83,17 +87,12 @@ def main():
                 for k in keys:
                     summary_df[k].append("N/A")
 
-        # HV TTA
-        for test_p, oof_p in zip(as_hv_tta(test_predictions), as_hv_tta(oof_predictions)):
-            summary_df["test_predictions"].append(test_p.split('/')[1])
-            summary_df["checkpoint_metric"].append(checkpoint_metric)
-            summary_df["tta"].append("hv")
             try:
-                df = pd.read_csv(oof_p)
-                summary_df["b_auc_score"].append(
-                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"])
+                df = pd.read_csv(oof_p_hv_tta)
+                summary_df["bauc (HV tta)"].append(
+                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"].apply(sigmoid))
                 )
-                summary_df["c_auc_score"].append(
+                summary_df["cauc (HV tta)"].append(
                     alaska_weighted_auc(
                         df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
                     )
@@ -104,17 +103,12 @@ def main():
                 for k in keys:
                     summary_df[k].append("N/A")
 
-        # D4 TTA
-        for test_p, oof_p in zip(as_d4_tta(test_predictions), as_d4_tta(oof_predictions)):
-            summary_df["test_predictions"].append(test_p.split('/')[1])
-            summary_df["checkpoint_metric"].append(checkpoint_metric)
-            summary_df["tta"].append("d4")
             try:
-                df = pd.read_csv(oof_p)
-                summary_df["b_auc_score"].append(
-                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"])
+                df = pd.read_csv(oof_p_d4_tta)
+                summary_df["bauc (D4 tta)"].append(
+                    alaska_weighted_auc(df["true_modification_flag"], df["pred_modification_flag"].apply(sigmoid))
                 )
-                summary_df["c_auc_score"].append(
+                summary_df["cauc (D4 tta)"].append(
                     alaska_weighted_auc(
                         df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
                     )
