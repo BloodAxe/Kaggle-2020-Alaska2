@@ -4,17 +4,20 @@ from collections import defaultdict
 import pandas as pd
 
 from alaska2 import alaska_weighted_auc
-from alaska2.submissions import calibrated, as_hv_tta, as_d4_tta, classifier_probas, sigmoid
+from alaska2.submissions import calibrated, as_hv_tta, as_d4_tta, classifier_probas, sigmoid, infer_fold
 from submissions import ela_skresnext50_32x4d
 from submissions import rgb_tf_efficientnet_b2_ns
 from submissions import rgb_tf_efficientnet_b6_ns
 
 
 def get_predictions_csv(experiment, metric: str, type: str, tta: str = None):
+    if isinstance(experiment, list):
+        return [get_predictions_csv(x, metric, type, tta) for x in experiment]
+
     assert type in {"test", "holdout"}
-    assert metric in {"loss, bauc, cauc"}
+    assert metric in {"loss", "bauc", "cauc"}
     assert tta in {None, "d4", "hv"}
-    checkpoints_dir = {"loss": "checkpoints", "bauc": None, "cauc": None}[""]
+    checkpoints_dir = {"loss": "checkpoints", "bauc": "checkpoints_auc", "cauc": "checkpoints_auc_classifier"}[metric]
     csv = os.path.join("models", experiment, "main", checkpoints_dir, f"best_{type}_predictions.csv")
     if tta == "d4":
         csv = as_d4_tta([csv])[0]
@@ -41,6 +44,8 @@ def main():
         "Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
+        "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
     ]
 
     all_predictions = [
@@ -62,15 +67,17 @@ def main():
     ]
 
     for checkpoint_metric, test_predictions, oof_predictions in all_predictions:
-        keys = ["b_auc_score", "c_auc_score"]
 
         for oof_p, oof_p_hv_tta, oof_p_d4_tta in zip(
             oof_predictions, as_hv_tta(oof_predictions), as_d4_tta(oof_predictions)
         ):
+            path_components = os.path.normpath(oof_p).split(os.sep)
+
             # No TTA
-            summary_df["test_predictions"].append(oof_p.split("/")[1])
-            summary_df["checkpoint_metric"].append(checkpoint_metric)
-            summary_df["tta"].append("none")
+            summary_df["checkpoint"].append(path_components[1])
+            summary_df["fold"].append(infer_fold(oof_p))
+            summary_df["metric"].append(checkpoint_metric)
+
             try:
                 df = pd.read_csv(oof_p)
                 summary_df["bauc"].append(
@@ -84,7 +91,7 @@ def main():
 
             except Exception as e:
                 print(e)
-                for k in keys:
+                for k in ["bauc", "cauc"]:
                     summary_df[k].append("N/A")
 
             try:
@@ -100,7 +107,7 @@ def main():
 
             except Exception as e:
                 print(e)
-                for k in keys:
+                for k in ["bauc (HV tta)", "cauc (HV tta)"]:
                     summary_df[k].append("N/A")
 
             try:
@@ -116,7 +123,7 @@ def main():
 
             except Exception as e:
                 print(e)
-                for k in keys:
+                for k in ["bauc (D4 tta)", "cauc (D4 tta)"]:
                     summary_df[k].append("N/A")
 
     summary_df = pd.DataFrame(summary_df)

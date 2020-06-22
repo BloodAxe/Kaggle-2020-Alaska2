@@ -28,7 +28,21 @@ __all__ = [
     "blend_predictions_ranked",
     "as_d4_tta",
     "as_hv_tta",
+    "infer_fold"
 ]
+
+
+def infer_fold(x):
+    if "fold0" in x:
+        return 0
+    if "fold1" in x:
+        return 1
+    if "fold2" in x:
+        return 2
+    if "fold3" in x:
+        return 3
+
+    raise KeyError(x)
 
 
 def temperature_scaling(x, t):

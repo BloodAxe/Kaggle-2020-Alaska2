@@ -39,7 +39,7 @@ class TimmRgbElaModel(nn.Module):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.ela_bn = Normalize([0, 0, 0], [0.2 * 127, 0.2 * 127, 0.2 * 127])
+        # self.ela_bn = Normalize([0, 0, 0], [0.2 * 127, 0.2 * 127, 0.2 * 127])
         self.encoder = encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
@@ -48,7 +48,9 @@ class TimmRgbElaModel(nn.Module):
 
     def forward(self, **kwargs):
         rgb = self.rgb_bn(kwargs[INPUT_IMAGE_KEY])
-        ela = self.ela_bn(kwargs[INPUT_FEATURES_ELA_KEY])
+        # ela = self.ela_bn(kwargs[INPUT_FEATURES_ELA_KEY])
+        ela = kwargs[INPUT_FEATURES_ELA_KEY]
+
         x = torch.cat([rgb, ela], dim=1)
         x = self.encoder.forward_features(x)
         x = self.pool(x)
