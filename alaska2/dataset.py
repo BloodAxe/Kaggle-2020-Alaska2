@@ -344,7 +344,7 @@ class TrainingValidationDataset(Dataset):
         return len(self.images)
 
     def __repr__(self):
-        return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, features={self.features})"
+        return f"TrainingValidationDataset(len={len(self)}, targets_hist={np.bincount(self.targets)}, qf={np.bincount(self.quality)}, features={self.features})"
 
     def __getitem__(self, index):
         image_fname = self.images[index]

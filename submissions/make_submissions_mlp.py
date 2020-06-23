@@ -4,6 +4,8 @@ import torch
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from submissions.ela_skresnext50_32x4d import *
+from submissions.eval_tta import get_predictions_csv
+from submissions.make_submissions_averaging import compute_checksum
 from submissions.rgb_tf_efficientnet_b2_ns import *
 from submissions.rgb_tf_efficientnet_b6_ns import *
 from alaska2.submissions import (
@@ -98,132 +100,66 @@ def main():
         "Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16"
+        "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
     ]
 
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
+    checksum = compute_checksum(test_predictions)
+
+    import torch.nn.functional as F
+
+    holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
+    quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
+
+    test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
+    quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
+
+    X, y = get_x_y(holdout_predictions)
+    print(X.shape, y.shape)
+
+    X_public_lb, _ = get_x_y(test_predictions)
+    print(X_public_lb.shape)
+
+    X_train, X_test, y_train, y_test, quality_train, quality_test = train_test_split(
+        X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
+    )
+
+    sc = PCA(n_components=16)
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.transform(X_test)
+    X_public_lb = sc.transform(X_public_lb)
+
+    # sc = StandardScaler()
+    # X_train = sc.fit_transform(X_train)
+    # X_test = sc.transform(X_test)
+    # X_public_lb = sc.transform(X_public_lb)
+
+    X_train = np.column_stack([X_train, quality_train])
+    X_test = np.column_stack([X_test, quality_test])
+    X_public_lb = np.column_stack([X_public_lb, quality_t])
+
+    if False:
+        # MLP
+        mlp_grid, auc = train_mlp(X_train, y_train, X_test, y_test)
+        df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
+        df["Label"] = mlp_grid.predict_proba(X_public_lb)[:, 1]
+        df[["Id", "Label"]].to_csv(os.path.join(output_dir, f"{checksum}_mlp_{auc:.4f}.csv"), index=False)
+
     if True:
-        best_loss = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-        ]
-        best_bauc = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-        ]
-        best_cauc = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        ]
+        # MLP
+        mlp_grid, auc = train_rf(X_train, y_train, X_test, y_test)
+        df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
+        df["Label"] = mlp_grid.predict_proba(X_public_lb)[:, 1]
+        df[["Id", "Label"]].to_csv(os.path.join(output_dir, f"{checksum}_rf_{auc:.4f}.csv"), index=False)
 
-        best_loss_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-        ]
-        best_bauc_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-        ]
-        best_cauc_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-        ]
-
-        import torch.nn.functional as F
-
-        holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-        quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
-
-        test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
-        quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
-
-        X, y = get_x_y(as_d4_tta(best_loss_h + best_bauc_h + best_cauc_h))
-        print(X.shape, y.shape)
-
-        X_public_lb, _ = get_x_y(as_d4_tta(best_loss + best_bauc + best_cauc))
-        print(X_public_lb.shape)
-
-        X_train, X_test, y_train, y_test, quality_train, quality_test = train_test_split(
-            X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
-        )
-
-        sc = PCA(n_components=16)
-        X_train = sc.fit_transform(X_train)
-        X_test = sc.transform(X_test)
-        X_public_lb = sc.transform(X_public_lb)
-
-        # sc = StandardScaler()
-        # X_train = sc.fit_transform(X_train)
-        # X_test = sc.transform(X_test)
-        # X_public_lb = sc.transform(X_public_lb)
-
-        X_train = np.column_stack([X_train, quality_train])
-        X_test = np.column_stack([X_test, quality_test])
-        X_public_lb = np.column_stack([X_public_lb, quality_t])
-
-        if False:
-            # MLP
-            # The AUC of the tuned MLP classifier is 0.936
-            # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': (8,), 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
-            # The AUC of the tuned MLP classifier is 0.935
-            # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': 16, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
-            mlp_grid, auc = train_mlp(X_train, y_train, X_test, y_test)
-            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-            df["Label"] = mlp_grid.predict_proba(X_public_lb)[:, 1]
-            df[["Id", "Label"]].to_csv(
-                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_gridsearch_{auc:.4f}.csv"), index=False
-            )
-
-        if False:
-            # RF
-            # The AUC of the tuned RF classifier is 0.926
-            # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
-            # The AUC of the tuned RF classifier is 0.924
-            # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
-            rf_grid, auc = train_rf(X_train, y_train, X_test, y_test)
-            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-            df["Label"] = rf_grid.predict_proba(X_public_lb)[:, 1]
-            df[["Id", "Label"]].to_csv(
-                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_rf_{auc:.4f}.csv"), index=False
-            )
-
-        if False:
-            # SVC
-            # The AUC of the tuned SVC classifier is 0.937
-            # Best params {'C': 50, 'degree': 2, 'kernel': 'linear'}
-            svc_grid, auc = train_svc(X_train, y_train, X_test, y_test)
-            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-            df["Label"] = svc_grid.predict_proba(X_public_lb)[:, 1]
-            df[["Id", "Label"]].to_csv(
-                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_svc_{auc:.4f}.csv"), index=False
-            )
-
-        if False:
-            # NuSVC
-            nusvc_grid, auc = train_nusvc(X_train, y_train, X_test, y_test)
-            df = pd.read_csv(best_loss[0]).rename(columns={"image_id": "Id"})
-            df["Label"] = nusvc_grid.predict_proba(X_public_lb)[:, 1]
-            df[["Id", "Label"]].to_csv(
-                os.path.join(output_dir, f"rgb_tf_efficientnet_b6_ns_stacked_nusvc_grid_{auc:.4f}.csv"), index=False
-            )
 
 
 def train_mlp(X_train, y_train, X_test, y_test):
     parameters = {
         "learning_rate": ["invscaling", "adaptive"],
         "solver": ["adam"],
-        "hidden_layer_sizes": [(8,), (16), (8, 4), (16, 16)],
+        "hidden_layer_sizes": [(8,), (16), (32), (32, 16), (16, 8)],
         "alpha": [0.01, 0.05, 0.1],
         "learning_rate_init": [1e-5, 1e-4],
         "activation": ["logistic", "relu"],
@@ -231,7 +167,7 @@ def train_mlp(X_train, y_train, X_test, y_test):
 
     grid = GridSearchCV(
         estimator=MLPClassifier(
-            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), learning_rate="constant", max_iter=200000
+            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), learning_rate="constant", max_iter=20000
         ),
         param_grid=parameters,
         cv=5,
