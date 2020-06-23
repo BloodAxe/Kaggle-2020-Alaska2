@@ -479,7 +479,7 @@ def get_criterions(
                 output_activation=binary_logits_to_probas,
                 prefix="distribution/binary",
             ),
-            BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=5),
+            BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=3),
         ]
 
         # Losses
@@ -517,7 +517,6 @@ def get_criterions(
             AccuracyCallback(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE, output_key=OUTPUT_PRED_MODIFICATION_TYPE, prefix="accuracy"
             ),
-            BestMetricCheckpointCallback(target_metric="accuracy01", target_metric_minimize=False, save_n_best=5),
             CompetitionMetricCallback(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_MODIFICATION_TYPE,
@@ -531,7 +530,7 @@ def get_criterions(
                 output_activation=classifier_logits_to_probas,
                 prefix="distribution/classifier",
             ),
-            BestMetricCheckpointCallback(target_metric="auc_classifier", target_metric_minimize=False, save_n_best=5),
+            BestMetricCheckpointCallback(target_metric="auc_classifier", target_metric_minimize=False, save_n_best=3),
         ]
 
         # Losses
