@@ -23,7 +23,7 @@ from torch import nn
 from torch.utils.data import DataLoader, DistributedSampler
 
 from alaska2 import *
-from train2 import paired_collate_shuffle
+from train2 import paired_collate_shuffle, paired_collate
 
 
 def main():
@@ -260,7 +260,7 @@ def main():
             drop_last=True,
             shuffle=False,
             sampler=DistributedSampler(train_ds, args.world_size, args.local_rank),
-            collate_fn=paired_collate_shuffle,
+            collate_fn=paired_collate,
         )
 
         loaders["valid"] = DataLoader(
@@ -271,7 +271,6 @@ def main():
             drop_last=False,
             shuffle=False,
             sampler=DistributedSampler(valid_ds, args.world_size, args.local_rank, shuffle=False),
-            collate_fn=paired_collate_shuffle,
         )
 
         print("Train session    :", checkpoint_prefix)

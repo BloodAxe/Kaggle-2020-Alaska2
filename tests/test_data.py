@@ -4,6 +4,7 @@ from collections import defaultdict
 import pytest, os, cv2
 import numpy as np
 import torch
+from pytorch_toolbelt.utils import rgb_image_from_tensor
 
 from alaska2.augmentations import (
     dct_rot90_block,
@@ -293,3 +294,26 @@ def test_randint():
     plt.figure()
     plt.hist(samples)
     plt.show()
+
+
+def test_paired_ds():
+    train_ds, _, _ = get_datasets_paired("d:\\datasets\\ALASKA2", 0, features=[INPUT_IMAGE_KEY])
+
+    for i in range(100):
+        sample = train_ds[i]
+        assert sample[INPUT_TRUE_MODIFICATION_FLAG][0] == 0
+        assert sample[INPUT_TRUE_MODIFICATION_FLAG][1] == 1
+        assert sample[INPUT_TRUE_MODIFICATION_TYPE][0] == 0
+        assert sample[INPUT_TRUE_MODIFICATION_TYPE][1] > 0
+
+        cv2.imshow("Cover", rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][0], mean=0.0, std=1.0, max_pixel_value=1))
+        cv2.imshow("Stego", rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][1], mean=0.0, std=1.0, max_pixel_value=1))
+        cv2.imshow(
+            "Diff",
+            40 * cv2.absdiff(
+                rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][0], mean=0.0, std=1.0, max_pixel_value=1),
+                rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][1], mean=0.0, std=1.0, max_pixel_value=1),
+            ),
+        )
+
+        cv2.waitKey(-1)
