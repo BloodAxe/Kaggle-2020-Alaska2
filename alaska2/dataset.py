@@ -248,12 +248,12 @@ def compute_ela(image, quality_steps=[75]):
 
 
 def compute_ela_rich(image, quality_steps=[75, 90, 95]):
-    diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps)*3), dtype=np.float32)
+    diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps) * 3), dtype=np.float32)
 
     for i, q in enumerate(quality_steps):
         retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
         image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        diff[..., i*3:i*3+3] = np.abs(np.subtract(image_lq, image, dtype=np.float32))
+        diff[..., i * 3 : i * 3 + 3] = np.abs(np.subtract(image_lq, image, dtype=np.float32))
 
     return diff
 
@@ -383,12 +383,12 @@ class TrainingValidationDataset(Dataset):
 
 
 class PairedImageDataset(Dataset):
-    def __init__(self, images: Union[np.ndarray, List], target: int, transform: A.Compose, features):
+    def __init__(self, images: Union[np.ndarray, List], quality: List, target: int, transform: A.Compose, features):
         self.images = images
         self.features = features
         self.target = target
         self.method_name = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
-
+        self.quality = quality
         assert 0 < target < 4
         self.transform = transform
 
@@ -402,31 +402,34 @@ class PairedImageDataset(Dataset):
         cover_image_fname = self.images[index]
 
         method_name = self.method_name[self.target]
-        secret_image_fname = cover_image_fname.replace("Cover", method_name)
+        stego_image_fname = cover_image_fname.replace("Cover", method_name)
 
         cover_image = cv2.imread(cover_image_fname)
-        secret_image = cv2.imread(secret_image_fname)
+        stego_image = cv2.imread(stego_image_fname)
 
         cover_data = {}
         cover_data["image"] = cover_image
         cover_data.update(compute_features(cover_image, cover_image_fname, self.features))
         cover_data = self.transform(**cover_data)
 
-        secret_data = {}
-        secret_data["image"] = secret_image
-        secret_data.update(compute_features(secret_image, secret_image_fname, self.features))
-        secret_data = self.transform(**secret_data)
+        stego_data = {}
+        stego_data["image"] = stego_image
+        stego_data.update(compute_features(stego_image, stego_image_fname, self.features))
+        stego_data = self.transform(**stego_data)
+
+        qf = int(self.quality[index])
 
         sample = {
-            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(secret_image_fname)],
+            INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(stego_image_fname)],
             INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, self.target]).long(),
             INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
+            INPUT_IMAGE_QF_KEY: torch.tensor([qf, qf]),
         }
 
         for key, value in cover_data.items():
             if key in self.features:
                 sample[key] = torch.stack(
-                    [tensor_from_rgb_image(cover_data[key]), tensor_from_rgb_image(secret_data[key])]
+                    [tensor_from_rgb_image(cover_data[key]), tensor_from_rgb_image(stego_data[key])]
                 )
 
         return sample
@@ -693,42 +696,60 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
 
 
 def get_datasets_paired(
-    data_dir: str,
-    fold: int,
-    augmentation: str = "light",
-    fast: bool = False,
-    image_size: Tuple[int, int] = (512, 512),
-    features=None,
+    data_dir: str, fold: int, augmentation: str = "light", image_size: Tuple[int, int] = (512, 512), features=None
 ):
     from .augmentations import get_augmentations
 
     train_transform = get_augmentations(augmentation, image_size)
-    valid_transform = A.ReplayCompose([A.NoOp()])
+    valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
     # Ignore holdout fold
     data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
 
-    train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
+    train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
+    valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
+
+    train_df = train_df[~train_df[INPUT_IMAGE_ID_KEY].isin(unchanged.file)]
+
+    train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
 
-    train_ds = (
-        PairedImageDataset(train_images, target=1, transform=train_transform, features=features)
-        + PairedImageDataset(train_images, target=2, transform=train_transform, features=features)
-        + PairedImageDataset(train_images, target=3, transform=train_transform, features=features)
-    )
+    train_qf = train_df["quality"].values.tolist()
 
-    valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
+    # Validation
+    valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
     valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
     valid_x = valid_images.copy()
     valid_y = [0] * len(valid_images)
+    valid_qf = valid_df["quality"].values.tolist()
 
-    for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-        valid_x += [fname.replace("Cover", method) for fname in valid_images]
-        valid_y += [i + 1] * len(valid_images)
-    valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+    for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        # Filter images that does not have any alterations DCT (there are 250 of them)
+        unchanged_files = unchanged[unchanged["method"] == method_name].file.values
+        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
+
+        for fname, qf in zip(valid_images, valid_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
+                valid_x.append(fname)
+                valid_y.append(method_index + 1)
+                valid_qf.append(qf)
+            else:
+                print("Removed unchanged file from the valid set", fname)
+
+    train_ds = (
+        PairedImageDataset(train_images, train_qf, target=1, transform=train_transform, features=features)
+        + PairedImageDataset(train_images, train_qf, target=2, transform=train_transform, features=features)
+        + PairedImageDataset(train_images, train_qf, target=3, transform=train_transform, features=features)
+    )
+
+    valid_ds = TrainingValidationDataset(
+        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+    )
 
     sampler = None
     print("Train", train_ds)
