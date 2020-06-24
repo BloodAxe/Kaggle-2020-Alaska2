@@ -27,7 +27,7 @@ from torch.utils.data.dataloader import default_collate
 from alaska2 import *
 
 
-def paired_collate(input):
+def paired_collate_shuffle(input):
     input = default_collate(input)
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
@@ -61,6 +61,30 @@ def paired_collate(input):
     # for i, image in enumerate(images):
     #     cv2.imshow(f"Image {i}", image)
     #     cv2.waitKey(-1)
+    return input
+
+
+def paired_collate(input):
+    input = default_collate(input)
+
+    input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
+
+    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY]).tolist()
+    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
+    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
+
+    if INPUT_FEATURES_ELA_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
+        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)
+
+    if INPUT_FEATURES_ELA_RICH_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_RICH_KEY].size()
+        input[INPUT_FEATURES_ELA_RICH_KEY] = input[INPUT_FEATURES_ELA_RICH_KEY].view(-1, channels, rows, cols)
+
+    if INPUT_IMAGE_KEY in input:
+        _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
+        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
+
     return input
 
 
@@ -224,124 +248,6 @@ def main():
     if show:
         default_callbacks += [ShowPolarBatchesCallback(draw_predictions, metric="loss", minimize=True)]
 
-    # Pretrain/warmup
-    if warmup:
-        train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, image_size=image_size, augmentation="light", fold=fold, features=required_features
-        )
-
-        criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=modification_flag_loss,
-            modification_type=modification_type_loss,
-            embedding_loss=embedding_loss,
-            feature_maps_loss=feature_maps_loss,
-            num_epochs=warmup,
-            mixup=False,
-            cutmix=False,
-            tsa=False,
-        )
-
-        callbacks = (
-            default_callbacks
-            + loss_callbacks
-            + [
-                OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
-                HyperParametersCallback(
-                    hparam_dict={
-                        "model": model_name,
-                        "scheduler": scheduler_name,
-                        "optimizer": optimizer_name,
-                        "augmentations": augmentations,
-                        "size": image_size[0],
-                        "weight_decay": weight_decay,
-                    }
-                ),
-            ]
-        )
-
-        loaders = collections.OrderedDict()
-        loaders["train"] = DataLoader(
-            train_ds,
-            batch_size=train_batch_size // 2,
-            num_workers=num_workers,
-            pin_memory=True,
-            drop_last=True,
-            shuffle=train_sampler is None,
-            sampler=train_sampler,
-            collate_fn=paired_collate,
-        )
-
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
-
-        parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {"rgb_encoder": 0.1})
-        optimizer = get_optimizer("RAdam", parameters, learning_rate=learning_rate)
-        scheduler = get_scheduler(
-            "poly_up", optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
-        )
-        if isinstance(scheduler, CyclicLR):
-            callbacks += [SchedulerCallback(mode="batch")]
-
-        print("Train session    :", checkpoint_prefix)
-        print("  FP16 mode      :", fp16)
-        print("  Fast mode      :", args.fast)
-        print("  Epochs         :", num_epochs)
-        print("  Workers        :", num_workers)
-        print("  Data dir       :", data_dir)
-        print("  Log dir        :", log_dir)
-        print("  Cache          :", cache)
-        print("Data              ")
-        print("  Augmentations  :", augmentations)
-        print("  Negative images:", negative_image_dir)
-        print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
-        print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
-        print("  Image size     :", image_size)
-        print("  Balance        :", balance)
-        print("  Mixup          :", mixup)
-        print("  CutMix         :", cutmix)
-        print("  TSA            :", tsa)
-        print("Model            :", model_name)
-        print("  Parameters     :", count_parameters(model))
-        print("  Dropout        :", dropout)
-        print("Optimizer        :", optimizer_name)
-        print("  Learning rate  :", learning_rate)
-        print("  Weight decay   :", weight_decay)
-        print("  Scheduler      :", scheduler_name)
-        print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ")
-        print("  Flag           :", modification_flag_loss)
-        print("  Type           :", modification_type_loss)
-        print("  Embedding      :", embedding_loss)
-        print("  Feature maps   :", feature_maps_loss)
-
-        runner = SupervisedRunner(input_key=required_features, output_key=None)
-        runner.train(
-            fp16=fp16,
-            model=model,
-            criterion=criterions_dict,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            callbacks=callbacks,
-            loaders=loaders,
-            logdir=os.path.join(log_dir, "warmup"),
-            num_epochs=warmup,
-            verbose=verbose,
-            main_metric=main_metric,
-            minimize_metric=main_metric_minimize,
-            checkpoint_data={"cmd_args": cmd_args},
-        )
-
-        del optimizer, loaders, runner, callbacks
-
-        best_checkpoint = os.path.join(log_dir, "warmup", "checkpoints", "best.pth")
-        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}_warmup.pth")
-        clean_checkpoint(best_checkpoint, model_checkpoint)
-
-        # Restore state of best model
-        # unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
-
-        torch.cuda.empty_cache()
-        gc.collect()
-
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
             data_dir=data_dir, image_size=image_size, augmentation=augmentations, fold=fold, features=required_features
@@ -460,121 +366,6 @@ def main():
 
         torch.cuda.empty_cache()
         gc.collect()
-
-    if fine_tune:
-        train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, image_size=image_size, augmentation="light", fold=fold, features=required_features
-        )
-
-        criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=modification_flag_loss,
-            modification_type=modification_type_loss,
-            embedding_loss=embedding_loss,
-            feature_maps_loss=feature_maps_loss,
-            num_epochs=fine_tune,
-            mixup=False,
-            cutmix=False,
-            tsa=False,
-        )
-
-        callbacks = (
-            default_callbacks
-            + loss_callbacks
-            + [
-                OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
-                HyperParametersCallback(
-                    hparam_dict={
-                        "model": model_name,
-                        "scheduler": scheduler_name,
-                        "optimizer": optimizer_name,
-                        "augmentations": augmentations,
-                        "size": image_size[0],
-                        "weight_decay": weight_decay,
-                    }
-                ),
-            ]
-        )
-
-        loaders = collections.OrderedDict()
-        loaders["train"] = DataLoader(
-            train_ds,
-            batch_size=train_batch_size // 2,
-            num_workers=num_workers,
-            pin_memory=True,
-            drop_last=True,
-            shuffle=train_sampler is None,
-            sampler=train_sampler,
-            collate_fn=paired_collate,
-        )
-
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
-
-        print("Train session    :", checkpoint_prefix)
-        print("  FP16 mode      :", fp16)
-        print("  Fast mode      :", args.fast)
-        print("  Epochs         :", num_epochs)
-        print("  Workers        :", num_workers)
-        print("  Data dir       :", data_dir)
-        print("  Log dir        :", log_dir)
-        print("  Cache          :", cache)
-        print("Data              ")
-        print("  Augmentations  :", augmentations)
-        print("  Negative images:", negative_image_dir)
-        print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
-        print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
-        print("  Image size     :", image_size)
-        print("  Balance        :", balance)
-        print("  Mixup          :", mixup)
-        print("  CutMix         :", cutmix)
-        print("  TSA            :", tsa)
-        print("Model            :", model_name)
-        print("  Parameters     :", count_parameters(model))
-        print("  Dropout        :", dropout)
-        print("Optimizer        :", optimizer_name)
-        print("  Learning rate  :", learning_rate)
-        print("  Weight decay   :", weight_decay)
-        print("  Scheduler      :", scheduler_name)
-        print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ")
-        print("  Flag           :", modification_flag_loss)
-        print("  Type           :", modification_type_loss)
-        print("  Embedding      :", embedding_loss)
-        print("  Feature maps   :", feature_maps_loss)
-
-        optimizer = get_optimizer(
-            "SGD", get_optimizable_parameters(model), learning_rate * 0.1, weight_decay=weight_decay
-        )
-        scheduler = get_scheduler(
-            "cos", optimizer, lr=learning_rate, num_epochs=fine_tune, batches_in_epoch=len(loaders["train"])
-        )
-        if isinstance(scheduler, CyclicLR):
-            callbacks += [SchedulerCallback(mode="batch")]
-
-        # model training
-        runner = SupervisedRunner(input_key=required_features, output_key=None)
-        runner.train(
-            fp16=fp16,
-            model=model,
-            criterion=criterions_dict,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            callbacks=callbacks,
-            loaders=loaders,
-            logdir=os.path.join(log_dir, "finetune"),
-            num_epochs=fine_tune,
-            verbose=verbose,
-            main_metric=main_metric,
-            minimize_metric=main_metric_minimize,
-            checkpoint_data={"cmd_args": vars(args)},
-        )
-
-        best_checkpoint = os.path.join(log_dir, "finetune", "checkpoints", "best.pth")
-        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}.pth")
-
-        clean_checkpoint(best_checkpoint, model_checkpoint)
-        unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
-
-        del optimizer, loaders, runner, callbacks
 
 
 if __name__ == "__main__":
