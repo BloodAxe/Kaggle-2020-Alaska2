@@ -114,7 +114,6 @@ class TimmElaOnlyRichModel(nn.Module):
         )
         self.encoder = encoder
         self.pool = SelectAdaptivePool2d(pool_type="catavgmax", flatten=True)
-        self.drop = nn.Dropout(dropout)
         self.type_classifier = WeightNormClassifier(encoder.num_features * 2, num_classes, 128, dropout=dropout)
         self.flag_classifier = WeightNormClassifier(encoder.num_features * 2, 1, 128, dropout=dropout)
 
@@ -124,8 +123,8 @@ class TimmElaOnlyRichModel(nn.Module):
         x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
         }
 
 
