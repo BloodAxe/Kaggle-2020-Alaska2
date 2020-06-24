@@ -383,7 +383,9 @@ class TrainingValidationDataset(Dataset):
 
 
 class PairedImageDataset(Dataset):
-    def __init__(self, images: Union[np.ndarray, List], quality: List, target: int, transform: A.Compose, features):
+    def __init__(
+        self, images: Union[np.ndarray, List], quality: List, target: int, transform: A.ReplayCompose, features
+    ):
         self.images = images
         self.features = features
         self.target = target
@@ -415,7 +417,7 @@ class PairedImageDataset(Dataset):
         stego_data = {}
         stego_data["image"] = stego_image
         stego_data.update(compute_features(stego_image, stego_image_fname, self.features))
-        stego_data = self.transform(**stego_data)
+        stego_data = self.transform.replay(cover_data["replay"], **stego_data)
 
         qf = int(self.quality[index])
 
