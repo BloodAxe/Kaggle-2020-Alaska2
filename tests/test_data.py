@@ -23,6 +23,7 @@ from alaska2.dataset import (
     dct2spatial,
     dct2channels_last,
     decode_bgr_from_dct,
+    compute_ela_rich,
 )
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
@@ -239,25 +240,22 @@ def test_blur_features():
 
 
 def test_ela():
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"), cv2.IMREAD_COLOR)
-    ela = compute_ela(image)
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
+    ela = compute_ela_rich(image)
+    mean, std = ela.mean(axis=(0, 1)), ela.std(axis=(0, 1))
+    print(ela.shape, ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
 
-    print(ela.shape, ela.sum(axis=(0, 1)), ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.jpg"))
+    ela1 = (compute_ela_rich(image) - mean) / std
+    print(ela1.shape, ela1.mean(axis=(0, 1)), ela1.std(axis=(0, 1)))
 
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.jpg"), cv2.IMREAD_COLOR)
-    ela = compute_ela(image)
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "JUNIWARD", "00001.jpg"))
+    ela2 = (compute_ela_rich(image) - mean) / std
+    print(ela2.shape, ela2.mean(axis=(0, 1)), ela2.std(axis=(0, 1)))
 
-    print(ela.shape, ela.sum(axis=(0, 1)), ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
-
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "JUNIWARD", "00001.jpg"), cv2.IMREAD_COLOR)
-    ela = compute_ela(image)
-
-    print(ela.shape, ela.sum(axis=(0, 1)), ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
-
-    image = cv2.imread(os.path.join(TEST_DATA_DIR, "UERD", "00001.jpg"), cv2.IMREAD_COLOR)
-    ela = compute_ela(image)
-
-    print(ela.shape, ela.sum(axis=(0, 1)), ela.mean(axis=(0, 1)), ela.std(axis=(0, 1)))
+    image = cv2.imread(os.path.join(TEST_DATA_DIR, "UERD", "00001.jpg"))
+    ela3 = (compute_ela_rich(image) - mean) / std
+    print(ela3.shape, ela3.mean(axis=(0, 1)), ela3.std(axis=(0, 1)))
 
 
 def test_normalize_ycrcb():

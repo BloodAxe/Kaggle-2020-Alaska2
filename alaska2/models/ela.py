@@ -3,7 +3,7 @@ from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from pytorch_toolbelt.modules.activations import Mish
 from pytorch_toolbelt.utils import transfer_weights, fs
 from timm.models import skresnext50_32x4d, tresnet, resnet, res2net, efficientnet
-from timm.models import dpn
+from timm.models.layers import SelectAdaptivePool2d
 
 from torch import nn
 import numpy as np
@@ -25,6 +25,8 @@ __all__ = [
     "ela_wider_resnet38",
     "ela_ecaresnext26tn_32x4d",
 ]
+
+from alaska2.models.classifiers import WeightNormClassifier
 
 
 class TimmRgbElaModel(nn.Module):
@@ -99,21 +101,43 @@ class TimmRgbElaRichModel(nn.Module):
         return [INPUT_IMAGE_KEY, INPUT_FEATURES_ELA_RICH_KEY]
 
 
+class TimmElaOnlyRichModel(nn.Module):
+    @property
+    def required_features(self):
+        return [INPUT_FEATURES_ELA_RICH_KEY]
+
+    def __init__(self, encoder, num_classes, dropout=0):
+        super().__init__()
+        self.ela_bn = Normalize(
+            mean=[3.26, 2.09, 2.71, 2.29, 1.24, 1.8, 1.7, 0.77, 1.27],
+            std=[4.19, 2.77, 3.51, 3.17, 1.68, 2.49, 2.63, 1.12, 2.0],
+        )
+        self.encoder = encoder
+        self.pool = SelectAdaptivePool2d(pool_type="catavgmax", flatten=True)
+        self.drop = nn.Dropout(dropout)
+        self.type_classifier = WeightNormClassifier(encoder.num_features * 2, num_classes, 128, dropout=dropout)
+        self.flag_classifier = WeightNormClassifier(encoder.num_features * 2, 1, 128, dropout=dropout)
+
+    def forward(self, **kwargs):
+        ela = kwargs[INPUT_FEATURES_ELA_RICH_KEY]
+        x = self.ela_bn(ela)
+        x = self.encoder.forward_features(x)
+        x = self.pool(x)
+        return {
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+        }
+
+
 def ela_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b2_ns(in_chans=6, pretrained=False, drop_path_rate=0.1)
+    encoder = efficientnet.tf_efficientnet_b2_ns(in_chans=9, pretrained=False, drop_path_rate=0.1)
     del encoder.classifier
 
     if pretrained:
         donor = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
         transfer_weights(encoder, donor.state_dict())
 
-    return TimmRgbElaModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=encoder.default_cfg["mean"],
-        std=encoder.default_cfg["std"],
-    )
+    return TimmElaOnlyRichModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def ela_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):

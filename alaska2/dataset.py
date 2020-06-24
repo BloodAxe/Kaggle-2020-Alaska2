@@ -248,12 +248,12 @@ def compute_ela(image, quality_steps=[75]):
 
 
 def compute_ela_rich(image, quality_steps=[75, 90, 95]):
-    diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps)), dtype=np.float32)
+    diff = np.zeros((image.shape[0], image.shape[1], len(quality_steps)*3), dtype=np.float32)
 
     for i, q in enumerate(quality_steps):
         retval, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, q])
         image_lq = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        diff[..., i] = np.abs(np.subtract(image_lq, image, dtype=np.float32)).sum(axis=2)
+        diff[..., i*3:i*3+3] = np.abs(np.subtract(image_lq, image, dtype=np.float32))
 
     return diff
 
