@@ -703,7 +703,7 @@ def get_datasets_paired(
     train_transform = get_augmentations(augmentation, image_size)
     valid_transform = A.NoOp()
 
-    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
     # Ignore holdout fold
