@@ -81,6 +81,7 @@ def paired_collate(input):
         if feature_key in input:
             input[feature_key] = torch.cat([input[feature_key][:, 0, ...], input[feature_key][:, 1, ...]], dim=0)
 
+    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].unsqueeze(-1)
     return input
 
 
