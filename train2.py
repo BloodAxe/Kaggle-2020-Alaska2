@@ -68,22 +68,18 @@ def paired_collate(input):
     input = default_collate(input)
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
-
     input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY]).tolist()
-    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)
-    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)
 
-    if INPUT_FEATURES_ELA_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
-        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)
-
-    if INPUT_FEATURES_ELA_RICH_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_RICH_KEY].size()
-        input[INPUT_FEATURES_ELA_RICH_KEY] = input[INPUT_FEATURES_ELA_RICH_KEY].view(-1, channels, rows, cols)
-
-    if INPUT_IMAGE_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
-        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)
+    for feature_key in [
+        INPUT_TRUE_MODIFICATION_FLAG,
+        INPUT_TRUE_MODIFICATION_TYPE,
+        INPUT_FEATURES_ELA_KEY,
+        INPUT_IMAGE_KEY,
+        INPUT_FEATURES_DCT_KEY,
+        INPUT_FEATURES_ELA_RICH_KEY,
+    ]:
+        if feature_key in input:
+            input[feature_key] = torch.cat([input[feature_key][:, 0, ...], input[feature_key][:, 1, ...]], dim=0)
 
     return input
 
