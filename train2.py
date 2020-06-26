@@ -27,43 +27,6 @@ from torch.utils.data.dataloader import default_collate
 from alaska2 import *
 
 
-def paired_collate_shuffle(input):
-    input = default_collate(input)
-
-    input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
-
-    batch_size = len(input[INPUT_IMAGE_ID_KEY])
-    shuffle = torch.randperm(batch_size)  # Shuffle batch
-
-    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])[to_numpy(shuffle)].tolist()
-    input[INPUT_TRUE_MODIFICATION_FLAG] = input[INPUT_TRUE_MODIFICATION_FLAG].view(-1, 1)[shuffle]
-    input[INPUT_TRUE_MODIFICATION_TYPE] = input[INPUT_TRUE_MODIFICATION_TYPE].view(-1)[shuffle]
-
-    if INPUT_FEATURES_ELA_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_KEY].size()
-        input[INPUT_FEATURES_ELA_KEY] = input[INPUT_FEATURES_ELA_KEY].view(-1, channels, rows, cols)[shuffle]
-
-    if INPUT_FEATURES_ELA_RICH_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_FEATURES_ELA_RICH_KEY].size()
-        input[INPUT_FEATURES_ELA_RICH_KEY] = input[INPUT_FEATURES_ELA_RICH_KEY].view(-1, channels, rows, cols)[shuffle]
-
-    if INPUT_IMAGE_KEY in input:
-        _, _, channels, rows, cols = input[INPUT_IMAGE_KEY].size()
-        input[INPUT_IMAGE_KEY] = input[INPUT_IMAGE_KEY].view(-1, channels, rows, cols)[shuffle]
-
-    # images = draw_predictions(
-    #     input,
-    #     output={
-    #         OUTPUT_PRED_MODIFICATION_TYPE: torch.zeros((len(input[INPUT_IMAGE_KEY]), 4)),
-    #         OUTPUT_PRED_MODIFICATION_FLAG: torch.zeros(len(input[INPUT_IMAGE_KEY])),
-    #     },
-    # )
-    # for i, image in enumerate(images):
-    #     cv2.imshow(f"Image {i}", image)
-    #     cv2.waitKey(-1)
-    return input
-
-
 def paired_collate(input):
     input = default_collate(input)
 

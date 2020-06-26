@@ -91,6 +91,10 @@ def main():
     output_dir = os.path.dirname(__file__)
 
     experiments = [
+        "May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
+        "May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
+        "May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
+        "May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
         "Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
@@ -101,6 +105,8 @@ def main():
         #
         "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
         "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        #
+        "Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -125,21 +131,22 @@ def main():
         X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
     )
 
-    sc = PCA(n_components=16)
-    X_train = sc.fit_transform(X_train)
-    X_test = sc.transform(X_test)
-    X_public_lb = sc.transform(X_public_lb)
-
-    # sc = StandardScaler()
-    # X_train = sc.fit_transform(X_train)
-    # X_test = sc.transform(X_test)
-    # X_public_lb = sc.transform(X_public_lb)
+    if True:
+        sc = PCA(n_components=16)
+        X_train = sc.fit_transform(X_train)
+        X_test = sc.transform(X_test)
+        X_public_lb = sc.transform(X_public_lb)
+    else:
+        sc = StandardScaler()
+        X_train = sc.fit_transform(X_train)
+        X_test = sc.transform(X_test)
+        X_public_lb = sc.transform(X_public_lb)
 
     X_train = np.column_stack([X_train, quality_train])
     X_test = np.column_stack([X_test, quality_test])
     X_public_lb = np.column_stack([X_public_lb, quality_t])
 
-    if False:
+    if True:
         # MLP
         mlp_grid, auc = train_mlp(X_train, y_train, X_test, y_test)
         df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
@@ -154,20 +161,20 @@ def main():
         df[["Id", "Label"]].to_csv(os.path.join(output_dir, f"{checksum}_rf_{auc:.4f}.csv"), index=False)
 
 
-
 def train_mlp(X_train, y_train, X_test, y_test):
     parameters = {
-        "learning_rate": ["invscaling", "adaptive"],
+        "learning_rate": ["adaptive"],
         "solver": ["adam"],
-        "hidden_layer_sizes": [(8,), (16), (32), (32, 16), (16, 8)],
-        "alpha": [0.01, 0.05, 0.1],
+        "hidden_layer_sizes": [(8,), (32), (32, 16)],
+        "alpha": [0.01, 0.1],
         "learning_rate_init": [1e-5, 1e-4],
         "activation": ["logistic", "relu"],
     }
 
     grid = GridSearchCV(
         estimator=MLPClassifier(
-            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), learning_rate="constant", max_iter=20000
+            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16),
+            learning_rate="constant", max_iter=10000
         ),
         param_grid=parameters,
         cv=5,
