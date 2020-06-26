@@ -23,7 +23,7 @@ from torch import nn
 from torch.utils.data import DataLoader, DistributedSampler
 
 from alaska2 import *
-from train2 import paired_collate_shuffle, paired_collate
+from train2 import paired_collate
 
 
 def main():
