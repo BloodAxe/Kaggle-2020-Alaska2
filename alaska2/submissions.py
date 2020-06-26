@@ -108,8 +108,6 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
 
     y_true = oof_predictions["true_modification_flag"].values
 
-    print("Calibration results")
-
     if True:
         y_pred_raw = oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
         b_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
@@ -117,7 +115,7 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
         ir_flag = IR(out_of_bounds="clip")
         y_pred_cal = ir_flag.fit_transform(y_pred_raw, y_true)
         b_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
-        print("Flag", b_auc_before, b_auc_after, (b_auc_after - b_auc_before))
+        # print("Flag", b_auc_before, b_auc_after, (b_auc_after - b_auc_before))
         test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
             test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
         )
@@ -128,7 +126,7 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
         c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
         y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
         c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
-        print("Type", c_auc_before, c_auc_after, c_auc_after - c_auc_before)
+        # print("Type", c_auc_before, c_auc_after, c_auc_after - c_auc_before)
         test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
             test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
         )
@@ -279,7 +277,7 @@ def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFram
 
 
 def make_classifier_predictions_calibrated(
-    test_predictions: List[str], oof_predictions: List[str]
+    test_predictions: List[str], oof_predictions: List[str], print_results=False
 ) -> List[pd.DataFrame]:
     assert isinstance(test_predictions, list)
     assert isinstance(oof_predictions, list)
@@ -288,7 +286,8 @@ def make_classifier_predictions_calibrated(
     preds_df = []
     for x, y in zip(test_predictions, oof_predictions):
         calibrated_test, scores = calibrated(pd.read_csv(x), pd.read_csv(y))
-        print(scores)
+        if print_results:
+            print(scores)
 
         calibrated_test["Id"] = calibrated_test["image_id"]
         calibrated_test["Label"] = calibrated_test["pred_modification_type"]
