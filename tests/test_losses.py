@@ -38,12 +38,12 @@ def test_roc_auc_loss():
     y_loss_neg = []
     y_loss_pos = []
     for x_val in x_coords:
-        x = torch.tensor([x_val, -2], dtype=torch.float32)
+        x = torch.tensor([x_val, 2], dtype=torch.float32)
         y = torch.tensor([0, 1])
         loss = c(x, y)
         y_loss_neg.append(loss.item())
 
-        x = torch.tensor([+2, x_val], dtype=torch.float32)
+        x = torch.tensor([-2, x_val], dtype=torch.float32)
         y = torch.tensor([0, 1])
         loss = c(x, y)
         y_loss_pos.append(loss.item())
