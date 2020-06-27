@@ -21,8 +21,10 @@ __all__ = [
     "rgb_skresnext50_32x4d",
     "rgb_tf_efficientnet_b2_ns_avgmax",
     "rgb_tf_efficientnet_b6_ns",
+    "rgb_tf_efficientnet_b1_ns",
     "rgb_swsl_resnext101_32x8d",
     "rgb_tf_efficientnet_b2_ns",
+    "rgb_tf_efficientnet_b3_ns",
     "rgb_tresnet_m_448",
     "rgb_qf_tf_efficientnet_b2_ns",
     "rgb_qf_tf_efficientnet_b6_ns",
@@ -180,6 +182,30 @@ def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+    )
+
+
+def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b1_ns(pretrained=pretrained)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 
 def rgb_tf_efficientnet_b2_ns_avgmax(num_classes=4, pretrained=True, dropout=0):

@@ -16,6 +16,8 @@ MODEL_REGISTRY = {
     "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,
     "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
     "rgb_tf_efficientnet_b2_ns": timm.rgb_tf_efficientnet_b2_ns,
+    "rgb_tf_efficientnet_b3_ns": timm.rgb_tf_efficientnet_b3_ns,
+    "rgb_tf_efficientnet_b1_ns": timm.rgb_tf_efficientnet_b1_ns,
     "rgb_tresnet_m_448": timm.rgb_tresnet_m_448,
     "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
     "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,

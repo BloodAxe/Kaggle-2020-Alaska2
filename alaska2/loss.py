@@ -301,7 +301,7 @@ class RocAucLoss(nn.Module):
         difference = torch.zeros_like(pos * neg) + pos - neg - gamma
         mask = difference > 0
         masked = difference.masked_fill(mask, 0)
-        return torch.sum(torch.pow(-masked, p))
+        return torch.mean(torch.pow(-masked, p))
 
 
 class RocAucLossCE(nn.Module):
