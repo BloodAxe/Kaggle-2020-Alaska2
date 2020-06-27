@@ -133,7 +133,7 @@ class CompetitionMetricCallback(Callback):
         state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_95"] = float(score_95)
 
         logger = get_tensorboard_logger(state)
-        logger.add_pr_curve(self.prefix, true_labels, pred_labels)
+        logger.add_pr_curve(self.prefix, true_labels_b, pred_labels)
 
         score_mask = np.zeros((3, 3))
         for qf in [0, 1, 2]:
