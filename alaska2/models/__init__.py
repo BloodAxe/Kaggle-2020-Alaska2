@@ -6,11 +6,13 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit
 from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
+    # BIT
+    "bit_m_rx152_2": bit.bit_m_rx152_2,
     # TIMM
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
     "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,
