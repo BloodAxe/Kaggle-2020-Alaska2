@@ -80,6 +80,7 @@ def main():
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--balance", action="store_true")
     parser.add_argument("--freeze-bn", action="store_true")
+    parser.add_argument("--freeze-encoder", action="store_true")
 
     args = parser.parse_args()
     set_manual_seed(args.seed)
@@ -242,6 +243,9 @@ def main():
 
         loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
+        if freeze_encoder:
+            freeze_model(model.encoder, freeze_parameters=True, freeze_bn=None)
+
         optimizer = get_optimizer(
             "Ranger", get_optimizable_parameters(model), weight_decay=weight_decay, learning_rate=3e-4
         )
@@ -321,7 +325,9 @@ def main():
         )
 
         if negative_image_dir:
-            negatives_ds = get_negatives_ds(negative_image_dir, fold=fold, features=required_features, max_images=16536)
+            negatives_ds = get_negatives_ds(
+                negative_image_dir, fold=fold, features=required_features, max_images=16536
+            )
             train_ds = train_ds + negatives_ds
             train_sampler = None  # TODO: Add proper support of sampler
             print("Adding", len(negatives_ds), "negative samples to training set")
