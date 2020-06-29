@@ -368,6 +368,15 @@ def bit_m_rx152_2(num_classes=4, pretrained=True, dropout=0):
     return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 
+def bit_m_rx101_1(num_classes=4, pretrained=True, dropout=0):
+    encoder = KNOWN_MODELS["BiT-M-R101x1"]()
+    if pretrained:
+        weights = get_weights("BiT-M-R101x1")
+        encoder.load_from(weights)
+
+    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+
+
 def bit_m_rx50_1(num_classes=4, pretrained=True, dropout=0):
     encoder = KNOWN_MODELS["BiT-M-R50x1"]()
     if pretrained:
@@ -386,4 +395,4 @@ def bit_m_rx50_3(num_classes=4, pretrained=True, dropout=0):
     return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 
-__all__ = ["bit_m_rx152_2", "bit_m_rx50_1", "bit_m_rx50_3"]
+__all__ = ["bit_m_rx152_2", "bit_m_rx50_1", "bit_m_rx50_3", "bit_m_rx101_1"]
