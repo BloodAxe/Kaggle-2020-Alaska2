@@ -19,6 +19,7 @@ import os
 import sys
 import warnings
 from collections import OrderedDict  # pylint: disable=g-importing-member
+from typing import Union, List, Tuple
 from urllib.parse import urlparse
 
 import numpy as np
@@ -322,8 +323,8 @@ class BiTRgbModel(nn.Module):
         encoder,
         num_classes,
         dropout=0,
-        mean=[0.3914976, 0.44266784, 0.46043398],
-        std=[0.17819773, 0.17319807, 0.18128773],
+        mean: Union[List, Tuple] = [0.3914976, 0.44266784, 0.46043398],
+        std: Union[List, Tuple] = [0.17819773, 0.17319807, 0.18128773],
     ):
         super().__init__()
         self.encoder = encoder
@@ -364,7 +365,7 @@ def bit_m_rx152_2(num_classes=4, pretrained=True, dropout=0):
         weights = get_weights("BiT-M-R152x2")
         encoder.load_from(weights)
 
-    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 
 def bit_m_rx50_1(num_classes=4, pretrained=True, dropout=0):
@@ -373,7 +374,7 @@ def bit_m_rx50_1(num_classes=4, pretrained=True, dropout=0):
         weights = get_weights("BiT-M-R50x1")
         encoder.load_from(weights)
 
-    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 
 def bit_m_rx50_3(num_classes=4, pretrained=True, dropout=0):
@@ -382,7 +383,7 @@ def bit_m_rx50_3(num_classes=4, pretrained=True, dropout=0):
         weights = get_weights("BiT-M-R50x3")
         encoder.load_from(weights)
 
-    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 
 __all__ = ["bit_m_rx152_2", "bit_m_rx50_1", "bit_m_rx50_3"]
