@@ -35,7 +35,9 @@ class StdConv2d(nn.Conv2d):
     def forward(self, x):
         w = self.weight
         v, m = torch.var_mean(w, dim=[1, 2, 3], keepdim=True, unbiased=False)
-        w = (w - m) / torch.sqrt(v + 1e-10)
+
+        # w = (w - m) / torch.sqrt(v + 1e-10)
+        w = (w - m) * torch.rsqrt(v + 1e-10)
         return F.conv2d(x, w, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 
@@ -357,18 +359,18 @@ class BiTRgbModel(nn.Module):
 
 
 def bit_m_rx152_2(num_classes=4, pretrained=True, dropout=0):
-    encoder = KNOWN_MODELS["BiT-M-R152x2"](head_size=1000)
+    encoder = KNOWN_MODELS["BiT-M-R152x2"]()
     if pretrained:
-        weights = get_weights("BiT-M-R152x2-ILSVRC2012")
+        weights = get_weights("BiT-M-R152x2")
         encoder.load_from(weights)
 
     return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def bit_m_rx50_1(num_classes=4, pretrained=True, dropout=0):
-    encoder = KNOWN_MODELS["BiT-M-R50x1"](head_size=1000)
+    encoder = KNOWN_MODELS["BiT-M-R50x1"]()
     if pretrained:
-        weights = get_weights("BiT-M-R50x1-ILSVRC2012")
+        weights = get_weights("BiT-M-R50x1")
         encoder.load_from(weights)
 
     return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
