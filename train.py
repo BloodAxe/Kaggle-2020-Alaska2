@@ -10,7 +10,7 @@ from datetime import datetime
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
-from pytorch_toolbelt.utils import fs
+from pytorch_toolbelt.utils import fs, torch_utils
 from pytorch_toolbelt.utils.catalyst import (
     ShowPolarBatchesCallback,
     report_checkpoint,
@@ -38,11 +38,14 @@ def main():
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     parser.add_argument("-m", "--model", type=str, default="resnet34", help="")
     parser.add_argument("-b", "--batch-size", type=int, default=16, help="Batch Size during training, e.g. -b 64")
+    parser.add_argument(
+        "-wbs", "--warmup-batch-size", type=int, default=None, help="Batch Size during training, e.g. -b 64"
+    )
     parser.add_argument("-e", "--epochs", type=int, default=100, help="Epoch to run")
     parser.add_argument(
         "-es", "--early-stopping", type=int, default=None, help="Maximum number of epochs without improvement"
     )
-    parser.add_argument("-fe", "--freeze-encoder", type=int, default=0, help="Freeze encoder parameters for N epochs")
+    parser.add_argument("-fe", "--freeze-encoder", action="store_true", help="Freeze encoder parameters for N epochs")
     parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3, help="Initial learning rate")
 
     parser.add_argument(
@@ -80,7 +83,6 @@ def main():
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--balance", action="store_true")
     parser.add_argument("--freeze-bn", action="store_true")
-    parser.add_argument("--freeze-encoder", action="store_true")
 
     args = parser.parse_args()
     set_manual_seed(args.seed)
@@ -94,6 +96,7 @@ def main():
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
 
+    freeze_encoder = args.freeze_encoder
     data_dir = args.data_dir
     cache = args.cache
     num_workers = args.workers
@@ -123,6 +126,7 @@ def main():
     fine_tune = args.fine_tune
     obliterate_p = args.obliterate
     negative_image_dir = args.negative_image_dir
+    warmup_batch_size = args.warmup_batch_size or args.batch_size
 
     # Compute batch size for validation
     valid_batch_size = train_batch_size
@@ -232,18 +236,19 @@ def main():
         loaders = collections.OrderedDict()
         loaders["train"] = DataLoader(
             train_ds,
-            batch_size=train_batch_size // 4,
+            batch_size=warmup_batch_size,
             num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
             shuffle=train_sampler is None,
             sampler=train_sampler,
-            collate_fn=custom_collate,
         )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+        loaders["valid"] = DataLoader(valid_ds, batch_size=warmup_batch_size, num_workers=num_workers, pin_memory=True)
 
         if freeze_encoder:
+            from pytorch_toolbelt.optimization.functional import freeze_model
+
             freeze_model(model.encoder, freeze_parameters=True, freeze_bn=None)
 
         optimizer = get_optimizer(
