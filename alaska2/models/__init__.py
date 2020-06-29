@@ -13,6 +13,7 @@ from ..predict import *
 MODEL_REGISTRY = {
     # BIT
     "bit_m_rx152_2": bit.bit_m_rx152_2,
+    "bit_m_rx50_1": bit.bit_m_rx50_1,
     # TIMM
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
     "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,

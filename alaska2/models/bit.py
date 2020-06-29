@@ -144,7 +144,7 @@ class ResNetV2(nn.Module):
                                 + [
                                     (f"unit{i:02d}", PreActBottleneck(cin=256 * wf, cout=256 * wf, cmid=64 * wf))
                                     for i in range(2, block_units[0] + 1)
-                                ],
+                                ]
                             )
                         ),
                     ),
@@ -156,7 +156,7 @@ class ResNetV2(nn.Module):
                                 + [
                                     (f"unit{i:02d}", PreActBottleneck(cin=512 * wf, cout=512 * wf, cmid=128 * wf))
                                     for i in range(2, block_units[1] + 1)
-                                ],
+                                ]
                             )
                         ),
                     ),
@@ -168,7 +168,7 @@ class ResNetV2(nn.Module):
                                 + [
                                     (f"unit{i:02d}", PreActBottleneck(cin=1024 * wf, cout=1024 * wf, cmid=256 * wf))
                                     for i in range(2, block_units[2] + 1)
-                                ],
+                                ]
                             )
                         ),
                     ),
@@ -180,7 +180,7 @@ class ResNetV2(nn.Module):
                                 + [
                                     (f"unit{i:02d}", PreActBottleneck(cin=2048 * wf, cout=2048 * wf, cmid=512 * wf))
                                     for i in range(2, block_units[3] + 1)
-                                ],
+                                ]
                             )
                         ),
                     ),
@@ -251,7 +251,6 @@ KNOWN_MODELS = OrderedDict(
 )
 
 
-
 def load_state_dict_from_url(url, model_dir=None, map_location=None, progress=True, check_hash=False):
     r"""Loads the Torch serialized object at the given URL.
 
@@ -282,12 +281,12 @@ def load_state_dict_from_url(url, model_dir=None, map_location=None, progress=Tr
 
     """
     # Issue warning to move data if old env is set
-    if os.getenv('TORCH_MODEL_ZOO'):
-        warnings.warn('TORCH_MODEL_ZOO is deprecated, please use env TORCH_HOME instead')
+    if os.getenv("TORCH_MODEL_ZOO"):
+        warnings.warn("TORCH_MODEL_ZOO is deprecated, please use env TORCH_HOME instead")
 
     if model_dir is None:
         torch_home = _get_torch_home()
-        model_dir = os.path.join(torch_home, 'checkpoints')
+        model_dir = os.path.join(torch_home, "checkpoints")
 
     try:
         os.makedirs(model_dir)
@@ -365,4 +364,14 @@ def bit_m_rx152_2(num_classes=4, pretrained=True, dropout=0):
 
     return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
-__all__ = ["bit_m_rx152_2"]
+
+def bit_m_rx50_1(num_classes=4, pretrained=True, dropout=0):
+    encoder = KNOWN_MODELS["BiT-M-R50x1"](head_size=1000)
+    if pretrained:
+        weights = get_weights("BiT-M-R50x1-ILSVRC2012")
+        encoder.load_from(weights)
+
+    return BiTRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+__all__ = ["bit_m_rx152_2", "bit_m_rx50_1"]
