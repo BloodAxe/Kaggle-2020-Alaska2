@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from pytorch_toolbelt.modules import Normalize
+from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from torch import nn
 
 from alaska2.dataset import (
@@ -11,7 +11,7 @@ from alaska2.dataset import (
 from alaska2.models.modules import TLU, SqrtmLayer, CovpoolLayer, TriuvecLayer
 from alaska2.models.srm_filter_kernel import all_normalized_hpf_list
 
-__all__ = ["HPFNet", "hpf_net_v2", "hpf_net", "hpf_b3_fixed"]
+__all__ = ["HPFNet", "hpf_net_v2", "hpf_net", "hpf_b3_fixed_covpool", "hpf_b3_fixed_gap"]
 
 
 class HPF(nn.Module):
@@ -164,14 +164,9 @@ class HPFNet(nn.Module):
         return [INPUT_IMAGE_KEY]
 
 
-class HPFNetV2(nn.Module):
+class HPFNetCovPool(nn.Module):
     def __init__(
-        self,
-        encoder,
-        num_classes,
-        dropout=0,
-        mean=[0.5, 0.5, 0.5],
-        std=[0.5, 0.5, 0.5],
+        self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5],
     ):
         super().__init__()
         max_pixel_value = 255
@@ -180,7 +175,8 @@ class HPFNetV2(nn.Module):
         self.encoder = encoder
         self.drop = nn.Dropout(dropout)
 
-        features = int(encoder.num_features * (encoder.num_features + 1) / 2)
+        features = int(256 * (256 + 1) / 2)
+        self.bottleneck = nn.Conv2d(encoder.num_features, 256, kernel_size=1)
 
         self.type_classifier = nn.Linear(features, num_classes)
         self.flag_classifier = nn.Linear(features, 1)
@@ -188,6 +184,7 @@ class HPFNetV2(nn.Module):
     def forward(self, **kwargs):
         x = self.rgb_bn(kwargs[INPUT_IMAGE_KEY])
         x = self.encoder.forward_features(x)
+        x = self.bottleneck(x)
 
         # Global covariance pooling
         output = CovpoolLayer(x)
@@ -206,18 +203,64 @@ class HPFNetV2(nn.Module):
         return [INPUT_IMAGE_KEY]
 
 
+class HPFNetGAP(nn.Module):
+    def __init__(
+        self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5],
+    ):
+        super().__init__()
+        max_pixel_value = 255
+        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
+
+        self.encoder = encoder
+        self.drop = nn.Dropout(dropout)
+        self.pool = GlobalAvgPool2d(flatten=True)
+
+        self.type_classifier = nn.Linear(encoder.num_features, num_classes)
+        self.flag_classifier = nn.Linear(encoder.num_features, 1)
+
+    def forward(self, **kwargs):
+        x = self.rgb_bn(kwargs[INPUT_IMAGE_KEY])
+        x = self.encoder.forward_features(x)
+        x = self.pool(x)
+
+        return {
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
+        }
+
+    @property
+    def required_features(self):
+        return [INPUT_IMAGE_KEY]
+
+
 def hpf_net(num_classes, dropout=0, pretrained=False):
     return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained)
 
 
-def hpf_b3_fixed(num_classes, dropout=0, pretrained=False):
+def hpf_b3_fixed_covpool(num_classes, dropout=0, pretrained=False):
     from timm.models import efficientnet
 
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
     encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False), nn.Conv2d(30, 40, kernel_size=1))
     del encoder.classifier
 
-    return HPFNetV2(
+    return HPFNetCovPool(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
+
+
+def hpf_b3_fixed_gap(num_classes, dropout=0, pretrained=False):
+    from timm.models import efficientnet
+
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
+    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False), nn.Conv2d(30, 40, kernel_size=1))
+    del encoder.classifier
+
+    return HPFNetGAP(
         encoder,
         num_classes=num_classes,
         dropout=dropout,

@@ -8,7 +8,7 @@ from torch.optim import SGD, Optimizer
 from alaska2 import *
 from alaska2.models.bit import bit_m_rx152_2
 from alaska2.models.dct import dct_seresnext50, dct_efficientnet_b6
-from alaska2.models.hpf_net import HPFNet, hpf_b3_fixed
+from alaska2.models.hpf_net import HPFNet, hpf_b3_fixed_gap, hpf_b3_fixed_covpool
 from alaska2.models.rgb import rgb_hrnet18
 from alaska2.models.srnet import SRNetModel, srnet
 from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
@@ -30,9 +30,23 @@ def test_bit_m_rx152_2():
     for output_name, output_value in output.items():
         print(output_name, output_value.size())
 
+
 @torch.no_grad()
-def test_hpf_b3_fixed():
-    model = hpf_b3_fixed(num_classes=4).cuda().eval()
+def test_hpf_b3_fixed_gap():
+    model = hpf_b3_fixed_gap(num_classes=4).cuda().eval()
+
+    input = {INPUT_IMAGE_KEY: torch.randn((2, 3, 512, 512)).cuda()}
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
+
+@torch.no_grad()
+def test_hpf_b3_fixed_covpool():
+    model = hpf_b3_fixed_covpool(num_classes=4).cuda().eval()
 
     input = {INPUT_IMAGE_KEY: torch.randn((2, 3, 512, 512)).cuda()}
 
