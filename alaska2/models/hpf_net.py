@@ -44,7 +44,7 @@ class HPF(nn.Module):
 
 
 class HPF3(nn.Module):
-    def __init__(self, trainable_hpf=False):
+    def __init__(self, trainable_hpf=False, stride=1):
         super(HPF3, self).__init__()
 
         # Load 30 SRM Filters
@@ -61,7 +61,7 @@ class HPF3(nn.Module):
 
         hpf_weight = nn.Parameter(features, requires_grad=trainable_hpf)
 
-        self.hpf = nn.Conv2d(3, 30, kernel_size=5, padding=2, bias=False)
+        self.hpf = nn.Conv2d(3, 30, kernel_size=5, padding=2, stride=stride, bias=False)
         self.hpf.weight = hpf_weight
 
         # Truncation, threshold = 3
@@ -241,7 +241,7 @@ def hpf_b3_fixed_covpool(num_classes, dropout=0, pretrained=False):
     from timm.models import efficientnet
 
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
-    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False), nn.Conv2d(30, 40, kernel_size=1))
+    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False, stride=2), nn.Conv2d(30, 40, kernel_size=1))
     del encoder.classifier
 
     return HPFNetCovPool(
@@ -257,7 +257,7 @@ def hpf_b3_fixed_gap(num_classes, dropout=0, pretrained=False):
     from timm.models import efficientnet
 
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
-    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False), nn.Conv2d(30, 40, kernel_size=1))
+    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False, stride=2), nn.Conv2d(30, 40, kernel_size=1))
     del encoder.classifier
 
     return HPFNetGAP(
