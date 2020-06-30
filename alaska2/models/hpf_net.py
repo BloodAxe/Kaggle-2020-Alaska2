@@ -1,19 +1,17 @@
+import numpy as np
 import torch
 from pytorch_toolbelt.modules import Normalize
 from torch import nn
-import numpy as np
 
 from alaska2.dataset import (
     INPUT_IMAGE_KEY,
-    INPUT_FEATURES_ELA_KEY,
     OUTPUT_PRED_MODIFICATION_FLAG,
     OUTPUT_PRED_MODIFICATION_TYPE,
-    OUTPUT_PRED_EMBEDDING,
 )
 from alaska2.models.modules import TLU, SqrtmLayer, CovpoolLayer, TriuvecLayer
 from alaska2.models.srm_filter_kernel import all_normalized_hpf_list
 
-__all__ = ["HPFNet", "hpf_net_v2", "hpf_net"]
+__all__ = ["HPFNet", "hpf_net_v2", "hpf_net", "hpf_b3_fixed"]
 
 
 class HPF(nn.Module):
@@ -166,8 +164,66 @@ class HPFNet(nn.Module):
         return [INPUT_IMAGE_KEY]
 
 
+class HPFNetV2(nn.Module):
+    def __init__(
+        self,
+        encoder,
+        num_classes,
+        dropout=0,
+        mean=[0.5, 0.5, 0.5],
+        std=[0.5, 0.5, 0.5],
+    ):
+        super().__init__()
+        max_pixel_value = 255
+        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
+
+        self.encoder = encoder
+        self.drop = nn.Dropout(dropout)
+
+        features = int(encoder.num_features * (encoder.num_features + 1) / 2)
+
+        self.type_classifier = nn.Linear(features, num_classes)
+        self.flag_classifier = nn.Linear(features, 1)
+
+    def forward(self, **kwargs):
+        x = self.rgb_bn(kwargs[INPUT_IMAGE_KEY])
+        x = self.encoder.forward_features(x)
+
+        # Global covariance pooling
+        output = CovpoolLayer(x)
+        output = SqrtmLayer(output, 5)
+        output = TriuvecLayer(output)
+
+        x = output.view(output.size(0), -1)
+
+        return {
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
+        }
+
+    @property
+    def required_features(self):
+        return [INPUT_IMAGE_KEY]
+
+
 def hpf_net(num_classes, dropout=0, pretrained=False):
     return HPFNet(num_classes=num_classes, dropout=dropout, pretrained=pretrained)
+
+
+def hpf_b3_fixed(num_classes, dropout=0, pretrained=False):
+    from timm.models import efficientnet
+
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
+    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=False), nn.Conv2d(30, 40, kernel_size=1))
+    del encoder.classifier
+
+    return HPFNetV2(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 
 def hpf_net_v2(num_classes, dropout=0, pretrained=False):
