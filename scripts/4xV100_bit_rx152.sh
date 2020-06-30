@@ -23,4 +23,4 @@ export KAGGLE_2020_ALASKA2=/data/alaska2
 python -m torch.distributed.launch --nproc_per_node=4 train_d.py -m bit_m_rx101_1 -b 12 -w 6 -d 0.2\
   -s cos -o RAdam --epochs 50 -a medium\
   --modification-flag-loss bce 1 --modification-type-loss ce 1 -lr 1e-3 --encoder-lr-factor 0.2 --fold 3 --seed 40 -v --fp16\
-  --checkpoint /home/ubuntu/code/Kaggle-2020-Alaska2/runs/Jun29_18_14_bit_m_rx101_1_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best.pth
+  --checkpoint /home/ubuntu/code/Kaggle-2020-Alaska2/runs/Jun30_07_52_bit_m_rx101_1_fold3_local_rank_0_fp16/main/checkpoints_auc/last.pth
