@@ -3,6 +3,8 @@ from torch import nn, tensor, Tensor
 
 __all__ = ["SelfAttention"]
 
+from torch.nn.utils import spectral_norm
+
 
 class SelfAttention(nn.Module):
     """
@@ -12,7 +14,7 @@ class SelfAttention(nn.Module):
     def __init__(self, channels: int, sym=False):
         super().__init__()
 
-        self.conv = nn.Conv2d(channels, channels, 1, bias=False)
+        self.conv = spectral_norm(nn.Conv2d(channels, channels, 1, bias=False))
 
         self.gamma = nn.Parameter(tensor([0.0]), True)
 

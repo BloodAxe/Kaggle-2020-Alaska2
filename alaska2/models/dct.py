@@ -1,13 +1,14 @@
 from collections import OrderedDict
 
-import torch
 from pytorch_toolbelt.modules import *
+from timm.models import efficientnet
 from torch import nn
-import torch.nn.functional as F
-from timm.models import dpn, tresnet, efficientnet, res2net, resnet
+
 from alaska2.dataset import *
 
 __all__ = ["dct_seresnext50", "dct_efficientnet_b6"]
+
+from alaska2.models.sa import SelfAttention
 
 
 class SpaceToDepth(nn.Module):
@@ -159,14 +160,42 @@ def dct_seresnext50(num_classes=4, dropout=0, pretrained=True):
 
 
 def dct_efficientnet_b6(num_classes=4, dropout=0, pretrained=True):
+    from timm.models.layers import Swish
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
-    encoder.conv_stem = nn.Sequential(
-        OrderedDict([("conv1", nn.Conv2d(64 * 3, 32*3, kernel_size=1, groups=3)),
-                     ("abn1", ABN(32*3)),
-                     ("conv2", nn.Conv2d(32*3, 64, kernel_size=1,bias=False)),
-                     ("abn2", ABN(64)),
-                     ("conv3", nn.Conv2d(64, encoder.conv_stem.out_channels, kernel_size=1, bias=False))
-                     ]))
+
+    class InceptionStem(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv1 = nn.Sequential(nn.Conv2d(64 * 3, 128, kernel_size=1), nn.BatchNorm2d(128), Swish())
+            self.conv2 = nn.Sequential(nn.Conv2d(64 * 3, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), Swish())
+            self.conv3 = nn.Sequential(nn.Conv2d(64 * 3, 128, kernel_size=5, padding=2), nn.BatchNorm2d(128), Swish())
+
+            self.conv4 = nn.Sequential(nn.Conv2d(128*3, 128, kernel_size=1),
+                                       nn.BatchNorm2d(128),
+                                       Swish(),
+                                       nn.Conv2d(128,128,kernel_size=3,padding=1),
+                                       nn.BatchNorm2d(128),
+                                       Swish(),
+                                       nn.Conv2d(128, encoder.conv_stem.out_channels, kernel_size=5, padding=2, dilation=3),
+                                       nn.BatchNorm2d(encoder.conv_stem.out_channels),
+                                       Swish(),
+                                       )
+        def forward(self, x):
+            x = torch.cat([self.conv1(x), self.conv2(x), self.conv3(x)],dim=1)
+            x = self.conv4(x)
+            return x
+
+    encoder.conv_stem = InceptionStem()
+    # encoder.conv_stem = nn.Sequential(
+    #     OrderedDict([("conv1", nn.Conv2d(64 * 3, 64 * 3, kernel_size=3, bias=False)),
+    #                  # ("sa1", SelfAttention(64*3)),
+    #                  ("abn1", ABN(64 * 3, activation=ACT_SWISH)),
+    #                  ("conv2", nn.Conv2d(64 * 3, 64 * 3, kernel_size=3,bias=False)),
+    #                  # ("sa2", SelfAttention(64*3)),
+    #                  ("abn2", ABN(64 * 3, activation=ACT_SWISH)),
+    #                  ("conv3", nn.Conv2d(64 * 3, encoder.conv_stem.out_channels, kernel_size=1, bias=False)),
+    #                  # ("sa3", SelfAttention(encoder.conv_stem.out_channels)),
+    #                  ]))
 
     return TimmDCTModel(encoder, num_classes=num_classes, dropout=dropout)
 

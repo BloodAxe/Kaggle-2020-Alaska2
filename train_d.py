@@ -49,6 +49,8 @@ def main():
     )
     parser.add_argument("-fe", "--freeze-encoder", type=int, default=0, help="Freeze encoder parameters for N epochs")
     parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3, help="Initial learning rate")
+    #
+    parser.add_argument("--encoder-lr-factor", type=float, default=None, help="Initial learning rate")
 
     parser.add_argument(
         "-l", "--modification-flag-loss", type=str, default=None, action="append", nargs="+"  # [["ce", 1.0]],
@@ -127,6 +129,7 @@ def main():
     dropout = args.dropout
     verbose = args.verbose
     warmup = args.warmup
+    encoder_lr_factor = args.encoder_lr_factor
     show = args.show
     accumulation_steps = args.accumulation_steps
     weight_decay = args.weight_decay
@@ -315,9 +318,15 @@ def main():
         print("  Local rank  :", args.local_rank)
         print("  Is master   :", args.is_master)
 
-        optimizer = get_optimizer(
-            optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
-        )
+        if encoder_lr_factor is not None:
+            parameters = get_lr_decay_parameters(
+                model.named_parameters(), learning_rate, {"encoder": encoder_lr_factor}
+            )
+            print("Using encoder LR factor", encoder_lr_factor)
+        else:
+            parameters = get_optimizable_parameters(model)
+
+        optimizer = get_optimizer(optimizer_name, parameters, learning_rate=learning_rate, weight_decay=weight_decay)
         scheduler = get_scheduler(
             scheduler_name, optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
         )
