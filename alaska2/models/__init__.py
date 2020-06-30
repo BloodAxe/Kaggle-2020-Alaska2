@@ -67,6 +67,7 @@ MODEL_REGISTRY = {
     # HPF
     "hpf_net": hpf_net.hpf_net,
     "hpf_net2": hpf_net.hpf_net_v2,
+    "hpf_b3_fixed": hpf_net.hpf_b3_fixed,
     # SRNET
     "srnet": srnet.srnet,
     "srnet_inplace": srnet.srnet_inplace,
