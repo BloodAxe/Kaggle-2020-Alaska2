@@ -436,17 +436,19 @@ class PairedImageDataset(Dataset):
         cover_image = cv2.imread(cover_image_fname)
         stego_image = cv2.imread(stego_image_fname)
 
-        if self.bitmix and random.random() > 0.5:
-            cover_image, stego_image, cover_target, stego_target, mask = bitmix(
-                cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
-            )
-            type_target = torch.tensor(
-                [
-                    F.one_hot(0, 4) * cover_target + F.one_hot(self.target, 4) * (1 - cover_target),
-                    F.one_hot(0, 4) * (1 - stego_target) + F.one_hot(self.target, 4) * stego_target,
-                ],
-            )
-            flag_target = torch.tensor([cover_target, stego_target]).float()
+        if self.bitmix:
+            if random.random() > 0.5:
+                cover_image, stego_image, cover_target, stego_target, mask = bitmix(
+                    cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
+                )
+
+                # NOTE: Type loss is not compatible with bitmix
+                type_target = torch.tensor([0, self.target]).long()
+                flag_target = torch.tensor([cover_target, stego_target]).float()
+            else:
+                type_target = torch.tensor([0, self.target]).long()
+                flag_target = torch.tensor([0, 1]).float()
+
         else:
             type_target = torch.tensor([0, self.target]).long()
             flag_target = torch.tensor([0, 1]).float()
