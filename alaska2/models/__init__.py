@@ -68,6 +68,7 @@ MODEL_REGISTRY = {
     "hpf_net": hpf_net.hpf_net,
     "hpf_net2": hpf_net.hpf_net_v2,
     "hpf_b3_fixed_gap": hpf_net.hpf_b3_fixed_gap,
+    "hpf_b3_covpool": hpf_net.hpf_b3_covpool,
     "hpf_b3_fixed_covpool": hpf_net.hpf_b3_fixed_covpool,
     # SRNET
     "srnet": srnet.srnet,

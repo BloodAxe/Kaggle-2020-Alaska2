@@ -11,7 +11,7 @@ from alaska2.dataset import (
 from alaska2.models.modules import TLU, SqrtmLayer, CovpoolLayer, TriuvecLayer
 from alaska2.models.srm_filter_kernel import all_normalized_hpf_list
 
-__all__ = ["HPFNet", "hpf_net_v2", "hpf_net", "hpf_b3_fixed_covpool", "hpf_b3_fixed_gap"]
+__all__ = ["HPFNet", "hpf_net_v2", "hpf_net", "hpf_b3_fixed_covpool", "hpf_b3_fixed_gap", "hpf_b3_covpool"]
 
 
 class HPF(nn.Module):
@@ -252,6 +252,21 @@ def hpf_b3_fixed_covpool(num_classes, dropout=0, pretrained=False):
         std=encoder.default_cfg["std"],
     )
 
+
+def hpf_b3_covpool(num_classes, dropout=0, pretrained=False):
+    from timm.models import efficientnet
+
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=True, drop_path_rate=0.1)
+    encoder.conv_stem = nn.Sequential(HPF3(trainable_hpf=True, stride=2), nn.Conv2d(30, 40, kernel_size=1))
+    del encoder.classifier
+
+    return HPFNetCovPool(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
 
 def hpf_b3_fixed_gap(num_classes, dropout=0, pretrained=False):
     from timm.models import efficientnet
