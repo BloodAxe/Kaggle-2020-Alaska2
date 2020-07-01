@@ -240,6 +240,19 @@ def test_blur_features():
     plt.show()
 
 
+def test_bitmix():
+    cover = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
+    stego = cv2.imread(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.jpg"))
+
+    c, s, lc, ls, m = bitmix(cover, stego, 0.6)
+    print(lc, ls)
+
+    cv2.imshow("Cover", c)
+    cv2.imshow("Stego", s)
+    cv2.imshow("Mask", m * 255)
+    cv2.waitKey(-1)
+
+
 def test_ela():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
     ela = compute_ela_rich(image)
@@ -310,7 +323,8 @@ def test_paired_ds():
         cv2.imshow("Stego", rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][1], mean=0.0, std=1.0, max_pixel_value=1))
         cv2.imshow(
             "Diff",
-            40 * cv2.absdiff(
+            40
+            * cv2.absdiff(
                 rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][0], mean=0.0, std=1.0, max_pixel_value=1),
                 rgb_image_from_tensor(sample[INPUT_IMAGE_KEY][1], mean=0.0, std=1.0, max_pixel_value=1),
             ),

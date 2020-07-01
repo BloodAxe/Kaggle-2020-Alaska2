@@ -335,9 +335,17 @@ class RocAucLossCE(nn.Module):
         return torch.sum(torch.pow(-masked, p))
 
 
+class LogSoftmaxKLDivLoss(nn.KLDivLoss):
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        return super(LogSoftmaxKLDivLoss, self).forward(F.log_softmax(input, dim=-1), target)
+
+
 def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "rank":
         return PairwiseRankingLoss()
+
+    if loss_name.lower() == "kl":
+        return LogSoftmaxKLDivLoss()
 
     if loss_name.lower() == "rank2":
         return PairwiseRankingLossV2()

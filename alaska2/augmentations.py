@@ -274,7 +274,7 @@ def get_obliterate_augs():
     )
 
 
-def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]):
+def get_augmentations(augmentations_level: str, image_size: Tuple[int, int]=(512,512)):
     if image_size[0] != 512 or image_size[1] != 512:
         print("Adding RandomCrop size target image size is", image_size)
         maybe_crop = A.RandomCrop(image_size[0], image_size[1], always_apply=True)

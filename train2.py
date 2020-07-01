@@ -6,12 +6,12 @@ import gc
 import json
 import os
 from datetime import datetime
+
 import numpy as np
-import cv2
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
-from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
-from pytorch_toolbelt.utils import fs, itertools, to_numpy
+from pytorch_toolbelt.optimization.functional import get_optimizable_parameters
+from pytorch_toolbelt.utils import fs, itertools
 from pytorch_toolbelt.utils.catalyst import (
     ShowPolarBatchesCallback,
     report_checkpoint,
@@ -57,6 +57,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--fast", action="store_true")
     parser.add_argument("--cache", action="store_true")
+    parser.add_argument("--bitmix", action="store_true")
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     parser.add_argument("-m", "--model", type=str, default="resnet34", help="")
     parser.add_argument("-b", "--batch-size", type=int, default=16, help="Batch Size during training, e.g. -b 64")
@@ -87,7 +88,6 @@ def main():
     parser.add_argument("--mixup", action="store_true")
     parser.add_argument("--cutmix", action="store_true")
     parser.add_argument("--tsa", action="store_true")
-    parser.add_argument("--size", default=None, type=int)
     parser.add_argument("--fold", default=None, type=int)
     parser.add_argument("-s", "--scheduler", default=None, type=str, help="")
     parser.add_argument("-x", "--experiment", default=None, type=str, help="")
@@ -116,13 +116,14 @@ def main():
     feature_maps_loss = args.feature_maps_loss
 
     data_dir = args.data_dir
+    bitmix = args.bitmix
     cache = args.cache
     num_workers = args.workers
     num_epochs = args.epochs
     learning_rate = args.learning_rate
     model_name: str = args.model
     optimizer_name = args.optimizer
-    image_size = (args.size, args.size) if args.size is not None else (512, 512)
+    image_size = (512, 512)
     fast = args.fast
     augmentations = args.augmentations
     fp16 = args.fp16
@@ -130,7 +131,6 @@ def main():
     experiment = args.experiment
     dropout = args.dropout
     verbose = args.verbose
-    warmup = args.warmup
     show = args.show
     accumulation_steps = args.accumulation_steps
     weight_decay = args.weight_decay
@@ -141,8 +141,6 @@ def main():
     mixup = args.mixup
     cutmix = args.cutmix
     tsa = args.tsa
-    fine_tune = args.fine_tune
-    obliterate_p = args.obliterate
     negative_image_dir = args.negative_image_dir
 
     # Compute batch size for validation
@@ -175,7 +173,6 @@ def main():
 
     main_metric = "loss"
     main_metric_minimize = True
-    cmd_args = vars(args)
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
     checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}"
@@ -210,7 +207,7 @@ def main():
 
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, image_size=image_size, augmentation=augmentations, fold=fold, features=required_features
+            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fold=fold, features=required_features
         )
 
         criterions_dict, loss_callbacks = get_criterions(
@@ -272,6 +269,7 @@ def main():
         print("  Image size     :", image_size)
         print("  Balance        :", balance)
         print("  Mixup          :", mixup)
+        print("  BitMix         :", bitmix)
         print("  CutMix         :", cutmix)
         print("  TSA            :", tsa)
         print("Model            :", model_name)

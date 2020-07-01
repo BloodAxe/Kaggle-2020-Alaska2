@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import random
 from typing import Tuple, Optional, Union, List
@@ -11,6 +12,7 @@ import torch
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils.data import Dataset, WeightedRandomSampler, ConcatDataset
+from torch.nn import functional as F
 
 INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
@@ -46,6 +48,7 @@ OUTPUT_FEATURE_MAP_16 = "pred_fm_16"
 OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
+    "bitmix",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
@@ -382,15 +385,39 @@ class TrainingValidationDataset(Dataset):
         return sample
 
 
+def bitmix(cover, stego, gamma):
+    rows, cols = cover.shape[:2]
+
+    patch_h = int(rows * math.sqrt(gamma))
+    patch_w = int(cols * math.sqrt(gamma))
+
+    start_x = random.randint(0, rows - patch_h)
+    start_y = random.randint(0, cols - patch_w)
+    m = np.zeros_like(cover)
+    m[start_y : start_y + patch_h, start_x : start_x + patch_w] = 1
+
+    c = m * stego + (1 - m) * cover
+    s = m * cover + (1 - m) * stego
+    lam = np.count_nonzero(m * cover - m * stego) / float(np.count_nonzero(cover - stego))
+    return c, s, lam, 1 - lam, m
+
+
 class PairedImageDataset(Dataset):
     def __init__(
-        self, images: Union[np.ndarray, List], quality: List, target: int, transform: A.ReplayCompose, features
+        self,
+        images: Union[np.ndarray, List],
+        quality: List,
+        target: int,
+        transform: A.ReplayCompose,
+        features,
+        bitmix=False,
     ):
         self.images = images
         self.features = features
         self.target = target
         self.method_name = ["Cover", "JMiPOD", "JUNIWARD", "UERD"]
         self.quality = quality
+        self.bitmix = bitmix
         assert 0 < target < 4
         self.transform = transform
 
@@ -409,6 +436,21 @@ class PairedImageDataset(Dataset):
         cover_image = cv2.imread(cover_image_fname)
         stego_image = cv2.imread(stego_image_fname)
 
+        if self.bitmix and random.random() > 0.5:
+            cover_image, stego_image, cover_target, stego_target, mask = bitmix(
+                cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
+            )
+            type_target = torch.tensor(
+                [
+                    F.one_hot(0, 4) * cover_target + F.one_hot(self.target, 4) * (1 - cover_target),
+                    F.one_hot(0, 4) * (1 - stego_target) + F.one_hot(self.target, 4) * stego_target,
+                ],
+            )
+            flag_target = torch.tensor([cover_target, stego_target]).float()
+        else:
+            type_target = torch.tensor([0, self.target]).long()
+            flag_target = torch.tensor([0, 1]).float()
+
         cover_data = {}
         cover_data["image"] = cover_image
         cover_data.update(compute_features(cover_image, cover_image_fname, self.features))
@@ -423,8 +465,8 @@ class PairedImageDataset(Dataset):
 
         sample = {
             INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(stego_image_fname)],
-            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, self.target]).long(),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1]).float(),
+            INPUT_TRUE_MODIFICATION_TYPE: type_target,
+            INPUT_TRUE_MODIFICATION_FLAG: flag_target,
             INPUT_IMAGE_QF_KEY: torch.tensor([qf, qf]),
         }
 
@@ -697,12 +739,10 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
     )
 
 
-def get_datasets_paired(
-    data_dir: str, fold: int, augmentation: str = "light", image_size: Tuple[int, int] = (512, 512), features=None
-):
+def get_datasets_paired(data_dir: str, fold: int, augmentation: str = "light", bitmix=False, features=None):
     from .augmentations import get_augmentations
 
-    train_transform = get_augmentations(augmentation, image_size)
+    train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
@@ -744,9 +784,15 @@ def get_datasets_paired(
                 print("Removed unchanged file from the valid set", fname)
 
     train_ds = (
-        PairedImageDataset(train_images, train_qf, target=1, transform=train_transform, features=features)
-        + PairedImageDataset(train_images, train_qf, target=2, transform=train_transform, features=features)
-        + PairedImageDataset(train_images, train_qf, target=3, transform=train_transform, features=features)
+        PairedImageDataset(
+            train_images, train_qf, target=1, transform=train_transform, features=features, bitmix=bitmix
+        )
+        + PairedImageDataset(
+            train_images, train_qf, target=2, transform=train_transform, features=features, bitmix=bitmix
+        )
+        + PairedImageDataset(
+            train_images, train_qf, target=3, transform=train_transform, features=features, bitmix=bitmix
+        )
     )
 
     valid_ds = TrainingValidationDataset(
