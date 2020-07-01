@@ -24,7 +24,7 @@ from alaska2.dataset import (
     dct2spatial,
     dct2channels_last,
     decode_bgr_from_dct,
-    compute_ela_rich,
+    compute_ela_rich, compute_decoding_residual,
 )
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
@@ -244,7 +244,7 @@ def test_bitmix():
     cover = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
     stego = cv2.imread(os.path.join(TEST_DATA_DIR, "JMiPOD", "00001.jpg"))
 
-    c, s, lc, ls, m = bitmix(cover, stego, 0.6)
+    c, s, lc, ls, m = bitmix(cover, stego, 0.125)
     print(lc, ls)
 
     cv2.imshow("Cover", c)
@@ -252,6 +252,22 @@ def test_bitmix():
     cv2.imshow("Mask", m * 255)
     cv2.waitKey(-1)
 
+def test_decoding_residual():
+    # d:\datasets\ALASKA2\Cover\20805.jpg
+    # d:\datasets\ALASKA2\UERD\20805.jpg
+
+    cover = cv2.imread("d:/datasets/ALASKA2/Cover/38330.jpg")
+    stego = cv2.imread("d:/datasets/ALASKA2/UERD/38330.jpg")
+
+    r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/38330.npz")
+    r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/38330.npz")
+
+    diff = (r1 - r2).sum(axis=2)
+    print(diff)
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.imshow(diff)
+    plt.show()
 
 def test_ela():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
@@ -310,7 +326,7 @@ def test_randint():
 
 
 def test_paired_ds():
-    train_ds, _, _ = get_datasets_paired("d:\\datasets\\ALASKA2", 0, features=[INPUT_IMAGE_KEY])
+    train_ds, _, _ = get_datasets_paired("d://datasets//ALASKA2", 0, features=[INPUT_IMAGE_KEY])
 
     for i in range(100):
         sample = train_ds[i]

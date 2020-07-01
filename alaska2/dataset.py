@@ -398,7 +398,10 @@ def bitmix(cover, stego, gamma):
 
     c = m * stego + (1 - m) * cover
     s = m * cover + (1 - m) * stego
-    lam = np.count_nonzero(m * cover - m * stego) / float(np.count_nonzero(cover - stego))
+
+    global_diff = cv2.absdiff(cover, stego)
+    local_diff = cv2.absdiff(m * cover, m * stego)
+    lam = np.count_nonzero(local_diff) / float(np.count_nonzero(global_diff))
     return c, s, lam, 1 - lam, m
 
 
@@ -438,9 +441,17 @@ class PairedImageDataset(Dataset):
 
         if self.bitmix:
             if random.random() > 0.5:
-                cover_image, stego_image, cover_target, stego_target, mask = bitmix(
-                    cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
-                )
+                try:
+                    cover_image, stego_image, cover_target, stego_target, mask = bitmix(
+                        cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
+                    )
+                except ZeroDivisionError:
+                    print("Bitmix failed due to matching images")
+                    print("Number of different pixels", cv2.absdiff(cover_image, stego_image).sum())
+                    print(cover_image_fname)
+                    print(stego_image_fname)
+                    cover_target = 0
+                    stego_target = 1
 
                 # NOTE: Type loss is not compatible with bitmix
                 type_target = torch.tensor([0, self.target]).long()
