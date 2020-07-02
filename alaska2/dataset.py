@@ -220,13 +220,13 @@ def decode_bgr_from_dct(dct_file):
     cr = idct8v2(dct_cr)
     cb = idct8v2(dct_cb)
 
-    y += 128
+    y += 127.5
     y /= 255
 
-    cr += 128
+    cr += 127.5
     cr /= 255
 
-    cb += 128
+    cb += 127.5
     cb /= 255
 
     img_ycrcb = np.dstack([y, cr, cb])
@@ -683,7 +683,8 @@ def get_datasets_paired(
 
     if fast:
         train_df = train_df[::200]
-        valid_df = train_df.copy()
+        valid_df = valid_df[::200]
+        # valid_df = train_df.copy()
 
     train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]

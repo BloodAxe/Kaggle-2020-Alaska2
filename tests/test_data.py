@@ -252,23 +252,6 @@ def test_bitmix():
     cv2.imshow("Mask", m * 255)
     cv2.waitKey(-1)
 
-def test_decoding_residual():
-    # d:\datasets\ALASKA2\Cover\20805.jpg
-    # d:\datasets\ALASKA2\UERD\20805.jpg
-
-    cover = cv2.imread("d:/datasets/ALASKA2/Cover/38330.jpg")
-    stego = cv2.imread("d:/datasets/ALASKA2/UERD/38330.jpg")
-
-    r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/38330.npz")
-    r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/38330.npz")
-
-    diff = (r1 - r2).sum(axis=2)
-    print(diff)
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.imshow(diff)
-    plt.show()
-
 def test_ela():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))
     ela = compute_ela_rich(image)
