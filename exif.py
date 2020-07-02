@@ -1,19 +1,14 @@
-import PIL.Image
-from pytorch_toolbelt.utils import fs
-from tqdm import tqdm
-import PIL.ExifTags
+import pandas as pd
+import alaska2
 
-dataset = fs.find_images_in_dir("d:\\datasets\\ALASKA2\\Cover")
+df = pd.read_csv("runs/Jul02_11_33_rgb_tf_efficientnet_b3_ns_fold0/main/checkpoints_auc/last_holdout_predictions.csv")
 
-for x in tqdm(dataset):
-    img = PIL.Image.open(x)
-    exif_data = img._getexif()
+import matplotlib.pyplot as plt
 
-    if exif_data is not None:
-        exif = {
-            PIL.ExifTags.TAGS[k]: v
-            for k, v in exif_data.items()
-            if k in PIL.ExifTags.TAGS
-        }
+plt.figure()
+plt.hist(df.pred_modification_flag.values)
+plt.show()
 
-        print(exif)
+print(alaska2.alaska_weighted_auc(df.true_modification_flag.values.astype(int), df.pred_modification_flag.values))
+
+print(alaska2.alaska_weighted_auc(df.true_modification_flag.values.astype(int), -df.pred_modification_flag.values))

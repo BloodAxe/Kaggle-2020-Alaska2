@@ -428,7 +428,7 @@ class PairedImageDataset(Dataset):
         return len(self.images)
 
     def __repr__(self):
-        return f"PairedImageDataset(images={len(self.images)})"
+        return f"PairedImageDataset(images={len(self.images)}, target={self.target})"
 
     def __getitem__(self, index):
         cover_image_fname = self.images[index]
@@ -574,119 +574,164 @@ def get_datasets(
     fold: int,
     augmentation: str = "light",
     fast: bool = False,
-    image_size: Tuple[int, int] = (512, 512),
     balance=False,
     features=None,
     obliterate_p=0.0,
 ):
     from .augmentations import get_augmentations, get_obliterate_augs
 
-    train_transform = get_augmentations(augmentation, image_size)
+    train_transform = get_augmentations(augmentation)
     valid_transform = A.NoOp()
 
-    if fold is None:
-        if fast:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
-            class_0 = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
-            class_1 = fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
-            class_2 = fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
-            class_3 = fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
+    # Ignore holdout fold
+    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
 
-            train_x = valid_x = np.array(class_0 + class_1 + class_2 + class_3)
-            train_y = valid_y = np.array(
-                [0] * len(class_0) + [1] * len(class_1) + [2] * len(class_2) + [3] * len(class_3)
-            )
+    train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
+    valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
 
-            sampler = WeightedRandomSampler(np.ones(len(train_x)), 512)
+    if fast:
+        train_df = train_df[::50]
+        valid_df = valid_df[::50]
 
-            train_ds = TrainingValidationDataset(train_x, train_y, transform=train_transform, features=features)
-            valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
+    train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
+    valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
 
-            print("Train", train_ds)
-            print("Valid", valid_ds)
+    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
+    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
 
-            return train_ds, valid_ds, sampler
-        else:
-            raise ValueError("Fold must be set")
-    else:
-        data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
-        unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
+    train_x = train_images.copy()
+    train_y = [0] * len(train_images)
+    train_qf = train_df["quality"].values.tolist()
 
-        # Ignore holdout fold
-        data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
+    valid_x = valid_images.copy()
+    valid_y = [0] * len(valid_images)
+    valid_qf = valid_df["quality"].values.tolist()
 
-        train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
-        valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
+    for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        # Filter images that does not have any alterations DCT (there are 250 of them)
+        unchanged_files = unchanged[unchanged["method"] == method_name].file.values
+        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
 
-        if fast:
-            train_df = train_df[::50]
-            valid_df = valid_df[::50]
+        for fname, qf in zip(train_images, train_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
+                train_x.append(fname)
+                train_y.append(method_index + 1)
+                train_qf.append(qf)
+            else:
+                print("Removed unchanged file from the train set", fname)
 
-        train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
-        valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
+        for fname, qf in zip(valid_images, valid_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
+                valid_x.append(fname)
+                valid_y.append(method_index + 1)
+                valid_qf.append(qf)
+            else:
+                print("Removed unchanged file from the valid set", fname)
 
-        train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
-        valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
+        # train_x += [fname.replace("Cover", method) for fname in train_images]
+        # train_y += [i + 1] * len(train_images)
+        # train_qf += train_df["quality"].values.tolist()
 
-        train_x = train_images.copy()
-        train_y = [0] * len(train_images)
-        train_qf = train_df["quality"].values.tolist()
+        # valid_x += [fname.replace("Cover", method) for fname in valid_images]
+        # valid_y += [i + 1] * len(valid_images)
+        # valid_qf += valid_df["quality"].values.tolist()
 
-        valid_x = valid_images.copy()
-        valid_y = [0] * len(valid_images)
-        valid_qf = valid_df["quality"].values.tolist()
+    assert len(set(train_x).intersection(set(valid_x))) == 0, "Train set and valid set has common elements"
 
-        for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-            # Filter images that does not have any alterations DCT (there are 250 of them)
-            unchanged_files = unchanged[unchanged["method"] == method_name].file.values
-            unchanged_files = list(map(fs.id_from_fname, unchanged_files))
+    train_ds = TrainingValidationDataset(
+        images=train_x,
+        targets=train_y,
+        quality=train_qf,
+        transform=train_transform,
+        features=features,
+        obliterate=get_obliterate_augs() if obliterate_p > 0 else None,
+        obliterate_p=obliterate_p,
+    )
+    valid_ds = TrainingValidationDataset(
+        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+    )
 
-            for fname, qf in zip(train_images, train_df["quality"].values):
-                if fs.id_from_fname(fname) not in unchanged_files:
-                    fname = fname.replace("Cover", method_name)
-                    train_x.append(fname)
-                    train_y.append(method_index + 1)
-                    train_qf.append(qf)
-                else:
-                    print("Removed unchanged file from the train set", fname)
+    sampler = None
+    print("Train", train_ds)
+    print("Valid", valid_ds)
+    return train_ds, valid_ds, sampler
 
-            for fname, qf in zip(valid_images, valid_df["quality"].values):
-                if fs.id_from_fname(fname) not in unchanged_files:
-                    fname = fname.replace("Cover", method_name)
-                    valid_x.append(fname)
-                    valid_y.append(method_index + 1)
-                    valid_qf.append(qf)
-                else:
-                    print("Removed unchanged file from the valid set", fname)
 
-            # train_x += [fname.replace("Cover", method) for fname in train_images]
-            # train_y += [i + 1] * len(train_images)
-            # train_qf += train_df["quality"].values.tolist()
+def get_datasets_paired(
+    data_dir: str, fold: int, augmentation: str = "light", bitmix=False, features=None, fast=False
+):
+    from .augmentations import get_augmentations
 
-            # valid_x += [fname.replace("Cover", method) for fname in valid_images]
-            # valid_y += [i + 1] * len(valid_images)
-            # valid_qf += valid_df["quality"].values.tolist()
+    train_transform = get_augmentations(augmentation)
+    valid_transform = A.NoOp()
 
-        assert len(set(train_x).intersection(set(valid_x))) == 0, "Train set and valid set has common elements"
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
-        train_ds = TrainingValidationDataset(
-            images=train_x,
-            targets=train_y,
-            quality=train_qf,
-            transform=train_transform,
-            features=features,
-            obliterate=get_obliterate_augs() if obliterate_p > 0 else None,
-            obliterate_p=obliterate_p,
+    # Ignore holdout fold
+    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
+
+    train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
+    valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
+
+    train_df = train_df[~train_df[INPUT_IMAGE_ID_KEY].isin(unchanged.file)]
+
+    if fast:
+        train_df = train_df[::200]
+        valid_df = train_df.copy()
+
+    train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
+    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
+
+    train_qf = train_df["quality"].values.tolist()
+
+    # Validation
+    valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
+    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
+
+    valid_x = valid_images.copy()
+    valid_y = [0] * len(valid_images)
+    valid_qf = valid_df["quality"].values.tolist()
+
+    for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        # Filter images that does not have any alterations DCT (there are 250 of them)
+        unchanged_files = unchanged[unchanged["method"] == method_name].file.values
+        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
+
+        for fname, qf in zip(valid_images, valid_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
+                valid_x.append(fname)
+                valid_y.append(method_index + 1)
+                valid_qf.append(qf)
+            else:
+                print("Removed unchanged file from the valid set", fname)
+
+    train_ds = (
+        PairedImageDataset(
+            train_images, train_qf, target=1, transform=train_transform, features=features, bitmix=bitmix
         )
-        valid_ds = TrainingValidationDataset(
-            images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+        + PairedImageDataset(
+            train_images, train_qf, target=2, transform=train_transform, features=features, bitmix=bitmix
         )
+        + PairedImageDataset(
+            train_images, train_qf, target=3, transform=train_transform, features=features, bitmix=bitmix
+        )
+    )
 
-        sampler = None
-        print("Train", train_ds)
-        print("Valid", valid_ds)
-        return train_ds, valid_ds, sampler
+    valid_ds = TrainingValidationDataset(
+        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+    )
+
+    sampler = None
+    print("Train", train_ds)
+    print("Valid", valid_ds)
+    return train_ds, valid_ds, sampler
 
 
 def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), features=None):
@@ -750,76 +795,6 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
         ),
         features=features,
     )
-
-
-def get_datasets_paired(data_dir: str, fold: int, augmentation: str = "light", bitmix=False, features=None, fast=False):
-    from .augmentations import get_augmentations
-
-    train_transform = get_augmentations(augmentation)
-    valid_transform = A.NoOp()
-
-    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
-    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
-
-    # Ignore holdout fold
-    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
-
-    train_df = data_folds[data_folds[INPUT_FOLD_KEY] != fold]
-    valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
-
-    train_df = train_df[~train_df[INPUT_IMAGE_ID_KEY].isin(unchanged.file)]
-
-    if fast:
-        train_df = train_df[::50]
-        valid_df = valid_df[::50]
-
-    train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
-    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
-
-    train_qf = train_df["quality"].values.tolist()
-
-    # Validation
-    valid_images = valid_df[INPUT_IMAGE_ID_KEY].tolist()
-    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
-
-    valid_x = valid_images.copy()
-    valid_y = [0] * len(valid_images)
-    valid_qf = valid_df["quality"].values.tolist()
-
-    for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-        # Filter images that does not have any alterations DCT (there are 250 of them)
-        unchanged_files = unchanged[unchanged["method"] == method_name].file.values
-        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
-
-        for fname, qf in zip(valid_images, valid_df["quality"].values):
-            if fs.id_from_fname(fname) not in unchanged_files:
-                fname = fname.replace("Cover", method_name)
-                valid_x.append(fname)
-                valid_y.append(method_index + 1)
-                valid_qf.append(qf)
-            else:
-                print("Removed unchanged file from the valid set", fname)
-
-    train_ds = (
-        PairedImageDataset(
-            train_images, train_qf, target=1, transform=train_transform, features=features, bitmix=bitmix
-        )
-        + PairedImageDataset(
-            train_images, train_qf, target=2, transform=train_transform, features=features, bitmix=bitmix
-        )
-        + PairedImageDataset(
-            train_images, train_qf, target=3, transform=train_transform, features=features, bitmix=bitmix
-        )
-    )
-
-    valid_ds = TrainingValidationDataset(
-        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
-    )
-
-    sampler = None
-    print("Train", train_ds)
-    print("Valid", valid_ds)
-    return train_ds, valid_ds, sampler
 
 
 def get_datasets_quad(

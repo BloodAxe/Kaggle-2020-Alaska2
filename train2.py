@@ -31,14 +31,18 @@ def paired_collate(input):
     input = default_collate(input)
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
-    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY]).tolist()
+    input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])
+    input[INPUT_IMAGE_ID_KEY] = np.concatenate([
+        input[INPUT_IMAGE_ID_KEY][0::2],
+        input[INPUT_IMAGE_ID_KEY][1::2]]).tolist()
 
     for feature_key in [
         INPUT_TRUE_MODIFICATION_FLAG,
         INPUT_TRUE_MODIFICATION_TYPE,
-        INPUT_FEATURES_ELA_KEY,
         INPUT_IMAGE_KEY,
+        INPUT_IMAGE_QF_KEY,
         INPUT_FEATURES_DCT_KEY,
+        INPUT_FEATURES_ELA_KEY,
         INPUT_FEATURES_ELA_RICH_KEY,
     ]:
         if feature_key in input:
@@ -327,4 +331,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # with torch.autograd.detect_anomaly():
     main()
