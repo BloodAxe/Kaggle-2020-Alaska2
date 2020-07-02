@@ -28,7 +28,7 @@ __all__ = [
     "blend_predictions_ranked",
     "as_d4_tta",
     "as_hv_tta",
-    "infer_fold"
+    "infer_fold",
 ]
 
 

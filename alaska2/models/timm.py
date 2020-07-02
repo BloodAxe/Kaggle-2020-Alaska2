@@ -188,11 +188,7 @@ def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained)
     del encoder.classifier
 
-    return TimmRgbModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-    )
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):

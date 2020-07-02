@@ -25,7 +25,12 @@ def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=16
         header = np.zeros((40, overlay.shape[1], 3), dtype=np.uint8) + 40
         cv2.putText(header, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
         cv2.putText(
-            header, f"{true_type}/{pred_type} {true_flag:.4f}/{pred_flag:.4f}", (10, 30), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250)
+            header,
+            f"true_type={true_type}/pred_type={pred_type} true_flag={true_flag:.2f}/pred_flag={pred_flag:.2f}",
+            (10, 30),
+            cv2.FONT_HERSHEY_PLAIN,
+            1,
+            (250, 250, 250),
         )
 
         overlay = np.row_stack([header, overlay])

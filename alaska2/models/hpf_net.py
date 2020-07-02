@@ -3,11 +3,7 @@ import torch
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from torch import nn
 
-from alaska2.dataset import (
-    INPUT_IMAGE_KEY,
-    OUTPUT_PRED_MODIFICATION_FLAG,
-    OUTPUT_PRED_MODIFICATION_TYPE,
-)
+from alaska2.dataset import INPUT_IMAGE_KEY, OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE
 from alaska2.models.modules import TLU, SqrtmLayer, CovpoolLayer, TriuvecLayer
 from alaska2.models.srm_filter_kernel import all_normalized_hpf_list
 
@@ -165,9 +161,7 @@ class HPFNet(nn.Module):
 
 
 class HPFNetCovPool(nn.Module):
-    def __init__(
-        self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5],
-    ):
+    def __init__(self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
@@ -204,9 +198,7 @@ class HPFNetCovPool(nn.Module):
 
 
 class HPFNetGAP(nn.Module):
-    def __init__(
-        self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5],
-    ):
+    def __init__(self, encoder, num_classes, dropout=0, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
@@ -267,6 +259,7 @@ def hpf_b3_covpool(num_classes, dropout=0, pretrained=False):
         mean=encoder.default_cfg["mean"],
         std=encoder.default_cfg["std"],
     )
+
 
 def hpf_b3_fixed_gap(num_classes, dropout=0, pretrained=False):
     from timm.models import efficientnet

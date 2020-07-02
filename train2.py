@@ -291,7 +291,7 @@ def main():
         print("  Feature maps   :", feature_maps_loss)
 
         optimizer = get_optimizer(
-            optimizer_name, get_optimizable_parameters(model), learning_rate, weight_decay=weight_decay
+            optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
         )
         scheduler = get_scheduler(
             scheduler_name, optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])

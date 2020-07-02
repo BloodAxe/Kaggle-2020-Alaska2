@@ -9,7 +9,7 @@ from datetime import datetime
 
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
-from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
+from pytorch_toolbelt.optimization.functional import get_optimizable_parameters
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.catalyst import (
     ShowPolarBatchesCallback,
@@ -41,6 +41,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--fast", action="store_true")
     parser.add_argument("--cache", action="store_true")
+    parser.add_argument("--bitmix", action="store_true")
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     parser.add_argument("-m", "--model", type=str, default="resnet34", help="")
     parser.add_argument("-b", "--batch-size", type=int, default=16, help="Batch Size during training, e.g. -b 64")
@@ -71,7 +72,6 @@ def main():
     parser.add_argument("--mixup", action="store_true")
     parser.add_argument("--cutmix", action="store_true")
     parser.add_argument("--tsa", action="store_true")
-    parser.add_argument("--size", default=None, type=int)
     parser.add_argument("--fold", default=None, type=int)
     parser.add_argument("-s", "--scheduler", default=None, type=str, help="")
     parser.add_argument("-x", "--experiment", default=None, type=str, help="")
@@ -113,13 +113,14 @@ def main():
     feature_maps_loss = args.feature_maps_loss
 
     data_dir = args.data_dir
+    bitmix = args.bitmix
     cache = args.cache
     num_workers = args.workers
     num_epochs = args.epochs
     learning_rate = args.learning_rate
     model_name: str = args.model
     optimizer_name = args.optimizer
-    image_size = (args.size, args.size) if args.size is not None else (512, 512)
+    image_size = (512, 512)
     fast = args.fast
     augmentations = args.augmentations
     fp16 = args.fp16
@@ -127,7 +128,6 @@ def main():
     experiment = args.experiment
     dropout = args.dropout
     verbose = args.verbose
-    warmup = args.warmup
     show = args.show
     accumulation_steps = args.accumulation_steps
     weight_decay = args.weight_decay
@@ -138,8 +138,6 @@ def main():
     mixup = args.mixup
     cutmix = args.cutmix
     tsa = args.tsa
-    fine_tune = args.fine_tune
-    obliterate_p = args.obliterate
     negative_image_dir = args.negative_image_dir
 
     distributed_params = {"rank": args.local_rank, "syncbn": True}
@@ -176,7 +174,6 @@ def main():
 
     main_metric = "loss"
     main_metric_minimize = True
-    cmd_args = vars(args)
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
     checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}_local_rank_{args.local_rank}"
@@ -211,16 +208,8 @@ def main():
 
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, image_size=image_size, augmentation=augmentations, fold=fold, features=required_features
+            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fast=fast, fold=fold, features=required_features
         )
-
-        if negative_image_dir:
-            negatives_ds = get_negatives_ds(
-                negative_image_dir, fold=fold, local_rank=args.local_rank, features=required_features, max_images=25000
-            )
-            train_ds = train_ds + negatives_ds
-            train_sampler = None  # TODO: Add proper support of sampler
-            print("Adding", len(negatives_ds), "negative samples to training set")
 
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
@@ -283,13 +272,13 @@ def main():
         print("  Cache          :", cache)
         print("Data              ")
         print("  Augmentations  :", augmentations)
-        print("  Obliterate (%) :", obliterate_p)
         print("  Negative images:", negative_image_dir)
         print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
         print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
         print("  Image size     :", image_size)
         print("  Balance        :", balance)
         print("  Mixup          :", mixup)
+        print("  BitMix         :", bitmix)
         print("  CutMix         :", cutmix)
         print("  TSA            :", tsa)
         print("Model            :", model_name)

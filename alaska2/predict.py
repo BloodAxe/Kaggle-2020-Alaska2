@@ -7,10 +7,7 @@ from torch import nn
 
 from .dataset import *
 
-__all__ = [
-    "HVFlipTTA",
-    "D4TTA",
-]
+__all__ = ["HVFlipTTA", "D4TTA"]
 
 
 def torch_flip_ud_lr(x: torch.Tensor):

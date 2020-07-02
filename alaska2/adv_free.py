@@ -56,7 +56,7 @@ class FreeAdvRunner(SupervisedRunner):
             self._run_event("batch", moment="start")
             self.state.timer.start("_timers/model_time")
 
-            noise_batch = global_noise_data[0:batch.size(0)].clone().requires_grad_().cuda()
+            noise_batch = global_noise_data[0 : batch.size(0)].clone().requires_grad_().cuda()
             in1 = batch + noise_batch
             in1.clamp_(0, 1.0)
             in1.sub_(mean).div_(std)
