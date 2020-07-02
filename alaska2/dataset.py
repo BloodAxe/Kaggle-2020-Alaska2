@@ -752,7 +752,7 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
     )
 
 
-def get_datasets_paired(data_dir: str, fold: int, augmentation: str = "light", bitmix=False, features=None):
+def get_datasets_paired(data_dir: str, fold: int, augmentation: str = "light", bitmix=False, features=None, fast=False):
     from .augmentations import get_augmentations
 
     train_transform = get_augmentations(augmentation)
@@ -768,6 +768,10 @@ def get_datasets_paired(data_dir: str, fold: int, augmentation: str = "light", b
     valid_df = data_folds[data_folds[INPUT_FOLD_KEY] == fold]
 
     train_df = train_df[~train_df[INPUT_IMAGE_ID_KEY].isin(unchanged.file)]
+
+    if fast:
+        train_df = train_df[::50]
+        valid_df = valid_df[::50]
 
     train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()
     train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]

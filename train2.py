@@ -207,7 +207,7 @@ def main():
 
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fold=fold, features=required_features
+            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fast=fast, fold=fold, features=required_features
         )
 
         criterions_dict, loss_callbacks = get_criterions(

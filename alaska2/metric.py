@@ -223,6 +223,11 @@ class OutputDistributionCallback(Callback):
         true_labels = np.array(self.true_labels)
         pred_probas = np.array(self.pred_labels)
 
+        if len(np.unique(true_labels) > 2):
+            true_labels = true_labels > 0.5
+        else:
+            true_labels = true_labels.astype(np.bool)
+
         logger = get_tensorboard_logger(state)
-        logger.add_histogram(self.prefix + "/neg", pred_probas[true_labels == 0], state.epoch)
-        logger.add_histogram(self.prefix + "/pos", pred_probas[true_labels == 1], state.epoch)
+        logger.add_histogram(self.prefix + "/neg", pred_probas[true_labels == False], state.epoch)
+        logger.add_histogram(self.prefix + "/pos", pred_probas[true_labels == True], state.epoch)
