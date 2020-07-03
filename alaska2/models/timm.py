@@ -1,21 +1,17 @@
 import torch
-from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
-from pytorch_toolbelt.modules.activations import Mish
-from timm.models import skresnext50_32x4d
-from timm.models import dpn, tresnet, efficientnet, res2net, resnet
-from timm.models.layers import SelectAdaptivePool2d
 import torch.nn.functional as F
+from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
+from timm.models import skresnext50_32x4d
+from timm.models import tresnet, efficientnet, resnet
+from timm.models.layers import SelectAdaptivePool2d
 from torch import nn
 
 from alaska2.dataset import (
-    OUTPUT_PRED_EMBEDDING,
     OUTPUT_PRED_MODIFICATION_FLAG,
     OUTPUT_PRED_MODIFICATION_TYPE,
     INPUT_IMAGE_KEY,
     INPUT_IMAGE_QF_KEY,
-    INPUT_FEATURES_ELA_KEY,
     INPUT_FEATURES_JPEG_FLOAT,
-    INPUT_FEATURES_ELA_RICH_KEY,
 )
 
 __all__ = [

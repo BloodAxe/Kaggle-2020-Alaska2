@@ -104,7 +104,7 @@ def main():
     learning_rate = args.learning_rate
     model_name: str = args.model
     optimizer_name = args.optimizer
-    image_size = (args.size, args.size) if args.size is not None else (512, 512)
+    image_size = (512, 512)
     fast = args.fast
     augmentations = args.augmentations
     fp16 = args.fp16
@@ -320,7 +320,6 @@ def main():
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
-            image_size=image_size,
             augmentation=augmentations,
             balance=balance,
             fast=fast,
@@ -454,7 +453,6 @@ def main():
     if fine_tune:
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
-            image_size=image_size,
             augmentation="light",
             balance=balance,
             fast=fast,
