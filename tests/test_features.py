@@ -17,22 +17,16 @@ def test_decoding_residual():
     # /home/bloodaxe/datasets/ALASKA2/Cover/18051.jpg
     # /home/bloodaxe/datasets/ALASKA2/UERD/18051.jpg
 
-    # cover = cv2.imread("d:/datasets/ALASKA2/Cover/38330.jpg")
-    # stego = cv2.imread("d:/datasets/ALASKA2/UERD/38330.jpg")
-    # r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/38330.npz")
-    # r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/38330.npz")
+    cover = cv2.imread("d:/datasets/ALASKA2/Cover/38330.jpg")
+    stego = cv2.imread("d:/datasets/ALASKA2/UERD/38330.jpg")
+    r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/38330.npz")
+    r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/38330.npz")
 
     # cover = cv2.imread("d:/datasets/ALASKA2/Cover/20805.jpg")
     # stego = cv2.imread("d:/datasets/ALASKA2/UERD/20805.jpg")
     # r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/20805.npz")
     # r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/20805.npz")
 
-
-
-    cover = cv2.imread("d:/datasets/ALASKA2/Cover/20804.jpg")
-    stego = cv2.imread("d:/datasets/ALASKA2/UERD/20804.jpg")
-    r1 = compute_decoding_residual(cover, "d:/datasets/ALASKA2/Cover/20804.npz")
-    r2 = compute_decoding_residual(stego, "d:/datasets/ALASKA2/UERD/20804.npz")
 
     r1b = block8_sum(np.abs(r1).sum(axis=2))
     r2b = block8_sum(np.abs(r2).sum(axis=2))
