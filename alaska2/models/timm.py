@@ -233,16 +233,7 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
     del encoder.classifier
-
-    return TimmRgbModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=(0.5, 0.5, 0.5),
-        std=(0.2, 0.2, 0.2),
-        max_pixel_value=1,
-        input_key=INPUT_FEATURES_JPEG_FLOAT,
-    )
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
 def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0):

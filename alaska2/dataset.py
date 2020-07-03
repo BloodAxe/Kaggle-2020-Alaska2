@@ -295,7 +295,7 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_FEATURES_JPEG_FLOAT in features:
         dct_file = fs.change_extension(image_fname, ".npz")
-        sample[INPUT_FEATURES_JPEG_FLOAT] = decode_bgr_from_dct(dct_file)
+        sample[INPUT_FEATURES_JPEG_FLOAT] = 255 * decode_bgr_from_dct(dct_file)
 
     if INPUT_FEATURES_DECODING_RESIDUAL_KEY in features:
         dct_file = fs.change_extension(image_fname, ".npz")
