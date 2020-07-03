@@ -22,14 +22,7 @@ __all__ = [
 
 
 class ResidualOnlyModel(nn.Module):
-    def __init__(
-        self,
-        encoder,
-        num_classes,
-        dropout=0,
-        mean=[0,0,0],
-        std=[1,1,1],
-    ):
+    def __init__(self, encoder, num_classes, dropout=0, mean=[-0.5, -0.5, -0.5], std=[0.5, 0.5, 0.5]):
         super().__init__()
         self.res_bn = Normalize(mean, std)
         self.encoder = encoder
@@ -64,7 +57,7 @@ class ImageAndResidualModel(nn.Module):
         super().__init__()
         max_pixel_value = 255
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.res_bn = Normalize([2, 2, 2], [1, 1, 1])
+        self.res_bn = Normalize(mean=[-0.5, -0.5, -0.5], std=[0.5, 0.5, 0.5])
         self.encoder = encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
@@ -202,13 +195,7 @@ def res_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained, drop_path_rate=0.1)
     del encoder.classifier
 
-    return ResidualOnlyModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=encoder.default_cfg["mean"],
-        std=encoder.default_cfg["std"],
-    )
+    return ResidualOnlyModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def rgb_res_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
