@@ -29,7 +29,8 @@ MODEL_REGISTRY = {
     "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
     "rgb_tf_efficientnet_b7_ns": timm.rgb_tf_efficientnet_b7_ns,
     "rgb_tf_efficientnet_b2_ns_avgmax": timm.rgb_tf_efficientnet_b2_ns_avgmax,
-    "frank": rgb_ela_blur.frank,
+    "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
+
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
@@ -73,6 +74,9 @@ MODEL_REGISTRY = {
     # SRNET
     "srnet": srnet.srnet,
     "srnet_inplace": srnet.srnet_inplace,
+    # OLD STUFF
+    "frank": rgb_ela_blur.frank,
+
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]

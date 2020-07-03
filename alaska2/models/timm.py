@@ -14,6 +14,7 @@ from alaska2.dataset import (
     INPUT_IMAGE_KEY,
     INPUT_IMAGE_QF_KEY,
     INPUT_FEATURES_ELA_KEY,
+    INPUT_FEATURES_JPEG_FLOAT,
     INPUT_FEATURES_ELA_RICH_KEY,
 )
 
@@ -30,6 +31,8 @@ __all__ = [
     "rgb_qf_tf_efficientnet_b6_ns",
     "rgb_qf_swsl_resnext101_32x8d",
     "rgb_tf_efficientnet_b7_ns",
+    # Models using unrounded image
+    "nr_rgb_tf_efficientnet_b6_ns",
 ]
 import numpy as np
 
@@ -44,19 +47,22 @@ class TimmRgbModel(nn.Module):
         dropout=0,
         mean=[0.3914976, 0.44266784, 0.46043398],
         std=[0.17819773, 0.17319807, 0.18128773],
+        max_pixel_value=255,
+        input_key=INPUT_IMAGE_KEY,
     ):
         super().__init__()
         self.encoder = encoder
-        max_pixel_value = 255
+
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
         self.flag_classifier = nn.Linear(encoder.num_features, 1)
+        self.input_key = input_key
 
     def forward(self, **kwargs):
-        x = kwargs[INPUT_IMAGE_KEY]
-        x = self.rgb_bn(x.float())
+        x = kwargs[self.input_key]
+        x = self.rgb_bn(x)
         x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
@@ -66,7 +72,7 @@ class TimmRgbModel(nn.Module):
 
     @property
     def required_features(self):
-        return [INPUT_IMAGE_KEY]
+        return [self.input_key]
 
 
 class TimmRgbModelAvgMax(nn.Module):
@@ -222,6 +228,21 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=(0.5, 0.5, 0.5),
+        std=(0.2, 0.2, 0.2),
+        max_pixel_value=1,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+    )
 
 
 def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0):
