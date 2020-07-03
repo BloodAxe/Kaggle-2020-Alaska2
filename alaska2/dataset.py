@@ -17,6 +17,7 @@ from torch.nn import functional as F
 INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
 INPUT_FEATURES_ELA_RICH_KEY = "input_ela_rich"
+INPUT_FEATURES_JPEG_FLOAT = "input_raw_jpeg"
 INPUT_FEATURES_BLUR_KEY = "input_blur"
 INPUT_FEATURES_DECODING_RESIDUAL_KEY = "input_residual"
 INPUT_IMAGE_ID_KEY = "image_id"
@@ -51,6 +52,7 @@ __all__ = [
     "bitmix",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
+    "INPUT_FEATURES_JPEG_FLOAT",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
     "INPUT_FEATURES_DECODING_RESIDUAL_KEY",
     "INPUT_FEATURES_CHANNEL_Y_KEY",
@@ -221,13 +223,13 @@ def decode_bgr_from_dct(dct_file):
     cb = idct8v2(dct_cb)
 
     y += 127.5
-    y /= 255
+    y /= 255.0
 
     cr += 127.5
-    cr /= 255
+    cr /= 255.0
 
     cb += 127.5
-    cb /= 255
+    cb /= 255.0
 
     img_ycrcb = np.dstack([y, cr, cb])
     bgr_from_dct = cv2.cvtColor(img_ycrcb, cv2.COLOR_YCrCb2BGR)
@@ -290,6 +292,10 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_FEATURES_BLUR_KEY in features:
         sample[INPUT_FEATURES_BLUR_KEY] = compute_blur_features(image)
+
+    if INPUT_FEATURES_JPEG_FLOAT in features:
+        dct_file = fs.change_extension(image_fname, ".npz")
+        sample[INPUT_FEATURES_JPEG_FLOAT] = decode_bgr_from_dct(dct_file)
 
     if INPUT_FEATURES_DECODING_RESIDUAL_KEY in features:
         dct_file = fs.change_extension(image_fname, ".npz")
