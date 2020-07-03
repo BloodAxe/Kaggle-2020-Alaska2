@@ -112,13 +112,7 @@ def main():
     JUNIWARD = os.path.join(data_dir, "JUNIWARD")
     UERD = os.path.join(data_dir, "UERD")
 
-    dataset = (
-        fs.find_images_in_dir(cover)[:1000]
-        + fs.find_images_in_dir(JMiPOD)[:1000]
-        + fs.find_images_in_dir(JUNIWARD)[:1000]
-        + fs.find_images_in_dir(UERD)[:1000]
-    )
-    # dataset = dataset[:500]
+    dataset = fs.find_images_in_dir(cover)[:1000]
 
     mean, std = compute_mean_std(tqdm(dataset))
     print(mean.size())

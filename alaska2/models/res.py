@@ -27,11 +27,11 @@ class ResidualOnlyModel(nn.Module):
         encoder,
         num_classes,
         dropout=0,
-        mean=[0.3914976, 0.44266784, 0.46043398],
-        std=[0.17819773, 0.17319807, 0.18128773],
+        mean=[0,0,0],
+        std=[1,1,1],
     ):
         super().__init__()
-        self.res_bn = Normalize([2, 2, 2], [1, 1, 1])
+        self.res_bn = Normalize(mean, std)
         self.encoder = encoder
         self.pool = GlobalAvgPool2d(flatten=True)
         self.drop = nn.Dropout(dropout)
@@ -43,7 +43,6 @@ class ResidualOnlyModel(nn.Module):
         x = self.encoder.forward_features(x)
         x = self.pool(x)
         return {
-            # OUTPUT_PRED_EMBEDDING: x,
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
         }
