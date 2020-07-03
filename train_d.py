@@ -214,7 +214,6 @@ def main():
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
-            image_size=image_size,
             augmentation=augmentations,
             balance=balance,
             fast=fast,
