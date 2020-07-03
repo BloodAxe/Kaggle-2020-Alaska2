@@ -120,7 +120,7 @@ def main():
     learning_rate = args.learning_rate
     model_name: str = args.model
     optimizer_name = args.optimizer
-    image_size = (args.size, args.size) if args.size is not None else (512, 512)
+    image_size = (512, 512)
     fast = args.fast
     augmentations = args.augmentations
     fp16 = args.fp16

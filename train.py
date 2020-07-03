@@ -23,7 +23,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from alaska2 import *
-from train4 import custom_collate
 
 
 def main():
