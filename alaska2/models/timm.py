@@ -28,6 +28,7 @@ __all__ = [
     "rgb_qf_swsl_resnext101_32x8d",
     "rgb_tf_efficientnet_b7_ns",
     # Models using unrounded image
+    "nr_rgb_tf_efficientnet_b3_ns_mish",
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
@@ -228,6 +229,15 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
+def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0):
+    from timm.models.layers import Mish
+
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish)
+    del encoder.classifier
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
     del encoder.classifier
@@ -243,6 +253,9 @@ def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0):
 def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.mixnet_xxl(pretrained=pretrained)
     del encoder.classifier
+    mean = encoder.default_cfg["mean"]
+    std = encoder.default_cfg["std"]
+
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
