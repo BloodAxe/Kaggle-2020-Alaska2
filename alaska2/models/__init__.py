@@ -29,7 +29,10 @@ MODEL_REGISTRY = {
     "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
     "rgb_tf_efficientnet_b7_ns": timm.rgb_tf_efficientnet_b7_ns,
     "rgb_tf_efficientnet_b2_ns_avgmax": timm.rgb_tf_efficientnet_b2_ns_avgmax,
+
     "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
+    "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
+    "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
 
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,

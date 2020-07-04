@@ -29,6 +29,8 @@ __all__ = [
     "rgb_tf_efficientnet_b7_ns",
     # Models using unrounded image
     "nr_rgb_tf_efficientnet_b6_ns",
+    "nr_rgb_mixnet_xl",
+    "nr_rgb_mixnet_xxl",
 ]
 import numpy as np
 
@@ -228,6 +230,18 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
 
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
+    del encoder.classifier
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+
+
+def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.mixnet_xl(pretrained=pretrained)
+    del encoder.classifier
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+
+
+def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.mixnet_xxl(pretrained=pretrained)
     del encoder.classifier
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
