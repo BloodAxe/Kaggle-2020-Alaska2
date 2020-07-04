@@ -11,7 +11,7 @@ from alaska2.models.dct import dct_seresnext50, dct_efficientnet_b6
 from alaska2.models.hpf_net import HPFNet, hpf_b3_fixed_gap, hpf_b3_fixed_covpool
 from alaska2.models.rgb import rgb_hrnet18
 from alaska2.models.srnet import SRNetModel, srnet
-from alaska2.models.timm import nr_rgb_tf_efficientnet_b6_ns
+from alaska2.models.timm import nr_rgb_tf_efficientnet_b6_ns, nr_rgb_mixnet_xxl
 from alaska2.models.ycrcb import ela_s2d_skresnext50_32x4d
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
@@ -29,6 +29,19 @@ def test_nr_rgb_tf_efficientnet_b6_ns():
     output = model(**input)
     for output_name, output_value in output.items():
         print(output_name, output_value.size())
+
+
+def test_nr_rgb_mixnet_xxl():
+    model = nr_rgb_mixnet_xxl(num_classes=4).cuda()
+
+    input = {INPUT_FEATURES_JPEG_FLOAT: torch.randn((2, 3, 512, 512)).cuda()}
+
+    print(count_parameters(model, keys=KNOWN_KEYS))
+
+    output = model(**input)
+    for output_name, output_value in output.items():
+        print(output_name, output_value.size())
+
 
 
 @torch.no_grad()
