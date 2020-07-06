@@ -96,22 +96,26 @@ def main():
     output_dir = os.path.dirname(__file__)
 
     experiments = [
-        "May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
-        "May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
-        "May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
-        "May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
+        # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
+        # "A_May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
+        # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
+        # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
-        "Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        #
+        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -128,26 +132,27 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    X, y = get_x_y(holdout_predictions)
-    print(X.shape, y.shape)
+    x, y = get_x_y(holdout_predictions)
+    print(x.shape, y.shape)
 
     x_test, _ = get_x_y(test_predictions)
     print(x_test.shape)
 
     if False:
         sc = StandardScaler()
-        X = sc.fit_transform(X)
+        x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
-    X = np.column_stack([X, quality_h])
+    x = np.column_stack([x, quality_h])
     x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
     cv_scores = []
     test_pred = None
+    one_over_n = 1.0 / 5
 
-    for train_index, valid_index in group_kfold.split(X, y, groups=image_ids):
-        x_train, x_valid, y_train, y_valid = X[train_index], X[valid_index], y[train_index], y[valid_index]
+    for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
+        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
         print(np.bincount(y_train), np.bincount(y_valid))
 
         cls = XGBClassifier(
@@ -155,18 +160,18 @@ def main():
             booster="gbtree",
             colsample_bylevel=1,
             colsample_bynode=1,
-            colsample_bytree=0.8,
-            gamma=1,
+            colsample_bytree=1.0,
+            gamma=0.1,
             gpu_id=-1,
             importance_type="gain",
             interaction_constraints="",
-            learning_rate=0.02,
+            learning_rate=0.2,
             max_delta_step=0,
-            max_depth=5,
+            max_depth=4,
             min_child_weight=5,
             # missing=nan,
             monotone_constraints="()",
-            n_estimators=600,
+            n_estimators=100,
             n_jobs=8,
             nthread=1,
             num_parallel_tree=1,
@@ -189,9 +194,9 @@ def main():
         cv_scores.append(score)
 
         if test_pred is not None:
-            test_pred += cls.predict_proba(x_test)[:, 1]
+            test_pred += cls.predict_proba(x_test)[:, 1] * one_over_n
         else:
-            test_pred = cls.predict_proba(x_test)[:, 1]
+            test_pred = cls.predict_proba(x_test)[:, 1] * one_over_n
 
     for s in cv_scores:
         print(s)

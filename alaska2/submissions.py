@@ -1,4 +1,6 @@
 import os
+import warnings
+
 import pandas as pd
 import torch
 from pytorch_toolbelt.utils import logit, fs
@@ -89,6 +91,7 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
     :return:
     """
     from sklearn.isotonic import IsotonicRegression as IR
+    import matplotlib.pyplot as plt
 
     oof_predictions = oof_predictions.copy()
     oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(
@@ -106,30 +109,67 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
         flag_transform
     )
 
-    y_true = oof_predictions["true_modification_flag"].values
+    y_true = oof_predictions["true_modification_flag"].values.astype(int)
+    # print("Target", np.bincount(oof_predictions["true_modification_type"].values.astype(int)))
 
     if True:
         y_pred_raw = oof_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
         b_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
 
-        ir_flag = IR(out_of_bounds="clip")
+        ir_flag = IR(out_of_bounds="clip", y_min=0, y_max=1)
         y_pred_cal = ir_flag.fit_transform(y_pred_raw, y_true)
         b_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
-        # print("Flag", b_auc_before, b_auc_after, (b_auc_after - b_auc_before))
-        test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
-            test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
-        )
+
+        if b_auc_after > b_auc_before:
+            test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
+                test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
+            )
+        else:
+            test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
+                test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
+            )
+
+            warnings.warn(f"Failed to train IR flag {b_auc_before} {b_auc_after}")
+
+            plt.figure()
+            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"calibrated {b_auc_after}")
+            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"non-calibrated {b_auc_before}")
+            plt.yscale("log")
+            plt.legend()
+            plt.show()
 
     if True:
-        ir_type = IR(out_of_bounds="clip")
+        ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
         y_pred_raw = oof_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
         c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
         y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
         c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
-        # print("Type", c_auc_before, c_auc_after, c_auc_after - c_auc_before)
-        test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
-            test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
-        )
+        if c_auc_after > c_auc_before:
+            test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
+                test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
+            )
+
+            plt.figure()
+            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
+            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
+            plt.yscale("log")
+            plt.legend()
+            plt.show()
+        else:
+            test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
+                test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
+            )
+
+            warnings.warn(f"Failed to train IR on type {c_auc_before} {c_auc_after}")
+
+
+            plt.figure()
+            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
+            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
+            plt.yscale("log")
+            plt.legend()
+            plt.show()
+
     results = {
         "b_auc_before": b_auc_before,
         "b_auc_after": b_auc_after,

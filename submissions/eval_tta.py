@@ -14,7 +14,7 @@ def get_predictions_csv(experiment, metric: str, type: str, tta: str = None):
     if isinstance(experiment, list):
         return [get_predictions_csv(x, metric, type, tta) for x in experiment]
 
-    assert type in {"test", "holdout"}
+    assert type in {"test", "holdout", "oof"}
     assert metric in {"loss", "bauc", "cauc"}
     assert tta in {None, "d4", "hv"}
     checkpoints_dir = {"loss": "checkpoints", "bauc": "checkpoints_auc", "cauc": "checkpoints_auc_classifier"}[metric]
