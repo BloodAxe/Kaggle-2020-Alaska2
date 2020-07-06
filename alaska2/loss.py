@@ -340,7 +340,22 @@ class LogSoftmaxKLDivLoss(nn.KLDivLoss):
         return super(LogSoftmaxKLDivLoss, self).forward(F.log_softmax(input, dim=-1), target)
 
 
+class ResizeToTarget2d(nn.Module):
+    """
+    """
+
+    def __init__(self, loss):
+        super().__init__()
+        self.loss = loss
+
+    def forward(self, input, target):
+        input = F.interpolate(input, target.size()[2:], mode="bilinear", align_corners=False)
+        return self.loss(input, target)
+
 def get_loss(loss_name: str, tsa=False):
+    if loss_name.lower() == "mask_bce":
+        return ResizeToTarget2d(SoftBCEWithLogitsLoss())
+
     if loss_name.lower() == "rank":
         return PairwiseRankingLoss()
 

@@ -128,8 +128,9 @@ class TimmRgbMaskModel(nn.Module):
 
         x = self.drop(x)
         mask = self.mask(x)
-        flag = self.flag_classifier(x) * mask.sigmoid()
-        type = self.type_classifier(x) * mask.sigmoid()
+        mask_s = mask.sigmoid()
+        flag = self.flag_classifier(x) * mask_s
+        type = self.type_classifier(x) * mask_s
 
         return {
             OUTPUT_PRED_MODIFICATION_MASK: mask,
