@@ -476,6 +476,7 @@ def get_criterions(
     modification_flag,
     modification_type,
     embedding_loss,
+    mask_loss,
     num_epochs: int,
     feature_maps_loss=None,
     mixup=False,
@@ -587,6 +588,29 @@ def get_criterions(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_MODIFICATION_TYPE,
                 prefix=f"modification_type/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
+
+    if mask_loss is not None:
+        for criterion in embedding_loss:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
+
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_MODIFICATION_MASK,
+                output_key=OUTPUT_PRED_MODIFICATION_MASK,
+                prefix=f"mask/{loss_name}",
                 loss_weight=float(loss_weight),
                 mixup=mixup,
                 cutmix=cutmix,

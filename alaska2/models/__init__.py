@@ -34,6 +34,7 @@ MODEL_REGISTRY = {
     "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
     "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
     "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
+    "nr_rgb_tf_efficientnet_b3_ns_mish_mask": timm.nr_rgb_tf_efficientnet_b3_ns_mish_mask,
 
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,

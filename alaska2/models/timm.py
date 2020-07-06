@@ -5,6 +5,9 @@ from timm.models import skresnext50_32x4d
 from timm.models import tresnet, efficientnet, resnet
 from timm.models.layers import SelectAdaptivePool2d
 from torch import nn
+import numpy as np
+
+from alaska2.models.classifiers import WeightNormClassifier
 
 from alaska2.dataset import (
     OUTPUT_PRED_MODIFICATION_FLAG,
@@ -12,6 +15,7 @@ from alaska2.dataset import (
     INPUT_IMAGE_KEY,
     INPUT_IMAGE_QF_KEY,
     INPUT_FEATURES_JPEG_FLOAT,
+    OUTPUT_PRED_MODIFICATION_MASK,
 )
 
 __all__ = [
@@ -29,13 +33,11 @@ __all__ = [
     "rgb_tf_efficientnet_b7_ns",
     # Models using unrounded image
     "nr_rgb_tf_efficientnet_b3_ns_mish",
+    "nr_rgb_tf_efficientnet_b3_ns_mish_mask",
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
 ]
-import numpy as np
-
-from alaska2.models.classifiers import WeightNormClassifier
 
 
 class TimmRgbModel(nn.Module):
@@ -67,6 +69,72 @@ class TimmRgbModel(nn.Module):
         return {
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+        }
+
+    @property
+    def required_features(self):
+        return [self.input_key]
+
+
+class TimmRgbMaskModel(nn.Module):
+    def __init__(
+        self,
+        encoder,
+        num_classes,
+        dropout=0,
+        mean=[0.3914976, 0.44266784, 0.46043398],
+        std=[0.17819773, 0.17319807, 0.18128773],
+        max_pixel_value=255,
+        input_key=INPUT_IMAGE_KEY,
+    ):
+        super().__init__()
+        self.encoder = encoder
+
+        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
+        self.drop = nn.Dropout2d(dropout)
+
+        # self.upsample = nn.Sequential(
+        #     nn.Conv2d(encoder.num_features, 512, kernel_size=1),
+        #     nn.PixelShuffle(upscale_factor=2),
+        #     nn.Conv2d(128, 128, kernel_size=3, padding=1, bias=False),
+        #     nn.BatchNorm2d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 128, kernel_size=1),
+        #     nn.PixelShuffle(upscale_factor=2),
+        #     nn.Conv2d(32, 32, kernel_size=3, padding=1, bias=False),
+        #     nn.BatchNorm2d(32),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(32,1,kernel_size=1)
+        # )
+
+        self.mask = nn.Sequential(
+            nn.Conv2d(encoder.num_features, 512, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 128, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 1, kernel_size=1),
+        )
+
+        self.type_classifier = nn.Conv2d(encoder.num_features, num_classes, kernel_size=1)
+        self.flag_classifier = nn.Conv2d(encoder.num_features, 1, kernel_size=1)
+        self.input_key = input_key
+
+    def forward(self, **kwargs):
+        x = kwargs[self.input_key]
+        x = self.rgb_bn(x)
+        x = self.encoder.forward_features(x)
+
+        x = self.drop(x)
+        mask = self.mask(x)
+        flag = self.flag_classifier(x) * mask.sigmoid()
+        type = self.type_classifier(x) * mask.sigmoid()
+
+        return {
+            OUTPUT_PRED_MODIFICATION_MASK: mask,
+            OUTPUT_PRED_MODIFICATION_FLAG: flag.mean(dim=(2, 3)),
+            OUTPUT_PRED_MODIFICATION_TYPE: type.mean(dim=(2, 3)),
         }
 
     @property
@@ -236,6 +304,15 @@ def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def nr_rgb_tf_efficientnet_b3_ns_mish_mask(num_classes=4, pretrained=True, dropout=0):
+    from timm.models.layers import Mish
+
+    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish)
+    del encoder.classifier
+
+    return TimmRgbMaskModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):

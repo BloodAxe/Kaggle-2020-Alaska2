@@ -17,7 +17,7 @@ from .dataset import (
     INPUT_FEATURES_CHANNEL_CB_KEY,
     INPUT_FEATURES_CHANNEL_Y_KEY,
     dct2channels_last,
-    dct2spatial, INPUT_FEATURES_JPEG_FLOAT,
+    dct2spatial, INPUT_FEATURES_JPEG_FLOAT, INPUT_TRUE_MODIFICATION_MASK,
 )
 
 __all__ = [
@@ -291,6 +291,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int] = (5
         INPUT_FEATURES_CHANNEL_Y_KEY: "image",
         INPUT_FEATURES_CHANNEL_CR_KEY: "image",
         INPUT_FEATURES_CHANNEL_CB_KEY: "image",
+        INPUT_TRUE_MODIFICATION_MASK: "mask"
     }
 
     augmentations_level = augmentations_level.lower()

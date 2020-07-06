@@ -55,6 +55,7 @@ def main():
     )
     parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--feature-maps-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
+    parser.add_argument("--mask-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -94,6 +95,7 @@ def main():
     modification_type_loss = args.modification_type_loss
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
+    mask_loss = args.mask_loss
 
     freeze_encoder = args.freeze_encoder
     data_dir = args.data_dir
@@ -133,6 +135,9 @@ def main():
 
     model: nn.Module = get_model(model_name, dropout=dropout).cuda()
     required_features = model.required_features
+
+    if mask_loss is not None:
+        required_features.append(INPUT_TRUE_MODIFICATION_MASK)
 
     if args.transfer:
         transfer_checkpoint = fs.auto_file(args.transfer)
@@ -194,7 +199,6 @@ def main():
     if warmup:
         train_ds, valid_ds, train_sampler = get_datasets(
             data_dir=data_dir,
-            image_size=image_size,
             augmentation=augmentations,
             balance=balance,
             fast=fast,
@@ -207,6 +211,7 @@ def main():
             modification_flag=modification_flag_loss,
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
+            mask_loss=mask_loss,
             feature_maps_loss=feature_maps_loss,
             num_epochs=warmup,
             mixup=mixup,
@@ -286,6 +291,7 @@ def main():
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
+        print("  Mask           :", mask_loss)
 
         runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
@@ -340,6 +346,7 @@ def main():
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
+            mask_loss=mask_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -409,6 +416,7 @@ def main():
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
+        print("  Mask           :", mask_loss)
 
         optimizer = get_optimizer(
             optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
@@ -465,6 +473,7 @@ def main():
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
+            mask_loss=mask_loss,
             num_epochs=fine_tune,
             mixup=False,
             cutmix=False,
@@ -534,6 +543,7 @@ def main():
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
+        print("  Mask           :", mask_loss)
 
         optimizer = get_optimizer(
             "SGD", get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay

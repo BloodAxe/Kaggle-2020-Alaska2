@@ -37,9 +37,11 @@ INPUT_FEATURES_CHANNEL_CB_KEY = "input_image_cb"
 
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_type"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
+INPUT_TRUE_MODIFICATION_MASK = "true_embedding_mask"
 
 OUTPUT_PRED_MODIFICATION_TYPE = "pred_modification_type"
 OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
+OUTPUT_PRED_MODIFICATION_MASK = "pred_embedding_mask"
 
 OUTPUT_PRED_EMBEDDING = "pred_embedding"
 
@@ -50,6 +52,8 @@ OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
 __all__ = [
     "bitmix",
+    "INPUT_TRUE_MODIFICATION_MASK",
+    "OUTPUT_PRED_MODIFICATION_MASK",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
     "INPUT_FEATURES_JPEG_FLOAT",
@@ -287,6 +291,11 @@ def compute_features(image: np.ndarray, image_fname: str, features):
     if INPUT_FEATURES_ELA_KEY in features:
         sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
 
+    if INPUT_TRUE_MODIFICATION_MASK in features:
+        mask = fs.change_extension(image_fname, ".png")
+        mask = cv2.resize(mask, (512, 512), interpolation=cv2.INTER_NEAREST)
+        sample[INPUT_TRUE_MODIFICATION_MASK] = mask
+
     if INPUT_FEATURES_ELA_RICH_KEY in features:
         sample[INPUT_FEATURES_ELA_RICH_KEY] = compute_ela_rich(image, quality_steps=[75, 90, 95])
 
@@ -321,6 +330,12 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     return sample
 
+
+def block8_sum(a: np.ndarray):
+    shape = a.shape
+    a = a.reshape([a.shape[0] // 8, 8, a.shape[1] // 8, 8] + list(a.shape[2:]))
+    a = a.sum(axis=(1, 3))
+    return a
 
 class TrainingValidationDataset(Dataset):
     def __init__(
@@ -386,6 +401,10 @@ class TrainingValidationDataset(Dataset):
 
         for key, value in data.items():
             if key in self.features:
+                # Mask handling requires some special attention
+                if key == INPUT_TRUE_MODIFICATION_MASK:
+                    value = np.expand_dims(block8_sum(value) > 0, -1).astype(np.float32)
+                    
                 sample[key] = tensor_from_rgb_image(value)
 
         return sample
