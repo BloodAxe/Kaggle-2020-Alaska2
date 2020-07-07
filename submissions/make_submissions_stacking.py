@@ -1,13 +1,11 @@
-from collections import defaultdict
-
-import torch
 import os
 
+# Used to ignore warnings generated from StackingCVClassifier
+import os
 # Used to ignore warnings generated from StackingCVClassifier
 import warnings
 
 import matplotlib.pyplot as plt
-
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
@@ -18,17 +16,10 @@ from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
 from pytorch_toolbelt.utils import fs
-from sklearn import metrics
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import make_scorer
-from sklearn.model_selection import GridSearchCV, GroupKFold
-from sklearn.neural_network import MLPClassifier
-
+from sklearn.model_selection import GroupKFold
 # Classifiers
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -38,7 +29,7 @@ from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
+from submissions.make_submissions_averaging import compute_checksum_v2
 
 warnings.simplefilter("ignore")
 
