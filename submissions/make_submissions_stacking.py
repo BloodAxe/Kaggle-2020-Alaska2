@@ -101,7 +101,7 @@ def main():
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-    image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
+    image_ids = np.array([fs.id_from_fname(x) for x in holdout_ds.images])
 
     quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
 
@@ -150,7 +150,7 @@ def main():
             meta_classifier=SVC(probability=True),
         )
 
-        sclf.fit(x_train, y_train)
+        sclf.fit(x_train, y_train, image_ids[train_index])
 
         classifiers = {
             "LGBMClassifier": classifier1,
@@ -245,29 +245,8 @@ def main():
             os.path.join(output_dir, f"Probability Distribution for each Classifier - Fold {fold}.png"), dpi=1080
         )
 
-        # Define parameter grid
-        params = {
-            "meta_classifier__kernel": ["linear", "rbf", "poly"],
-            "meta_classifier__C": [1, 2],
-            "meta_classifier__degree": [3, 4, 5],
-            "meta_classifier__probability": [True],
-        }
-
-        # Initialize GridSearchCV
-        grid = GridSearchCV(
-            estimator=sclf,
-            param_grid=params,
-            cv=5,
-            scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
-            verbose=10,
-            n_jobs=-1,
-        )
-
-        # Fit GridSearchCV
-        grid.fit(x_train, y_train)
-
         # Making prediction on test set
-        y_pred = grid.predict_proba(x_valid)[:, 1]
+        y_pred = sclf.predict_proba(x_valid)[:, 1]
 
         # Getting AUC
         auc = alaska_weighted_auc(y_valid, y_pred)
@@ -276,7 +255,7 @@ def main():
         # Print results
         print(f"The AUC of the tuned Stacking classifier - fold {fold} is {auc:.4f}")
 
-        df["Label_" + str(fold)] = grid.predict_proba(x_test)[:, 1]
+        df["Label_" + str(fold)] = sclf.predict_proba(x_test)[:, 1]
 
     df["Label"] = np.mean(
         [df["Label_0"].values, df["Label_1"].values, df["Label_2"].values, df["Label_3"].values, df["Label_4"].values]
