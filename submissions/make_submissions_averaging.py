@@ -5,6 +5,10 @@ import os
 import warnings
 from hashlib import md5
 
+from typing import List
+
+from pytorch_toolbelt.utils import fs
+
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import (
     make_classifier_predictions,
@@ -24,6 +28,25 @@ def compute_checksum(*input):
     import hashlib
 
     return hashlib.md5(str_object.encode("utf-8")).hexdigest()
+
+
+def compute_checksum_v2(fnames: List[str]):
+    def sanitize_fname(x):
+        x = fs.id_from_fname(x)
+        x = (
+            x.replace("fp16", "")
+            .replace("fold", "F")
+            .replace("local_rank_0", "")
+            .replace("tf_efficientnet_b2_ns", "B2")
+            .replace("tf_efficientnet_b3_ns", "B3")
+            .replace("tf_efficientnet_b6_ns", "B6")
+            .replace("tf_efficientnet_b7_ns", "B7")
+            .replace("__","_")
+        )
+        return x
+
+    fnames = [sanitize_fname(x) for x in fnames]
+    return "_".join(fnames)
 
 
 def main():

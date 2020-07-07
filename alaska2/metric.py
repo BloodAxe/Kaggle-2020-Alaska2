@@ -60,6 +60,7 @@ def anokas_alaska_weighted_auc(y_true, y_pred, **kwargs):
         return competition_metric / normalization
     except Exception as e:
         print(e)
+        print("Returning 0 from anokas_alaska_weighted_auc")
         return 0
 
 
@@ -91,8 +92,26 @@ def weighted_roc_auc_score(ytrue, ypred, **kwargs):
     return ((fpr[1:] - fpr[:-1]) * yy).sum()
 
 
+def wauc(true, scores):
+    fpr, tpr, thresholds = roc_curve(true, scores, drop_intermediate=False)
+    tpr_thresholds = [0.0, 0.4, 1.0]
+    weights = [2.0, 1.0]
+    auc_x = 0.0
+    for idx in range(len(tpr_thresholds) - 1):
+        mask = tpr >= tpr_thresholds[idx]
+        x = fpr[mask]
+        y = tpr[mask]
+        mask = y > tpr_thresholds[idx + 1]
+        y[mask] = tpr_thresholds[idx + 1]
+        y = y - tpr_thresholds[idx]
+        auc_x = auc_x + weights[idx] * np.trapz(y, x)
+    areas = np.array(tpr_thresholds[1:]) - np.array(tpr_thresholds[:-1])
+    normalization = np.dot(areas, np.array(weights))
+    return auc_x / normalization
+
+
 # alaska_weighted_auc = anokas_alaska_weighted_auc
-alaska_weighted_auc = weighted_roc_auc_score
+alaska_weighted_auc = wauc
 
 
 def binary_logits_to_probas(x):
