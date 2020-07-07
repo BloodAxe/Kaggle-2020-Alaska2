@@ -1,13 +1,10 @@
 import json
 import os
-
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-from hashlib import md5
-
 from typing import List
 
+import numpy as np
 from pytorch_toolbelt.utils import fs
+from sklearn.isotonic import IsotonicRegression as IR
 
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import (
@@ -16,9 +13,11 @@ from alaska2.submissions import (
     make_binary_predictions,
     make_binary_predictions_calibrated,
     blend_predictions_mean,
-    blend_predictions_ranked,
 )
 from submissions.eval_tta import get_predictions_csv
+
+
+# Used to ignore warnings generated from StackingCVClassifier
 
 
 def compute_checksum(*input):
@@ -75,95 +74,89 @@ def main():
         # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
     ]
 
-    if True:
-        for metric in [
-            # "loss",
-            # "bauc",
-            "cauc"]:
-            predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
-            oof_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+    for metric in [
+        # "loss",
+        # "bauc",
+        "cauc"
+    ]:
+        predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        oof_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        test_predictions_d4 = get_predictions_csv(experiments, metric, "test", "d4")
 
-            bin_pred_d4 = make_binary_predictions(predictions_d4)
-            cls_pred_d4 = make_classifier_predictions(predictions_d4)
+        bin_pred_d4 = make_binary_predictions(predictions_d4)
+        y_true = bin_pred_d4[0].y_true.values
 
-            bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
-            cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
+        bin_pred_d4_score = alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4).Label)
 
-            y_true = bin_pred_d4[0].y_true.values
+        cls_pred_d4 = make_classifier_predictions(predictions_d4)
+        cls_pred_d4_score = alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4).Label)
 
-            print(metric, "Bin NC", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4).Label))
-            print(metric, "Bin CL", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4_cal).Label))
-            print(metric, "Cls NC", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4).Label))
-            print(metric, "Cls CL", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label))
+        bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
+        bin_pred_d4_cal_score = alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
 
-            from sklearn.isotonic import IsotonicRegression as IR
+        cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
+        cls_pred_d4_cal_score = alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
 
-            blend_cls_d4 = blend_predictions_mean(cls_pred_d4)
+        print(metric, "Bin NC", "d4", bin_pred_d4_score)
+        print(metric, "Bin CL", "d4", cls_pred_d4_score)
+        print(metric, "Cls NC", "d4", bin_pred_d4_cal_score)
+        print(metric, "Cls CL", "d4", cls_pred_d4_cal_score)
 
-            ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
-            y_pred_raw = blend_cls_d4.Label.values
-            c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
-            y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
-            c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
+        blend_cls_d4 = blend_predictions_mean(cls_pred_d4)
 
-            print(metric, "Calibrated after blend", c_auc_before, c_auc_after)
+        ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
+        y_pred_raw = blend_cls_d4.Label.values
+        c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
+        y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
+        c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
 
-    # TODO: Make automatic
-    # test_predictions_d4 = get_predictions_csv(experiments, "loss", "test", "d4")
-    # checksum = compute_checksum(test_predictions_d4)
-    # test_predictions_d4 = make_classifier_predictions(test_predictions_d4)
-    # test_predictions_d4 = blend_predictions_mean(test_predictions_d4)
-    # cv_score = 0.9377
-    # test_predictions_d4.to_csv(
-    #     os.path.join(output_dir, f"{checksum}_best_loss_blend_cls_mean_{cv_score}.csv"), index=False
-    # )
-    #
-    # test_predictions_d4 = get_predictions_csv(experiments, "bauc", "test", "d4")
-    # checksum = compute_checksum(test_predictions_d4)
-    # test_predictions_d4 = make_binary_predictions(test_predictions_d4)
-    # test_predictions_d4 = blend_predictions_mean(test_predictions_d4)
-    # cv_score = 0.9386
-    # test_predictions_d4.to_csv(
-    #     os.path.join(output_dir, f"{checksum}_best_bauc_blend_bin_mean_{cv_score}.csv"), index=False
-    # )
-    #
-    # test_predictions_d4 = get_predictions_csv(experiments, "cauc", "test", "d4")
-    # checksum = compute_checksum(test_predictions_d4)
-    # test_predictions_d4 = make_classifier_predictions(test_predictions_d4)
-    # test_predictions_d4 = blend_predictions_mean(test_predictions_d4)
-    # cv_score = 0.9388
-    # test_predictions_d4.to_csv(
-    #     os.path.join(output_dir, f"{checksum}_best_cauc_blend_cls_mean_{cv_score}.csv"), index=False
-    # )
+        print(metric, "Calibrated after blend", c_auc_before, c_auc_after)
 
-    # test_predictions_d4 = get_predictions_csv(experiments, "cauc", "test", "d4")
-    # checksum = compute_checksum(test_predictions_d4)
-    # test_predictions_d4 = make_classifier_predictions_calibrated(
-    #     test_predictions_d4, get_predictions_csv(experiments, "cauc", "holdout", "d4")
-    # )
-    # test_predictions_d4 = blend_predictions_mean(test_predictions_d4)
-    # cv_score = 0.9429
-    # test_predictions_d4.to_csv(
-    #     os.path.join(output_dir, f"{checksum}_best_cauc_blend_cls_mean_calibrated_{cv_score}.csv"), index=False
-    # )
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # plt.figure()
-    # plt.hist(test_predictions_d4.Label, alpha=0.5, bins=100, label="calibrated")
-    #
-    # test_predictions_d4 = get_predictions_csv(experiments, "cauc", "test", "d4")
-    # checksum = compute_checksum(test_predictions_d4)
-    # test_predictions_d4 = make_classifier_predictions(test_predictions_d4)
-    # test_predictions_d4 = blend_predictions_mean(test_predictions_d4)
-    # cv_score = 0.9411
-    # test_predictions_d4.to_csv(
-    #     os.path.join(output_dir, f"{checksum}_best_cauc_blend_cls_mean_{cv_score}.csv"), index=False
-    # )
-    #
-    # plt.hist(test_predictions_d4.Label, alpha=0.5, bins=100, label="non-calibrated")
-    # plt.legend()
-    # plt.show()
+        max_score = max(bin_pred_d4_score, cls_pred_d4_score, bin_pred_d4_cal_score, cls_pred_d4_cal_score)
+        if bin_pred_d4_score == max_score:
+            predictions = make_binary_predictions(test_predictions_d4)
+
+            predictions = blend_predictions_mean(predictions)
+            predictions.to_csv(
+                os.path.join(
+                    output_dir,
+                    f"stacking_{np.mean(bin_pred_d4_score):.4f}_bin_{compute_checksum_v2(test_predictions_d4)}.csv",
+                ),
+                index=False,
+            )
+        if bin_pred_d4_cal_score == max_score:
+            predictions = make_binary_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
+
+            predictions = blend_predictions_mean(predictions)
+            predictions.to_csv(
+                os.path.join(
+                    output_dir,
+                    f"stacking_{np.mean(bin_pred_d4_score):.4f}_bin_cal_{compute_checksum_v2(test_predictions_d4)}.csv",
+                ),
+                index=False,
+            )
+        if cls_pred_d4_score == max_score:
+            predictions = make_classifier_predictions(test_predictions_d4)
+
+            predictions = blend_predictions_mean(predictions)
+            predictions.to_csv(
+                os.path.join(
+                    output_dir,
+                    f"stacking_{np.mean(bin_pred_d4_score):.4f}_cls_{compute_checksum_v2(test_predictions_d4)}.csv",
+                ),
+                index=False,
+            )
+        if cls_pred_d4_cal_score == max_score:
+            predictions = make_classifier_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
+
+            predictions = blend_predictions_mean(predictions)
+            predictions.to_csv(
+                os.path.join(
+                    output_dir,
+                    f"stacking_{np.mean(bin_pred_d4_score):.4f}_cls_cal_{compute_checksum_v2(test_predictions_d4)}.csv",
+                ),
+                index=False,
+            )
 
 
 if __name__ == "__main__":
