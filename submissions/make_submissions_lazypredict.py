@@ -1,6 +1,7 @@
 import torch
 from pytorch_toolbelt.utils import fs
 import os
+
 # Used to ignore warnings generated from StackingCVClassifier
 import warnings
 
@@ -16,11 +17,7 @@ from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import (
-    classifier_probas,
-    sigmoid,
-    parse_array,
-)
+from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum
 
@@ -71,7 +68,7 @@ def main():
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -85,7 +82,6 @@ def main():
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    checksum = compute_checksum(test_predictions)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -101,43 +97,18 @@ def main():
     x_test, _ = get_x_y(test_predictions)
     print(x_test.shape)
 
-    if False:
-        sc = StandardScaler()
-        x = sc.fit_transform(x)
-        x_test = sc.transform(x_test)
-
     x = np.column_stack([x, quality_h])
-    x_test = np.column_stack([x_test, quality_t])
-
     group_kfold = GroupKFold(n_splits=5)
-    cv_scores = []
-    test_pred = None
-    one_over_n = 1.0 / 5
 
-    for i, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
+    for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
-        print(np.bincount(y_train), np.bincount(y_valid))
 
         clf = LazyClassifier(verbose=True, ignore_warnings=False, custom_metric=alaska_weighted_auc, predictions=True)
         models, predictions = clf.fit(x_train, x_valid, y_train, y_valid)
         print(models)
 
-        models.to_csv(f"lazypredict_models_{i}.csv")
-        predictions.to_csv(f"lazypredict_preds_{i}.csv")
-        # if test_pred is not None:
-        #     test_pred += cls.predict_proba(x_test)[:, 1] * one_over_n
-        # else:
-        #     test_pred = cls.predict_proba(x_test)[:, 1] * one_over_n
-
-    # for s in cv_scores:
-    #     print(s)
-    # print(np.mean(cv_scores), np.std(cv_scores))
-
-    # df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
-    # df["Label"] = test_pred
-    # df[["Id", "Label"]].to_csv(
-    #     os.path.join(output_dir, f"{checksum}_xgb_cls_cv_{np.mean(cv_scores):.4f}.csv"), index=False
-    # )
+        models.to_csv(os.path.join(output_dir, f"lazypredict_models_{fold_index}.csv"))
+        predictions.to_csv(os.path.join(output_dir, f"lazypredict_preds_{fold_index}.csv"))
 
 
 if __name__ == "__main__":
