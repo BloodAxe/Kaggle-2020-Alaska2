@@ -20,10 +20,12 @@ __all__ = [
     "embedding_to_probas",
 ]
 
+from sklearn.metrics import roc_curve
+
 from .dataset import INPUT_IMAGE_QF_KEY
 
 
-def alaska_weighted_auc(y_true, y_pred, **kwargs):
+def anokas_alaska_weighted_auc(y_true, y_pred, **kwargs):
     try:
         tpr_thresholds = [0.0, 0.4, 1.0]
         weights = [2, 1]
@@ -40,7 +42,7 @@ def alaska_weighted_auc(y_true, y_pred, **kwargs):
         for idx, weight in enumerate(weights):
             y_min = tpr_thresholds[idx]
             y_max = tpr_thresholds[idx + 1]
-            mask = (y_min < tpr) & (tpr < y_max)
+            mask = (y_min < tpr) & (tpr <= y_max)
 
             if mask.sum() == 0:
                 continue
@@ -59,6 +61,38 @@ def alaska_weighted_auc(y_true, y_pred, **kwargs):
     except Exception as e:
         print(e)
         return 0
+
+
+def weighted_roc_auc_score(ytrue, ypred, **kwargs):
+    fpr, tpr, _ = roc_curve(ytrue, ypred)
+
+    # the curve
+    y = (tpr[1:] + tpr[:-1]) / 2
+
+    # tpr threshold
+    # a = (y < 0.4).astype(np.float32)  # inclusive or exclusive ?
+    a = (y <= 0.4).astype(np.float32)  # inclusive or exclusive ?
+
+    # curve under tpr_threshold
+    y1 = y * a
+    y1 = y1 + y1.max() * (1 - a)
+
+    # curve above tpr_threshold
+    y2 = y - y1
+
+    # weighted sum
+    yy = 2 * y1 + y2
+
+    # make roc curve great again.
+    # bugged: yy = (yy - yy.min()) / (yy.max() - yy.min())
+    yy = yy / yy.max()
+
+    # sum to area
+    return ((fpr[1:] - fpr[:-1]) * yy).sum()
+
+
+# alaska_weighted_auc = anokas_alaska_weighted_auc
+alaska_weighted_auc = weighted_roc_auc_score
 
 
 def binary_logits_to_probas(x):

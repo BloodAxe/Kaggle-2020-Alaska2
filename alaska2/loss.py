@@ -614,7 +614,7 @@ def get_criterions(
             print("Using loss", loss_name, loss_weight)
 
     if mask_loss is not None:
-        for criterion in embedding_loss:
+        for criterion in mask_loss:
             if isinstance(criterion, (list, tuple)):
                 loss_name, loss_weight = criterion
             else:

@@ -293,6 +293,7 @@ def compute_features(image: np.ndarray, image_fname: str, features):
 
     if INPUT_TRUE_MODIFICATION_MASK in features:
         mask = fs.change_extension(image_fname, ".png")
+        mask = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
         mask = cv2.resize(mask, (512, 512), interpolation=cv2.INTER_NEAREST)
         sample[INPUT_TRUE_MODIFICATION_MASK] = mask
 
@@ -647,7 +648,8 @@ def get_datasets(
                 train_y.append(method_index + 1)
                 train_qf.append(qf)
             else:
-                print("Removed unchanged file from the train set", fname)
+                # print("Removed unchanged file from the train set", fname)
+                pass
 
         for fname, qf in zip(valid_images, valid_df["quality"].values):
             if fs.id_from_fname(fname) not in unchanged_files:
@@ -656,7 +658,8 @@ def get_datasets(
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
             else:
-                print("Removed unchanged file from the valid set", fname)
+                # print("Removed unchanged file from the valid set", fname)
+                pass
 
         # train_x += [fname.replace("Cover", method) for fname in train_images]
         # train_y += [i + 1] * len(train_images)
@@ -736,7 +739,8 @@ def get_datasets_paired(
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
             else:
-                print("Removed unchanged file from the valid set", fname)
+                # print("Removed unchanged file from the valid set", fname)
+                pass
 
     train_ds = (
         PairedImageDataset(
@@ -788,7 +792,8 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
             else:
-                print("Removed unchanged file from the holdout set", fname)
+                # print("Removed unchanged file from the holdout set", fname)
+                pass
 
     holdout_ds = TrainingValidationDataset(
         images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features

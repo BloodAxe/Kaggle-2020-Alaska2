@@ -6,8 +6,6 @@ import pandas as pd
 from alaska2 import alaska_weighted_auc
 from alaska2.submissions import calibrated, as_hv_tta, as_d4_tta, classifier_probas, sigmoid, infer_fold
 from submissions import ela_skresnext50_32x4d
-from submissions import rgb_tf_efficientnet_b2_ns
-from submissions import rgb_tf_efficientnet_b6_ns
 
 
 def get_predictions_csv(experiment, metric: str, type: str, tta: str = None):

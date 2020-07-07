@@ -9,6 +9,7 @@ import pandas as pd
 import torch
 import xgboost as xgb
 from pytorch_toolbelt.utils import fs
+from sklearn.decomposition import PCA
 from sklearn.metrics import auc, roc_auc_score
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
@@ -34,9 +35,9 @@ def get_x_y(predictions):
         if "true_modification_flag" in p:
             y = p["true_modification_flag"].values.astype(np.float32)
 
-        X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        X.append(pred_modification_type)
+        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
+        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
+        # X.append(pred_modification_type)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
@@ -63,26 +64,31 @@ def main():
     output_dir = os.path.dirname(__file__)
 
     experiments = [
-        # "May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
-        # "May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
-        # "May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
-        # "May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
+        # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
+        # "A_May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
+        # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
+        # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
-        "Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        #
+        # TODO: Compute holdout
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
     ]
 
-    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
-    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4") + get_predictions_csv(experiments, "loss", "holdout", "d4")
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4") + get_predictions_csv(experiments, "loss", "test", "d4")
     checksum = compute_checksum(test_predictions)
 
     import torch.nn.functional as F
@@ -101,8 +107,13 @@ def main():
     x_test, _ = get_x_y(test_predictions)
     print(x_test.shape)
 
-    if True:
+    if False:
         sc = StandardScaler()
+        X = sc.fit_transform(X)
+        x_test = sc.transform(x_test)
+
+    if True:
+        sc = PCA(n_components=16)
         X = sc.fit_transform(X)
         x_test = sc.transform(x_test)
 
@@ -173,11 +184,11 @@ def main():
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
+    submit_fname = os.path.join(output_dir, f"{checksum}_xgb_cv_{np.mean(cv_scores):.4f}.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
-    df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"{checksum}_xgb_cv_{np.mean(cv_scores):.4f}.csv"), index=False
-    )
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
+    print("Saved submission to ", submit_fname)
 
 
 if __name__ == "__main__":

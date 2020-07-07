@@ -205,7 +205,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"{checksum}_xgb_cv_{np.mean(cv_scores):.4f}.csv"), index=False
+        os.path.join(output_dir, f"{checksum}_xgb_cls_cv_{np.mean(cv_scores):.4f}.csv"), index=False
     )
 
 
