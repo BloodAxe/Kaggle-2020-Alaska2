@@ -1,60 +1,38 @@
-import pandas as pd
-import numpy as np
 import torch
-
-from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
-from submissions.ela_skresnext50_32x4d import *
-from submissions.rgb_tf_efficientnet_b2_ns import *
-from submissions.rgb_tf_efficientnet_b6_ns import *
-from alaska2.submissions import (
-    submit_from_classifier_calibrated,
-    submit_from_average_classifier,
-    blend_predictions_ranked,
-    make_classifier_predictions,
-    make_classifier_predictions_calibrated,
-    make_binary_predictions,
-    make_binary_predictions_calibrated,
-    blend_predictions_mean,
-    as_hv_tta,
-    as_d4_tta,
-    classifier_probas,
-    sigmoid,
-    parse_array,
-)
-from alaska2.metric import alaska_weighted_auc
 import os
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, make_scorer
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler, RobustScaler
+
+# Used to ignore warnings generated from StackingCVClassifier
+import warnings
+
+import matplotlib.pyplot as plt
 
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import itertools
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_classification
-from sklearn import model_selection
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+import torch
+import torch.nn.functional as F
+from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
+from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
+from pytorch_toolbelt.utils import fs
 from sklearn import metrics
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import GridSearchCV, GroupKFold
+from sklearn.neural_network import MLPClassifier
 
 # Classifiers
-from sklearn.svm import NuSVC, SVC
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
-from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
+from sklearn.svm import SVC
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
+from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
+from alaska2.metric import alaska_weighted_auc
+from alaska2.submissions import classifier_probas, sigmoid, parse_array
+from submissions.eval_tta import get_predictions_csv
+from submissions.make_submissions_averaging import compute_checksum
 
 warnings.simplefilter("ignore")
 
@@ -82,136 +60,107 @@ def get_x_y(predictions):
             X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
     X = np.column_stack(X).astype(np.float32)
+    if y is not None:
+        y = y.astype(int)
     return X, y
 
 
 def main():
     output_dir = os.path.dirname(__file__)
 
-    if True:
-        best_loss = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_test_predictions.csv",
-        ]
-        best_bauc = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_test_predictions.csv",
-        ]
-        best_cauc = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_test_predictions.csv",
-        ]
+    experiments = [
+        # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
+        # "A_May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
+        # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
+        # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
+        #
+        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        #
+        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        #
+        # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        #
+        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+    ]
 
-        best_loss_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints/best_holdout_predictions.csv",
-        ]
-        best_bauc_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc/best_holdout_predictions.csv",
-        ]
-        best_cauc_h = [
-            "models/Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-            "models/Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16/main/checkpoints_auc_classifier/best_holdout_predictions.csv",
-        ]
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
 
-        import torch.nn.functional as F
+    holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
+    image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
 
-        holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-        quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
+    quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
 
-        test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
-        quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
+    test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
+    quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-        X, y = get_x_y(as_d4_tta(best_loss_h + best_bauc_h + best_cauc_h))
-        print(X.shape, y.shape)
+    x, y = get_x_y(holdout_predictions)
+    print(x.shape, y.shape)
 
-        X_public_lb, _ = get_x_y(as_d4_tta(best_loss + best_bauc + best_cauc))
-        print(X_public_lb.shape)
+    x_test, _ = get_x_y(test_predictions)
+    print(x_test.shape)
 
-        X_train, X_test, y_train, y_test, quality_train, quality_test = train_test_split(
-            X, y, quality_h, stratify=y, test_size=0.20, random_state=1000, shuffle=True
-        )
+    x = np.column_stack([x, quality_h])
+    x_test = np.column_stack([x_test, quality_t])
 
-        sc = PCA(n_components=16)
-        X_train = sc.fit_transform(X_train)
-        X_test = sc.transform(X_test)
-        X_public_lb = sc.transform(X_public_lb)
+    group_kfold = GroupKFold(n_splits=5)
 
-        # sc = StandardScaler()
-        # X_train = sc.fit_transform(X_train)
-        # X_test = sc.transform(X_test)
-        # X_public_lb = sc.transform(X_public_lb)
+    for fold, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
+        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
 
-        X_train = np.column_stack([X_train, quality_train])
-        X_test = np.column_stack([X_test, quality_test])
-        X_public_lb = np.column_stack([X_public_lb, quality_t])
+        classifier1 = LGBMClassifier()
+        classifier1.fit(x_train, y_train)
 
-        # MLP
-        # The AUC of the tuned MLP classifier is 0.936
-        # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': (8,), 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
-        # The AUC of the tuned MLP classifier is 0.935
-        # Best params {'activation': 'logistic', 'alpha': 0.1, 'hidden_layer_sizes': 16, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'solver': 'adam'}
-        classifier1 = MLPClassifier(
-            activation="logistic",
-            alpha=0.1,
-            hidden_layer_sizes=(8,),
-            learning_rate="adaptive",
-            learning_rate_init=0.0001,
-            solver="adam",
-            max_iter=200000,
-        )
-        classifier1.fit(X_train, y_train)
+        classifier2 = CatBoostClassifier()
+        classifier2.fit(x_train, y_train)
 
-        # RF
-        # The AUC of the tuned RF classifier is 0.926
-        # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
-        # The AUC of the tuned RF classifier is 0.924
-        # Best params {'max_depth': 6, 'max_features': 'auto', 'n_estimators': 64}
-        classifier2 = RandomForestClassifier(max_depth=6, max_features="auto", n_estimators=64)
-        classifier2.fit(X_train, y_train)
+        classifier3 = LogisticRegression()
+        classifier3.fit(x_train, y_train)
 
-        # SVC
-        # The AUC of the tuned SVC classifier is 0.937
-        # Best params {'C': 50, 'degree': 2, 'kernel': 'linear'}
-        classifier3 = SVC(probability=True, gamma="auto", C=50, degree=2, kernel="linear")
-        classifier3.fit(X_train, y_train)
+        classifier4 = CalibratedClassifierCV()
+        classifier4.fit(x_train, y_train)
+
+        classifier5 = LinearDiscriminantAnalysis()
+        classifier5.fit(x_train, y_train)
 
         sclf = StackingCVClassifier(
-            classifiers=[classifier1, classifier2, classifier3],
+            classifiers=[classifier1, classifier2, classifier3, classifier4, classifier5],
             shuffle=False,
             use_probas=True,
             cv=5,
             meta_classifier=SVC(probability=True),
         )
 
-        sclf.fit(X_train, y_train)
+        sclf.fit(x_train, y_train)
 
-        classifiers = {"SVC": classifier1, "MLP": classifier2, "NuSVC": classifier3, "Stack": sclf}
+        classifiers = {
+            "LGBMClassifier": classifier1,
+            "CatBoostClassifier": classifier2,
+            "LogisticRegression": classifier3,
+            "CalibratedClassifierCV": classifier4,
+            "LinearDiscriminantAnalysis": classifier5,
+            "Stack": sclf,
+        }
 
         # Get results
         results = pd.DataFrame()
         for key in classifiers:
             # Make prediction on test set
-            y_pred = classifiers[key].predict_proba(X_test)[:, 1]
+            y_pred = classifiers[key].predict_proba(x_valid)[:, 1]
 
             # Save results in pandas dataframe object
             results[f"{key}"] = y_pred
 
         # Add the test set to the results object
-        results["Target"] = y_test
+        results["Target"] = y_valid
 
         # Probability Distributions Figure
         # Set graph style
@@ -236,7 +185,7 @@ def main():
             y_pred = results[key]
 
             # Get AUC
-            auc = alaska_weighted_auc(y_test, y_pred)
+            auc = alaska_weighted_auc(y_valid, y_pred)
             textstr = f"AUC: {auc:.4f}"
 
             # Plot false distribution
@@ -280,7 +229,9 @@ def main():
         plt.tight_layout()
 
         # Save Figure
-        plt.savefig("Probability Distribution for each Classifier.png", dpi=1080)
+        plt.savefig(
+            os.path.join(output_dir, f"Probability Distribution for each Classifier - Fold {fold}.png"), dpi=1080
+        )
 
         # Define parameter grid
         params = {
@@ -301,16 +252,16 @@ def main():
         )
 
         # Fit GridSearchCV
-        grid.fit(X_train, y_train)
+        grid.fit(x_train, y_train)
 
         # Making prediction on test set
-        y_pred = grid.predict_proba(X_test)[:, 1]
+        y_pred = grid.predict_proba(x_valid)[:, 1]
 
         # Getting AUC
-        auc = metrics.roc_auc_score(y_test, y_pred)
+        auc = alaska_weighted_auc(y_valid, y_pred)
 
         # Print results
-        print(f"The AUC of the tuned Stacking classifier is {auc:.4f}")
+        print(f"The AUC of the tuned Stacking classifier - fold {fold} is {auc:.4f}")
 
 
 if __name__ == "__main__":

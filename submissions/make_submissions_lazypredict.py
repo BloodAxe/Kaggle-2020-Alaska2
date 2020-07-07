@@ -1,65 +1,30 @@
-import pandas as pd
-import numpy as np
 import torch
 from pytorch_toolbelt.utils import fs
-from xgboost import XGBClassifier
-import torch.nn.functional as F
-
-from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
-from submissions.ela_skresnext50_32x4d import *
-from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum
-from alaska2.submissions import (
-    submit_from_classifier_calibrated,
-    submit_from_average_classifier,
-    blend_predictions_ranked,
-    make_classifier_predictions,
-    make_classifier_predictions_calibrated,
-    make_binary_predictions,
-    make_binary_predictions_calibrated,
-    blend_predictions_mean,
-    as_hv_tta,
-    as_d4_tta,
-    classifier_probas,
-    sigmoid,
-    parse_array,
-)
-from alaska2.metric import alaska_weighted_auc
 import os
-from sklearn.model_selection import train_test_split, GroupKFold
-from sklearn.naive_bayes import GaussianNB
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, make_scorer
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler, RobustScaler
+# Used to ignore warnings generated from StackingCVClassifier
+import warnings
 
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import itertools
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_classification
-from sklearn import model_selection
-from sklearn.model_selection import train_test_split, GridSearchCV
+import torch
+import torch.nn.functional as F
+from lazypredict.Supervised import LazyClassifier
+from pytorch_toolbelt.utils import fs
+from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn import metrics
+
+from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
+from alaska2.metric import alaska_weighted_auc
+from alaska2.submissions import (
+    classifier_probas,
+    sigmoid,
+    parse_array,
+)
+from submissions.eval_tta import get_predictions_csv
+from submissions.make_submissions_averaging import compute_checksum
 
 # Classifiers
-from sklearn.svm import NuSVC, SVC
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
-from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
-
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-import xgboost as xgb
-from lazypredict.Supervised import LazyClassifier
 
 warnings.simplefilter("ignore")
 

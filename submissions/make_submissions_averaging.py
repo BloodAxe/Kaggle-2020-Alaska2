@@ -41,7 +41,7 @@ def compute_checksum_v2(fnames: List[str]):
             .replace("tf_efficientnet_b3_ns", "B3")
             .replace("tf_efficientnet_b6_ns", "B6")
             .replace("tf_efficientnet_b7_ns", "B7")
-            .replace("__","_")
+            .replace("__", "_")
         )
         return x
 
@@ -63,91 +63,50 @@ def main():
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
-        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        # TODO: Compute holdout
         # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
     ]
 
     if True:
-        for metric in [  # "loss",
+        for metric in [
+            # "loss",
             # "bauc",
-            "cauc"
-        ]:
+            "cauc"]:
             predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
-            oof_predictions_d4 = get_predictions_csv(experiments, metric, "oof", "d4")
+            oof_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
 
             bin_pred_d4 = make_binary_predictions(predictions_d4)
             cls_pred_d4 = make_classifier_predictions(predictions_d4)
-            y_true = bin_pred_d4[0].y_true.values
 
             bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
             cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
 
-            # print(metric, "Mean", "Bin", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4).Label))
+            y_true = bin_pred_d4[0].y_true.values
+
+            print(metric, "Bin NC", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4).Label))
+            print(metric, "Bin CL", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4_cal).Label))
+            print(metric, "Cls NC", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4).Label))
+            print(metric, "Cls CL", "d4", alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label))
+
+            from sklearn.isotonic import IsotonicRegression as IR
 
             blend_cls_d4 = blend_predictions_mean(cls_pred_d4)
 
-            print(metric, "Mean", "Cls", "d4", alaska_weighted_auc(y_true, blend_cls_d4.Label))
+            ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
+            y_pred_raw = blend_cls_d4.Label.values
+            c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
+            y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
+            c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
 
-            # from sklearn.isotonic import IsotonicRegression as IR
-
-            # ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
-            # y_pred_raw = blend_cls_d4.Label.values
-            # c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
-
-            # import numpy as np
-            # order = np.argsort(y_pred_raw)
-
-            # y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
-            # c_auc_after = alaska_weighted_auc(y_true[order], y_pred_cal)
-
-            # print(metric, "Calibrated after blend", c_auc_before, c_auc_after)
-            # import matplotlib.pyplot as plt
-            # plt.figure()
-            # plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
-            # plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
-            # plt.yscale("log")
-            # plt.legend()
-            # plt.show()
-
-            # print(metric,
-            #     "Mean",
-            #     "Bin cal.",
-            #     "d4",
-            #     alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4_cal).Label),
-            # )
-            print(
-                metric,
-                "Mean",
-                "Cls cal.",
-                "d4",
-                alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label),
-            )
-
-            # cls_pred = make_classifier_predictions(predictions)
-            # cls_pred_hv = make_classifier_predictions(predictions_hv)
-            # cls_pred_d4 = make_classifier_predictions(predictions_d4)
-            # blend_classifier_ranked = blend_predictions_ranked(cls_pred)
-            # blend_classifier_ranked_hv = blend_predictions_ranked(cls_pred_hv)
-            # blend_classifier_ranked_d4 = blend_predictions_ranked(cls_pred_d4)
-            # print(metric, "Ranked", "Classifier", "  ", alaska_weighted_auc(y_true, blend_classifier_ranked.Label))
-            # print(metric, "Ranked", "Classifier", "hv", alaska_weighted_auc(y_true, blend_classifier_ranked_hv.Label))
-            # print(metric, "Ranked", "Classifier", "d4", alaska_weighted_auc(y_true, blend_classifier_ranked_d4.Label))
-
-            # blend_both_mean = blend_predictions_mean(cls_pred + binary_predictions)
-            # blend_both_mean_hv = blend_predictions_mean(cls_pred_hv + binary_predictions_hv)
-            # blend_both_mean_d4 = blend_predictions_mean(cls_pred_d4 + binary_predictions_d4)
-            # print(metric, "Mean", "Both", "  ", alaska_weighted_auc(y_true, blend_both_mean.Label))
-            # print(metric, "Mean", "Both", "hv", alaska_weighted_auc(y_true, blend_both_mean_hv.Label))
-            # print(metric, "Mean", "Both", "d4", alaska_weighted_auc(y_true, blend_both_mean_d4.Label))
+            print(metric, "Calibrated after blend", c_auc_before, c_auc_after)
 
     # TODO: Make automatic
     # test_predictions_d4 = get_predictions_csv(experiments, "loss", "test", "d4")

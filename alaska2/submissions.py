@@ -125,15 +125,15 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
                 test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
             )
         else:
-            test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
-                test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
-            )
+            # test_predictions[OUTPUT_PRED_MODIFICATION_FLAG] = ir_flag.transform(
+            #     test_predictions[OUTPUT_PRED_MODIFICATION_FLAG].values
+            # )
 
             warnings.warn(f"Failed to train IR flag {b_auc_before} {b_auc_after}")
 
             plt.figure()
-            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"calibrated {b_auc_after}")
-            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"non-calibrated {b_auc_before}")
+            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {b_auc_after}")
+            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {b_auc_before}")
             plt.yscale("log")
             plt.legend()
             plt.show()
@@ -149,26 +149,26 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
                 test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
             )
 
-            plt.figure()
-            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
-            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
-            plt.yscale("log")
-            plt.legend()
-            plt.show()
+            # plt.figure()
+            # plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
+            # plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
+            # plt.yscale("log")
+            # plt.legend()
+            # plt.show()
         else:
-            test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
-                test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
-            )
+            # test_predictions[OUTPUT_PRED_MODIFICATION_TYPE] = ir_type.transform(
+            #     test_predictions[OUTPUT_PRED_MODIFICATION_TYPE].values
+            # )
 
             warnings.warn(f"Failed to train IR on type {c_auc_before} {c_auc_after}")
 
 
-            plt.figure()
-            plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
-            plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
-            plt.yscale("log")
-            plt.legend()
-            plt.show()
+            # plt.figure()
+            # plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
+            # plt.hist(y_pred_cal, alpha=0.5, bins=100, label=f"calibrated {c_auc_after}")
+            # plt.yscale("log")
+            # plt.legend()
+            # plt.show()
 
     results = {
         "b_auc_before": b_auc_before,
