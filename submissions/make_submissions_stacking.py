@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import torch
 import os
 
@@ -18,21 +20,25 @@ from mlxtend.classifier import StackingCVClassifier  # <- Here is our boy
 from pytorch_toolbelt.utils import fs
 from sklearn import metrics
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV, GroupKFold
 from sklearn.neural_network import MLPClassifier
 
 # Classifiers
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum
+from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
 
 warnings.simplefilter("ignore")
 
@@ -113,22 +119,27 @@ def main():
 
     group_kfold = GroupKFold(n_splits=5)
 
+    df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
+    auc_cv = []
+
     for fold, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
 
-        classifier1 = LGBMClassifier()
+        classifier1 = Pipeline(steps=[("preprocessor", StandardScaler()), ("classifier", LGBMClassifier())])
         classifier1.fit(x_train, y_train)
 
-        classifier2 = CatBoostClassifier()
+        classifier2 = Pipeline(steps=[("preprocessor", StandardScaler()), ("classifier", CatBoostClassifier())])
         classifier2.fit(x_train, y_train)
 
-        classifier3 = LogisticRegression()
+        classifier3 = Pipeline(steps=[("preprocessor", StandardScaler()), ("classifier", LogisticRegression())])
         classifier3.fit(x_train, y_train)
 
-        classifier4 = CalibratedClassifierCV()
+        classifier4 = Pipeline(steps=[("preprocessor", StandardScaler()), ("classifier", CalibratedClassifierCV())])
         classifier4.fit(x_train, y_train)
 
-        classifier5 = LinearDiscriminantAnalysis()
+        classifier5 = Pipeline(
+            steps=[("preprocessor", StandardScaler()), ("classifier", LinearDiscriminantAnalysis())]
+        )
         classifier5.fit(x_train, y_train)
 
         sclf = StackingCVClassifier(
@@ -158,6 +169,7 @@ def main():
 
             # Save results in pandas dataframe object
             results[f"{key}"] = y_pred
+            print(fold, key, alaska_weighted_auc(y_valid, y_pred))
 
         # Add the test set to the results object
         results["Target"] = y_valid
@@ -180,7 +192,7 @@ def main():
         # Plot
         f, ax = plt.subplots(figsize=(13, 4), nrows=1, ncols=5)
 
-        for key, counter in zip(classifiers, range(5)):
+        for key, counter in zip(classifiers, range(len(sclf))):
             # Get predictions
             y_pred = results[key]
 
@@ -259,9 +271,20 @@ def main():
 
         # Getting AUC
         auc = alaska_weighted_auc(y_valid, y_pred)
+        auc_cv.append(auc)
 
         # Print results
         print(f"The AUC of the tuned Stacking classifier - fold {fold} is {auc:.4f}")
+
+        df["Label_" + str(fold)] = grid.predict_proba(x_test)[:, 1]
+
+    df["Label"] = np.mean(
+        [df["Label_0"].values, df["Label_1"].values, df["Label_2"].values, df["Label_3"].values, df["Label_4"].values]
+    )
+    df.to_csv(
+        os.path.join(output_dir, f"stacking_{np.mean(auc_cv):.4f}_{compute_checksum_v2(test_predictions)}.csv"),
+        index=False,
+    )
 
 
 if __name__ == "__main__":
