@@ -2,10 +2,12 @@ import os
 
 # Used to ignore warnings generated from StackingCVClassifier
 import os
+
 # Used to ignore warnings generated from StackingCVClassifier
 import warnings
 
 import matplotlib.pyplot as plt
+
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
@@ -20,6 +22,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupKFold
+
 # Classifiers
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -76,7 +79,7 @@ def main():
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -138,7 +141,7 @@ def main():
             shuffle=False,
             use_probas=True,
             cv=5,
-            meta_classifier=SVC(probability=True),
+            meta_classifier=SVC(degree=2, probability=True),
         )
 
         sclf.fit(x_train, y_train, image_ids[train_index])
@@ -183,7 +186,7 @@ def main():
         # Plot
         f, ax = plt.subplots(figsize=(13, 4), nrows=1, ncols=5)
 
-        for key, counter in zip(classifiers, range(len(sclf))):
+        for key, counter in zip(classifiers, range(len(classifiers))):
             # Get predictions
             y_pred = results[key]
 
