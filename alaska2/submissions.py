@@ -330,6 +330,32 @@ def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFram
     return preds_df
 
 
+def make_product_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
+    """
+    Make predictions by multiplying binary and multiclass predictions
+    """
+    preds_df = []
+    for x in test_predictions:
+        df = pd.read_csv(x)
+        df = df.rename(columns={"image_id": "Id"})
+        df["Label"] = df["pred_modification_type"].apply(classifier_probas) * df["pred_modification_flag"].apply(
+            sigmoid
+        )
+
+        keys = ["Id", "Label"]
+        if "true_modification_flag" in df:
+            df["y_true"] = df["true_modification_flag"].astype(int)
+            keys.append("y_true")
+
+        if "true_modification_type" in df:
+            df["y_true_type"] = df["true_modification_type"].astype(int)
+            keys.append("y_true_type")
+
+        preds_df.append(df[keys])
+
+    return preds_df
+
+
 def make_classifier_predictions_calibrated(
     test_predictions: List[str], oof_predictions: List[str], print_results=False
 ) -> List[pd.DataFrame]:

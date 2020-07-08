@@ -14,6 +14,7 @@ from alaska2.submissions import (
     make_binary_predictions,
     make_binary_predictions_calibrated,
     blend_predictions_mean,
+    make_product_predictions,
 )
 from submissions.eval_tta import get_predictions_csv
 
@@ -128,22 +129,20 @@ def main():
         cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
         cls_pred_d4_cal_score = alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
 
+        prod_pred_d4_cal_score = alaska_weighted_auc(
+            y_true, blend_predictions_mean(cls_pred_d4_cal).Label * blend_predictions_mean(bin_pred_d4_cal).Label
+        )
+
         print(metric, "Bin NC", "d4", bin_pred_d4_score)
         print(metric, "Bin CL", "d4", cls_pred_d4_score)
         print(metric, "Cls NC", "d4", bin_pred_d4_cal_score)
         print(metric, "Cls CL", "d4", cls_pred_d4_cal_score)
+        print(metric, "Prod  ", "d4", prod_pred_d4_cal_score)
 
-        blend_cls_d4 = blend_predictions_mean(cls_pred_d4)
+        max_score = max(
+            bin_pred_d4_score, cls_pred_d4_score, bin_pred_d4_cal_score, cls_pred_d4_cal_score, prod_pred_d4_cal_score
+        )
 
-        ir_type = IR(out_of_bounds="clip", y_min=0, y_max=1)
-        y_pred_raw = blend_cls_d4.Label.values
-        c_auc_before = alaska_weighted_auc(y_true, y_pred_raw)
-        y_pred_cal = ir_type.fit_transform(y_pred_raw, y_true)
-        c_auc_after = alaska_weighted_auc(y_true, y_pred_cal)
-
-        print(metric, "Calibrated after blend", c_auc_before, c_auc_after)
-
-        max_score = max(bin_pred_d4_score, cls_pred_d4_score, bin_pred_d4_cal_score, cls_pred_d4_cal_score)
         if bin_pred_d4_score == max_score:
             predictions = make_binary_predictions(test_predictions_d4)
 
@@ -177,6 +176,21 @@ def main():
             predictions.to_csv(
                 os.path.join(
                     output_dir, f"mean_{max_score:.4f}_cls_cal_{compute_checksum_v2(fnames_for_checksum)}.csv"
+                ),
+                index=False,
+            )
+        if prod_pred_d4_cal_score == max_score:
+            cls_predictions = make_classifier_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
+            bin_predictions = make_binary_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
+
+            predictions1 = blend_predictions_mean(cls_predictions)
+            predictions2 = blend_predictions_mean(bin_predictions)
+            predictions = predictions1.copy()
+            predictions.Label = predictions1.Label * predictions2.Label
+
+            predictions.to_csv(
+                os.path.join(
+                    output_dir, f"mean_{max_score:.4f}_prod_cal_{compute_checksum_v2(fnames_for_checksum)}.csv"
                 ),
                 index=False,
             )

@@ -8,9 +8,10 @@ from alaska2.submissions import (
     make_classifier_predictions,
     blend_predictions_mean,
     parse_and_softmax,
+    make_product_predictions,
+    make_binary_predictions,
 )
 from submissions.eval_tta import get_predictions_csv
-# Used to ignore warnings generated from StackingCVClassifier
 from submissions.make_submissions_averaging import evaluate_wauc_shakeup_using_bagging
 
 
@@ -18,17 +19,17 @@ def main():
     output_dir = os.path.dirname(__file__)
 
     experiments = [
+        # A models trained on old folds without holdout, so it will have a leak if evaluated.
         # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
         # "A_May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
         # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
         # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -37,7 +38,7 @@ def main():
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
@@ -55,7 +56,6 @@ def main():
 
     classes = np.mean(classes, axis=0)
 
-
     print("Class distribution", np.bincount(classes.argmax(axis=1)))
 
     plt.figure()
@@ -68,7 +68,7 @@ def main():
     plt.show()
 
     holdout_predictions_d4 = get_predictions_csv(experiments, "cauc", "holdout", "d4")
-    holdout_predictions_d4 = make_classifier_predictions(holdout_predictions_d4)
+    holdout_predictions_d4 = make_product_predictions(holdout_predictions_d4)
     y_true_type = holdout_predictions_d4[0].y_true_type
 
     holdout_predictions_d4 = blend_predictions_mean(holdout_predictions_d4)
