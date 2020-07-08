@@ -3,7 +3,7 @@ import warnings
 
 import pandas as pd
 import torch
-from pytorch_toolbelt.utils import logit, fs
+from pytorch_toolbelt.utils import logit, fs, to_numpy
 from typing import List, Union
 import numpy as np
 from scipy.stats import rankdata
@@ -62,6 +62,13 @@ def parse_array(x):
     x = x.replace("[", "").replace("]", "").split(",")
     x = [float(i) for i in x]
     return x
+
+
+def parse_and_softmax(x):
+    x = x.replace("[", "").replace("]", "").split(",")
+    x = [float(i) for i in x]
+    x = torch.tensor(x).softmax(dim=0)
+    return to_numpy(x)
 
 
 def classifier_probas(x):
@@ -161,7 +168,6 @@ def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_t
             # )
 
             warnings.warn(f"Failed to train IR on type {c_auc_before} {c_auc_after}")
-
 
             # plt.figure()
             # plt.hist(y_pred_raw, alpha=0.5, bins=100, label=f"non-calibrated {c_auc_before}")
@@ -277,6 +283,10 @@ def make_binary_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
             df["y_true"] = df["true_modification_flag"].astype(int)
             keys.append("y_true")
 
+        if "true_modification_type" in df:
+            df["y_true_type"] = df["true_modification_type"].astype(int)
+            keys.append("y_true_type")
+
         preds_df.append(df[keys])
 
     return preds_df
@@ -310,6 +320,10 @@ def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFram
         if "true_modification_flag" in df:
             df["y_true"] = df["true_modification_flag"].astype(int)
             keys.append("y_true")
+
+        if "true_modification_type" in df:
+            df["y_true_type"] = df["true_modification_type"].astype(int)
+            keys.append("y_true_type")
 
         preds_df.append(df[keys])
 

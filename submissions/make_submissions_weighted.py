@@ -1,4 +1,5 @@
 import os
+
 # Used to ignore warnings generated from StackingCVClassifier
 import warnings
 from functools import partial
@@ -6,16 +7,14 @@ from functools import partial
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
+
 # Classifiers
 import scipy as sp
 from scipy.optimize import Bounds
 from scipy.special import softmax
 
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import (
-    classifier_probas,
-    sigmoid,
-)
+from alaska2.submissions import classifier_probas, sigmoid
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum
 
@@ -96,9 +95,12 @@ def main():
 
     x_test_pred = (np.expand_dims(best_coef, 0) * X_public_lb).sum(axis=1)
 
+    submit_fname = os.path.join(output_dir, f"wmean_{np.mean(auc):.4f}_{checksum}.csv")
+
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = x_test_pred
-    df[["Id", "Label"]].to_csv(os.path.join(output_dir, f"{checksum}_weighted_{auc:.4f}.csv"), index=False)
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
+    print("Saved submission to ", submit_fname)
 
 
 if __name__ == "__main__":

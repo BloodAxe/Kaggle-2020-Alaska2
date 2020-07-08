@@ -30,6 +30,38 @@ def compute_checksum(*input):
     return hashlib.md5(str_object.encode("utf-8")).hexdigest()
 
 
+import pandas as pd
+
+
+def evaluate_wauc_shakeup_using_bagging(oof_predictions: pd.DataFrame, y_true_type, n):
+    wauc = []
+
+    distribution = [3500, 500, 500, 500]
+
+    oof_predictions = oof_predictions.copy()
+    oof_predictions["y_true_type"] = y_true_type
+    oof_predictions["y_true"] = y_true_type > 0
+
+    cover = oof_predictions[oof_predictions["y_true_type"] == 0]
+    juni = oof_predictions[oof_predictions["y_true_type"] == 1]
+    jimi = oof_predictions[oof_predictions["y_true_type"] == 2]
+    uerd = oof_predictions[oof_predictions["y_true_type"] == 3]
+
+    for _ in range(n):
+        bagging_df = pd.concat(
+            [
+                cover.sample(distribution[0]),
+                juni.sample(distribution[1]),
+                jimi.sample(distribution[2]),
+                uerd.sample(distribution[3]),
+            ]
+        )
+        auc = alaska_weighted_auc(bagging_df["y_true"], bagging_df["Label"])
+        wauc.append(auc)
+
+    return wauc
+
+
 def compute_checksum_v2(fnames: List[str]):
     def sanitize_fname(x):
         x = fs.id_from_fname(x)
