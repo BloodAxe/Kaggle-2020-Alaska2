@@ -17,7 +17,7 @@ from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
+from submissions.make_submissions_averaging import compute_checksum_v2
 
 import lightgbm as lgb
 
@@ -40,6 +40,13 @@ def get_x_y(predictions):
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
 
         if "pred_modification_type_tta" in p:
             X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
@@ -67,12 +74,11 @@ def main():
         # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
         # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -82,11 +88,15 @@ def main():
         "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        #
+        "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-
     fnames_for_checksum = [x + f"cauc" for x in experiments]
     checksum = compute_checksum_v2(fnames_for_checksum)
 
@@ -104,13 +114,14 @@ def main():
     x_test, _ = get_x_y(test_predictions)
     print(x_test.shape)
 
-    if False:
+    if True:
         sc = StandardScaler()
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
-    x = np.column_stack([x, quality_h])
-    x_test = np.column_stack([x_test, quality_t])
+    if True:
+        x = np.column_stack([x, quality_h])
+        x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
 
@@ -127,7 +138,6 @@ def main():
         boosting_type="gbdt",
         objective="binary",
         num_boost_round=2000,
-        learning_rate=0.01,
         # metric=wauc_metric,
     )
 
@@ -160,7 +170,7 @@ def main():
     print("\n Best hyperparameters:")
     print(random_search.best_params_)
     results = pd.DataFrame(random_search.cv_results_)
-    results.to_csv("lgb-random-grid-search-results-01.csv", index=False)
+    results.to_csv("lgbm-random-grid-search-results-01.csv", index=False)
 
     # print(model.feature_importances_)
 

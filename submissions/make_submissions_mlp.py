@@ -7,22 +7,18 @@ import warnings
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
-from sklearn.model_selection import GroupKFold
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import GroupKFold, RandomizedSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
-import torch.nn.functional as F
-
-# Classifiers
-
-warnings.simplefilter("ignore")
 
 
 def get_x_y(predictions):
@@ -40,6 +36,14 @@ def get_x_y(predictions):
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
 
         if "pred_modification_type_tta" in p:
             X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
@@ -117,9 +121,10 @@ def main():
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
-        print(np.bincount(y_train), np.bincount(y_valid))
 
-        cls = MLPClassifier(activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), max_iter=10000)
+        cls = MLPClassifier(
+            activation="relu", alpha=0.2, learning_rate="adaptive", hidden_layer_sizes=(32, 32, 16), max_iter=10000
+        )
 
         cls.fit(x_train, y_train)
 
@@ -149,19 +154,17 @@ if __name__ == "__main__":
 
 def train_mlp(X_train, y_train, X_test, y_test):
     parameters = {
-        "learning_rate": ["adaptive"],
-        "solver": ["adam"],
-        "hidden_layer_sizes": [(8,), (32), (32, 16)],
+        "learning_rate": ["adaptive", "constant"],
+        "solver": ["adam", "sgd"],
+        "hidden_layer_sizes": [(8,), (32,), (32, 16)],
         "alpha": [0.01, 0.1],
         "learning_rate_init": [1e-5, 1e-4],
         "activation": ["logistic", "relu"],
     }
 
-    grid = GridSearchCV(
-        estimator=MLPClassifier(
-            activation="relu", alpha=0.2, hidden_layer_sizes=(32, 32, 16), learning_rate="constant", max_iter=10000
-        ),
-        param_grid=parameters,
+    grid = RandomizedSearchCV(
+        estimator=MLPClassifier(max_iter=10000),
+        param_distributions=parameters,
         cv=5,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         verbose=10,
@@ -182,7 +185,3 @@ def train_mlp(X_train, y_train, X_test, y_test):
     print("Best params", grid.best_params_)
 
     return grid, auc
-
-
-if __name__ == "__main__":
-    main()

@@ -84,7 +84,8 @@ def main():
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    checksum = compute_checksum_v2(experiments)
+    fnames_for_checksum = [x + f"cauc" for x in experiments]
+    checksum = compute_checksum_v2(fnames_for_checksum)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -164,11 +165,10 @@ def main():
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
+    submit_fname = os.path.join(output_dir, f"xgb_cls_{np.mean(cv_scores):.4f}_{checksum}_.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
-    df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"{checksum}_xgb_cls_cv_{np.mean(cv_scores):.4f}.csv"), index=False
-    )
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
 
 
 if __name__ == "__main__":
