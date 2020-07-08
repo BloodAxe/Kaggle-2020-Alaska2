@@ -3,16 +3,15 @@ import math
 import os
 import random
 from typing import Tuple, Optional, Union, List
-import pandas as pd
 
 import albumentations as A
 import cv2
 import numpy as np
+import pandas as pd
 import torch
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
-from torch.utils.data import Dataset, WeightedRandomSampler, ConcatDataset
-from torch.nn import functional as F
+from torch.utils.data import Dataset, ConcatDataset
 
 INPUT_IMAGE_KEY = "image"
 INPUT_FEATURES_ELA_KEY = "input_ela"
@@ -102,7 +101,7 @@ __all__ = [
 
 
 def compute_dct_fast(jpeg_file):
-    from jpeg2dct.numpy import load, loads
+    from jpeg2dct.numpy import load
 
     dct_y, dct_cb, dct_cr = load(jpeg_file)
     return dct_y, dct_cb, dct_cr
@@ -338,6 +337,7 @@ def block8_sum(a: np.ndarray):
     a = a.sum(axis=(1, 3))
     return a
 
+
 class TrainingValidationDataset(Dataset):
     def __init__(
         self,
@@ -405,7 +405,7 @@ class TrainingValidationDataset(Dataset):
                 # Mask handling requires some special attention
                 if key == INPUT_TRUE_MODIFICATION_MASK:
                     value = np.expand_dims(block8_sum(value) > 0, -1).astype(np.float32)
-                    
+
                 sample[key] = tensor_from_rgb_image(value)
 
         return sample
@@ -509,6 +509,7 @@ class PairedImageDataset(Dataset):
             INPUT_IMAGE_QF_KEY: torch.tensor([qf, qf]),
         }
 
+        # TODO: Add support of mask if this idea will work
         for key, value in cover_data.items():
             if key in self.features:
                 sample[key] = torch.stack(

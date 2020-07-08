@@ -60,6 +60,7 @@ def main():
     )
     parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--feature-maps-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
+    parser.add_argument("--mask-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -111,6 +112,7 @@ def main():
     modification_type_loss = args.modification_type_loss
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
+    mask_loss = args.mask_loss
 
     data_dir = args.data_dir
     bitmix = args.bitmix
@@ -150,6 +152,9 @@ def main():
 
     model: nn.Module = get_model(model_name, dropout=dropout).cuda()
     required_features = model.required_features
+
+    if mask_loss is not None:
+        required_features.append(INPUT_TRUE_MODIFICATION_MASK)
 
     if args.transfer:
         transfer_checkpoint = fs.auto_file(args.transfer)
@@ -216,6 +221,7 @@ def main():
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
+            mask_loss=mask_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -294,6 +300,7 @@ def main():
         print("  Type           :", modification_type_loss)
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
+        print("  Mask           :", mask_loss)
         print("Distributed")
         print("  World size  :", args.world_size)
         print("  Local rank  :", args.local_rank)

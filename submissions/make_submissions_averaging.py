@@ -41,9 +41,8 @@ def compute_checksum_v2(fnames: List[str]):
             .replace("tf_efficientnet_b3_ns", "B3")
             .replace("tf_efficientnet_b6_ns", "B6")
             .replace("tf_efficientnet_b7_ns", "B7")
-            .replace("__", "_")
         )
-        x = re.sub(r"\w{3}\d{2}_\d{2}_\d{2}", "", x).replace("__", "_")
+        x = re.sub(r"\w{3}\d{2}_\d{2}_\d{2}", "", x).replace("_", "")
         return x
 
     fnames = [sanitize_fname(x) for x in fnames]
@@ -68,7 +67,7 @@ def main():
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",

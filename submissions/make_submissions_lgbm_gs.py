@@ -10,15 +10,14 @@ import torch
 import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
 from sklearn.metrics import make_scorer
-from sklearn.model_selection import GroupKFold
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GroupKFold, RandomizedSearchCV, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum
+from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
 
 import lightgbm as lgb
 
@@ -73,7 +72,7 @@ def main():
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -87,7 +86,9 @@ def main():
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    checksum = compute_checksum(test_predictions)
+
+    fnames_for_checksum = [x + f"cauc" for x in experiments]
+    checksum = compute_checksum_v2(fnames_for_checksum)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -130,9 +131,9 @@ def main():
         # metric=wauc_metric,
     )
 
-    random_search = GridSearchCV(
+    random_search = RandomizedSearchCV(
         lgb_estimator,
-        param_grid=params,
+        param_distributions=params,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         n_jobs=4,
         cv=group_kfold.split(x, y, groups=image_ids),
@@ -148,7 +149,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"{checksum}_lgb_gs_cv_{random_search.best_score_:.4f}.csv"), index=False
+        os.path.join(output_dir, f"lgbm_gs_{random_search.best_score_:.4f}_{checksum}.csv"), index=False
     )
 
     print("\n All results:")

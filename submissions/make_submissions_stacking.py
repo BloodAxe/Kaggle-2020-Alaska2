@@ -116,7 +116,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     auc_cv = []
 
-    for fold, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
+    for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
 
         classifier1 = Pipeline(steps=[("preprocessor", StandardScaler()), ("classifier", LGBMClassifier())])
@@ -141,7 +141,8 @@ def main():
             shuffle=False,
             use_probas=True,
             cv=5,
-            meta_classifier=SVC(degree=2, probability=True),
+            # meta_classifier=SVC(degree=2, probability=True),
+            meta_classifier=LogisticRegression(solver="lbfgs"),
         )
 
         sclf.fit(x_train, y_train, image_ids[train_index])
@@ -163,7 +164,7 @@ def main():
 
             # Save results in pandas dataframe object
             results[f"{key}"] = y_pred
-            print(fold, key, alaska_weighted_auc(y_valid, y_pred))
+            print(fold_index, key, alaska_weighted_auc(y_valid, y_pred))
 
         # Add the test set to the results object
         results["Target"] = y_valid
@@ -184,7 +185,7 @@ def main():
         )
 
         # Plot
-        f, ax = plt.subplots(figsize=(13, 4), nrows=1, ncols=5)
+        f, ax = plt.subplots(figsize=(13, 4), nrows=1, ncols=len(classifiers))
 
         for key, counter in zip(classifiers, range(len(classifiers))):
             # Get predictions
@@ -236,7 +237,7 @@ def main():
 
         # Save Figure
         plt.savefig(
-            os.path.join(output_dir, f"Probability Distribution for each Classifier - Fold {fold}.png"), dpi=1080
+            os.path.join(output_dir, f"Probability Distribution for each Classifier - Fold {fold_index}.png"), dpi=1080
         )
 
         # Making prediction on test set
@@ -247,9 +248,9 @@ def main():
         auc_cv.append(auc)
 
         # Print results
-        print(f"The AUC of the tuned Stacking classifier - fold {fold} is {auc:.4f}")
+        print(f"The AUC of the tuned Stacking classifier - fold {fold_index} is {auc:.4f}")
 
-        df["Label_" + str(fold)] = sclf.predict_proba(x_test)[:, 1]
+        df["Label_" + str(fold_index)] = sclf.predict_proba(x_test)[:, 1]
 
     df["Label"] = np.mean(
         [df["Label_0"].values, df["Label_1"].values, df["Label_2"].values, df["Label_3"].values, df["Label_4"].values]

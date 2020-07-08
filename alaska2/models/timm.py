@@ -334,6 +334,29 @@ def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0):
     mean = encoder.default_cfg["mean"]
     std = encoder.default_cfg["std"]
 
+    if pretrained:
+        from torch.utils import model_zoo
+
+        src_state_dict = model_zoo.load_url(
+            "https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mixnet_xl_ra-aac3c00c.pth"
+        )
+        dst_state_dict = encoder.state_dict()
+
+        for key, dst_tensor in dst_state_dict.items():
+            dst_tensor_size = dst_tensor.size()
+            if key in src_state_dict:
+                src_tensor = src_state_dict[key]
+                src_tensor_size = src_tensor.size()
+                # If shape of tensors does not match, we pad necessary with random weights
+                if src_tensor_size != dst_tensor_size:
+                    assert len(src_tensor_size) == len(dst_tensor_size)
+                    old = src_state_dict[key]
+                    src_state_dict[key] = dst_tensor.clone()
+                    slice_size = [slice(0, src_size) for src_size, dst_size in zip(src_tensor_size, dst_tensor_size)]
+                    src_state_dict[key][slice_size] = old
+
+        encoder.load_state_dict(src_state_dict, strict=False)
+
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
