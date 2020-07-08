@@ -181,7 +181,7 @@ def main():
     main_metric_minimize = True
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
-    checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}_local_rank_{args.local_rank}"
+    checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}_paired_local_rank_{args.local_rank}"
 
     if fp16:
         checkpoint_prefix += "_fp16"
@@ -213,7 +213,12 @@ def main():
 
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fast=fast, fold=fold, features=required_features
+            data_dir=data_dir,
+            bitmix=bitmix,
+            augmentation=augmentations,
+            fast=fast,
+            fold=fold,
+            features=required_features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
