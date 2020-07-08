@@ -119,6 +119,7 @@ def main():
     modification_type_loss = args.modification_type_loss
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
+    mask_loss = args.mask_loss
 
     data_dir = args.data_dir
     bitmix = args.bitmix
@@ -155,6 +156,9 @@ def main():
     model: nn.Module = get_model(model_name, dropout=dropout).cuda()
     required_features = model.required_features
 
+    if mask_loss is not None:
+        required_features.append(INPUT_TRUE_MODIFICATION_MASK)
+
     if args.transfer:
         transfer_checkpoint = fs.auto_file(args.transfer)
         print("Transferring weights from model checkpoint", transfer_checkpoint)
@@ -180,7 +184,7 @@ def main():
     main_metric_minimize = True
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
-    checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}"
+    checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}_paired"
 
     if fp16:
         checkpoint_prefix += "_fp16"
@@ -225,6 +229,7 @@ def main():
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
+            mask_loss=mask_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -337,5 +342,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # with torch.autograd.detect_anomaly():
     main()
