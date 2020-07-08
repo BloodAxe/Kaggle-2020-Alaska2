@@ -32,9 +32,9 @@ def paired_collate(input):
 
     input[INPUT_IMAGE_ID_KEY] = list(itertools.chain(*zip(*input[INPUT_IMAGE_ID_KEY])))
     input[INPUT_IMAGE_ID_KEY] = np.array(input[INPUT_IMAGE_ID_KEY])
-    input[INPUT_IMAGE_ID_KEY] = np.concatenate([
-        input[INPUT_IMAGE_ID_KEY][0::2],
-        input[INPUT_IMAGE_ID_KEY][1::2]]).tolist()
+    input[INPUT_IMAGE_ID_KEY] = np.concatenate(
+        [input[INPUT_IMAGE_ID_KEY][0::2], input[INPUT_IMAGE_ID_KEY][1::2]]
+    ).tolist()
 
     for feature_key in [
         INPUT_TRUE_MODIFICATION_FLAG,
@@ -44,6 +44,7 @@ def paired_collate(input):
         INPUT_FEATURES_DCT_KEY,
         INPUT_FEATURES_ELA_KEY,
         INPUT_FEATURES_ELA_RICH_KEY,
+        INPUT_FEATURES_JPEG_FLOAT,
     ]:
         if feature_key in input:
             input[feature_key] = torch.cat([input[feature_key][:, 0, ...], input[feature_key][:, 1, ...]], dim=0)
@@ -211,7 +212,12 @@ def main():
 
     if run_train:
         train_ds, valid_ds, train_sampler = get_datasets_paired(
-            data_dir=data_dir, bitmix=bitmix, augmentation=augmentations, fast=fast, fold=fold, features=required_features
+            data_dir=data_dir,
+            bitmix=bitmix,
+            augmentation=augmentations,
+            fast=fast,
+            fold=fold,
+            features=required_features,
         )
 
         criterions_dict, loss_callbacks = get_criterions(
