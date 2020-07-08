@@ -21,15 +21,6 @@ from submissions.eval_tta import get_predictions_csv
 # Used to ignore warnings generated from StackingCVClassifier
 
 
-def compute_checksum(*input):
-    object_to_serialize = dict((f"input_{i}", x) for i, x in enumerate(input))
-    str_object = json.dumps(object_to_serialize)
-
-    import hashlib
-
-    return hashlib.md5(str_object.encode("utf-8")).hexdigest()
-
-
 import pandas as pd
 
 
@@ -69,10 +60,11 @@ def compute_checksum_v2(fnames: List[str]):
             x.replace("fp16", "")
             .replace("fold", "f")
             .replace("local_rank_0", "")
-            .replace("tf_efficientnet_b2_ns", "B2")
-            .replace("tf_efficientnet_b3_ns", "B3")
-            .replace("tf_efficientnet_b6_ns", "B6")
-            .replace("tf_efficientnet_b7_ns", "B7")
+            .replace("nr_rgb_tf_efficientnet_b6_ns", "")
+            .replace("rgb_tf_efficientnet_b2_ns", "")
+            .replace("rgb_tf_efficientnet_b3_ns", "")
+            .replace("rgb_tf_efficientnet_b6_ns", "")
+            .replace("rgb_tf_efficientnet_b7_ns", "")
         )
         x = re.sub(r"\w{3}\d{2}_\d{2}_\d{2}", "", x).replace("_", "")
         return x
@@ -90,21 +82,25 @@ def main():
         # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
         # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        # "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        #
+        "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
     ]
 
     for metric in [

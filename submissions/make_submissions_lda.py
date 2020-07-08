@@ -17,9 +17,9 @@ from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum
 
 # Classifiers
+from submissions.make_submissions_averaging import compute_checksum_v2
 
 warnings.simplefilter("ignore")
 
@@ -33,18 +33,26 @@ def get_x_y(predictions):
         if "true_modification_flag" in p:
             y = p["true_modification_flag"].values.astype(np.float32)
 
-        X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        X.append(pred_modification_type)
+        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
+        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
+        # X.append(pred_modification_type)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
 
-        if "pred_modification_type_tta" in p:
-            X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
 
-        if "pred_modification_flag_tta" in p:
-            X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
+        # if "pred_modification_type_tta" in p:
+        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+        #
+        # if "pred_modification_flag_tta" in p:
+        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
     X = np.column_stack(X).astype(np.float32)
     if y is not None:
@@ -66,7 +74,6 @@ def main():
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun02_12_26_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
@@ -76,11 +83,16 @@ def main():
         "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        #
+        "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    checksum = compute_checksum(test_predictions)
+    checksum = compute_checksum_v2(experiments)
 
     import torch.nn.functional as F
 
@@ -103,8 +115,9 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
-    x = np.column_stack([x, quality_h])
-    x_test = np.column_stack([x_test, quality_t])
+    if True:
+        x = np.column_stack([x, quality_h])
+        x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
     cv_scores = []
@@ -114,7 +127,7 @@ def main():
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
 
-        cls = LinearDiscriminantAnalysis()
+        cls = LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto", priors=[0.5, 0.5])
         cls.fit(x_train, y_train)
 
         y_valid_pred = cls.predict_proba(x_valid)[:, 1]
