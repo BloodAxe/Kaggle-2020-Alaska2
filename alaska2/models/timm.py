@@ -1,21 +1,18 @@
-import torch
-import torch.nn.functional as F
+from collections import OrderedDict
+
+import numpy as np
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from timm.models import skresnext50_32x4d
 from timm.models import tresnet, efficientnet, resnet
-from timm.models.layers import SelectAdaptivePool2d
+from timm.models.layers import Swish
 from torch import nn
-import numpy as np
-
-from alaska2.models.classifiers import WeightNormClassifier
+from torch.nn import InstanceNorm2d
 
 from alaska2.dataset import (
+    INPUT_IMAGE_KEY,
     OUTPUT_PRED_MODIFICATION_FLAG,
     OUTPUT_PRED_MODIFICATION_TYPE,
-    INPUT_IMAGE_KEY,
-    INPUT_IMAGE_QF_KEY,
     INPUT_FEATURES_JPEG_FLOAT,
-    OUTPUT_PRED_MODIFICATION_MASK,
 )
 
 __all__ = [
@@ -27,13 +24,9 @@ __all__ = [
     "rgb_tf_efficientnet_b2_ns",
     "rgb_tf_efficientnet_b3_ns",
     "rgb_tresnet_m_448",
-    "rgb_qf_tf_efficientnet_b2_ns",
-    "rgb_qf_tf_efficientnet_b6_ns",
-    "rgb_qf_swsl_resnext101_32x8d",
     "rgb_tf_efficientnet_b7_ns",
     # Models using unrounded image
     "nr_rgb_tf_efficientnet_b3_ns_mish",
-    "nr_rgb_tf_efficientnet_b3_ns_mish_mask",
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
@@ -46,7 +39,7 @@ class TimmRgbModel(nn.Module):
         self,
         encoder,
         num_classes,
-        dropout=0,
+        dropout=0.0,
         mean=[0.3914976, 0.44266784, 0.46043398],
         std=[0.17819773, 0.17319807, 0.18128773],
         max_pixel_value=255,
@@ -77,146 +70,88 @@ class TimmRgbModel(nn.Module):
         return [self.input_key]
 
 
-class TimmRgbMaskModel(nn.Module):
-    def __init__(
-        self,
-        encoder,
-        num_classes,
-        dropout=0,
-        mean=[0.3914976, 0.44266784, 0.46043398],
-        std=[0.17819773, 0.17319807, 0.18128773],
-        max_pixel_value=255,
-        input_key=INPUT_IMAGE_KEY,
-    ):
-        super().__init__()
-        self.encoder = encoder
-
-        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.drop = nn.Dropout2d(dropout)
-
-        # self.upsample = nn.Sequential(
-        #     nn.Conv2d(encoder.num_features, 512, kernel_size=1),
-        #     nn.PixelShuffle(upscale_factor=2),
-        #     nn.Conv2d(128, 128, kernel_size=3, padding=1, bias=False),
-        #     nn.BatchNorm2d(128),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(128, 128, kernel_size=1),
-        #     nn.PixelShuffle(upscale_factor=2),
-        #     nn.Conv2d(32, 32, kernel_size=3, padding=1, bias=False),
-        #     nn.BatchNorm2d(32),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(32,1,kernel_size=1)
-        # )
-
-        self.mask = nn.Sequential(
-            nn.Conv2d(encoder.num_features, 512, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 128, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 1, kernel_size=1),
-        )
-
-        self.type_classifier = nn.Conv2d(encoder.num_features, num_classes, kernel_size=1)
-        self.flag_classifier = nn.Conv2d(encoder.num_features, 1, kernel_size=1)
-        self.input_key = input_key
-
-    def forward(self, **kwargs):
-        x = kwargs[self.input_key]
-        x = self.rgb_bn(x)
-        x = self.encoder.forward_features(x)
-
-        x = self.drop(x)
-        mask = self.mask(x)
-        mask_s = mask.sigmoid()
-        flag = self.flag_classifier(x) * mask_s
-        type = self.type_classifier(x) * mask_s
-
-        return {
-            OUTPUT_PRED_MODIFICATION_MASK: mask,
-            OUTPUT_PRED_MODIFICATION_FLAG: flag.mean(dim=(2, 3)),
-            OUTPUT_PRED_MODIFICATION_TYPE: type.mean(dim=(2, 3)),
-        }
-
-    @property
-    def required_features(self):
-        return [self.input_key]
+## Cherry-picked & modified functions from TIMM/EfficientNet to use Mish
 
 
-class TimmRgbModelAvgMax(nn.Module):
-    def __init__(
-        self,
-        encoder,
-        num_classes,
-        dropout=0,
-        mean=[0.3914976, 0.44266784, 0.46043398],
-        std=[0.17819773, 0.17319807, 0.18128773],
-    ):
-        super().__init__()
-        self.encoder = encoder
-        max_pixel_value = 255
-        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.pool = SelectAdaptivePool2d(pool_type="catavgmax", flatten=True)
-        self.type_classifier = WeightNormClassifier(encoder.num_features * 2, num_classes, 128, dropout=dropout)
-        self.flag_classifier = WeightNormClassifier(encoder.num_features * 2, 1, 128, dropout=dropout)
+def patched_gen_efficientnet(variant, channel_multiplier=1.0, depth_multiplier=1.0, pretrained=False, **kwargs):
+    """Creates an EfficientNet model.
 
-    def forward(self, **kwargs):
-        x = kwargs[INPUT_IMAGE_KEY]
-        x = self.rgb_bn(x.float())
-        x = self.encoder.forward_features(x)
-        x = self.pool(x)
-        return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(x),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(x),
-        }
+    Ref impl: https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+    Paper: https://arxiv.org/abs/1905.11946
 
-    @property
-    def required_features(self):
-        return [INPUT_IMAGE_KEY]
+    EfficientNet params
+    name: (channel_multiplier, depth_multiplier, resolution, dropout_rate)
+    'efficientnet-b0': (1.0, 1.0, 224, 0.2),
+    'efficientnet-b1': (1.0, 1.1, 240, 0.2),
+    'efficientnet-b2': (1.1, 1.2, 260, 0.3),
+    'efficientnet-b3': (1.2, 1.4, 300, 0.3),
+    'efficientnet-b4': (1.4, 1.8, 380, 0.4),
+    'efficientnet-b5': (1.6, 2.2, 456, 0.4),
+    'efficientnet-b6': (1.8, 2.6, 528, 0.5),
+    'efficientnet-b7': (2.0, 3.1, 600, 0.5),
+    'efficientnet-b8': (2.2, 3.6, 672, 0.5),
+    'efficientnet-l2': (4.3, 5.3, 800, 0.5),
+
+    Args:
+      channel_multiplier: multiplier to number of channels per layer
+      depth_multiplier: multiplier to number of repeats per stage
+
+    """
+    arch_def = [
+        ["ds_r1_k3_s1_e1_c16_se0.25"],
+        ["ir_r2_k3_s2_e6_c24_se0.25"],
+        ["ir_r2_k5_s2_e6_c40_se0.25"],
+        ["ir_r3_k3_s2_e6_c80_se0.25"],
+        ["ir_r3_k5_s1_e6_c112_se0.25"],
+        ["ir_r4_k5_s2_e6_c192_se0.25"],
+        ["ir_r1_k3_s1_e6_c320_se0.25"],
+    ]
+    from timm.models.efficientnet import _create_model, default_cfgs
+    from timm.models.efficientnet_builder import decode_arch_def
+    from timm.models.efficientnet_blocks import round_channels, resolve_bn_args
+
+    model_kwargs = dict(
+        block_args=decode_arch_def(arch_def, depth_multiplier),
+        num_features=round_channels(1280, channel_multiplier, 8, None),
+        stem_size=32,
+        channel_multiplier=channel_multiplier,
+        act_layer=Swish,
+        norm_kwargs=resolve_bn_args(kwargs),
+        variant=variant,
+        # **kwargs,
+    )
+    # Update of model_kwargs allows to override activation
+    model_kwargs.update(kwargs)
+    model = _create_model(model_kwargs, default_cfgs[variant], pretrained)
+    return model
 
 
-class ImageAndQFModel(nn.Module):
-    def __init__(
-        self,
-        encoder,
-        num_classes,
-        dropout=0,
-        mean=[0.3914976, 0.44266784, 0.46043398],
-        std=[0.17819773, 0.17319807, 0.18128773],
-    ):
-        super().__init__()
-        self.encoder = encoder
-        max_pixel_value = 255
-        self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.pool = GlobalAvgPool2d(flatten=True)
-        self.drop = nn.Dropout(dropout)
+def patched_tf_efficientnet_b3_ns(pretrained=False, **kwargs):
+    """ EfficientNet-B3. Tensorflow compatible variant """
+    from timm.models.efficientnet_blocks import BN_EPS_TF_DEFAULT
 
-        # Recombination of embedding and quality factor
-        self.fc1 = nn.Sequential(nn.Linear(encoder.num_features + 3, encoder.num_features), nn.ReLU())
+    kwargs["bn_eps"] = BN_EPS_TF_DEFAULT
+    kwargs["pad_type"] = "same"
+    model = patched_gen_efficientnet(
+        "tf_efficientnet_b3", channel_multiplier=1.2, depth_multiplier=1.4, pretrained=pretrained, **kwargs
+    )
+    return model
 
-        self.type_classifier = nn.Linear(encoder.num_features, num_classes)
-        self.flag_classifier = nn.Linear(encoder.num_features, 1)
 
-    def forward(self, **kwargs):
-        x = kwargs[INPUT_IMAGE_KEY]
-        qf = F.one_hot(kwargs[INPUT_IMAGE_QF_KEY], 3)
+def patched_tf_efficientnet_b6_ns(pretrained=False, **kwargs):
+    """ EfficientNet-B6 NoisyStudent. Tensorflow compatible variant """
+    # NOTE for train, drop_rate should be 0.5
+    from timm.models.efficientnet_blocks import BN_EPS_TF_DEFAULT
 
-        x = self.rgb_bn(x.float())
-        x = self.encoder.forward_features(x)
-        x = self.pool(x)
+    kwargs["bn_eps"] = BN_EPS_TF_DEFAULT
+    kwargs["pad_type"] = "same"
+    model = patched_gen_efficientnet(
+        "tf_efficientnet_b6_ns", channel_multiplier=1.8, depth_multiplier=2.6, pretrained=pretrained, **kwargs
+    )
+    return model
 
-        x = torch.cat([x, qf.type_as(x)], dim=1)
-        x = self.fc1(x)
 
-        return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
-        }
-
-    @property
-    def required_features(self):
-        return [INPUT_IMAGE_KEY, INPUT_IMAGE_QF_KEY]
+# Model zoo
 
 
 def rgb_skresnext50_32x4d(num_classes=4, pretrained=True, dropout=0):
@@ -252,6 +187,19 @@ def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
     )
 
 
+def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):
+    encoder = efficientnet.tf_efficientnet_b1_ns(pretrained=pretrained)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        mean=encoder.default_cfg["mean"],
+        std=encoder.default_cfg["std"],
+    )
+
+
 def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
     del encoder.classifier
@@ -266,32 +214,6 @@ def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0):
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b1_ns(pretrained=pretrained)
-    del encoder.classifier
-
-    return TimmRgbModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=encoder.default_cfg["mean"],
-        std=encoder.default_cfg["std"],
-    )
-
-
-def rgb_tf_efficientnet_b2_ns_avgmax(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
-    del encoder.classifier
-
-    return TimmRgbModelAvgMax(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=encoder.default_cfg["mean"],
-        std=encoder.default_cfg["std"],
-    )
-
-
 def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
     del encoder.classifier
@@ -302,15 +224,22 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
 def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0):
     from timm.models.layers import Mish
 
-    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish)
+    encoder = patched_tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
+def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0):
     from timm.models.layers import Mish
 
+    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
+    del encoder.classifier
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0.2):
     def group_norm_builder(channels, **kwargs):
         groups = [32, 24, 16, 8, 7, 6, 5, 4, 3, 2]
         for g in groups:
@@ -319,22 +248,31 @@ def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
                 norm_layer.weight.data.fill_(1.0)
                 norm_layer.bias.data.zero_()
                 print(f"Created nn.GroupNorm(groups={g}, channels={channels})")
-                return norm_layer
+                # Return sequential with gn to prevent copying weights from BN
+                return nn.Sequential(OrderedDict([("gn", norm_layer)]))
         raise ValueError(f"Cannot create GroupNorm layer with number of channels {channels}")
 
-    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, norm_layer=group_norm_builder)
+    encoder = efficientnet.tf_efficientnet_b3_ns(
+        pretrained=pretrained, drop_path_rate=0.2, norm_layer=group_norm_builder
+    )
+    print(encoder)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def nr_rgb_tf_efficientnet_b3_ns_mish_mask(num_classes=4, pretrained=True, dropout=0):
-    from timm.models.layers import Mish
+def nr_rgb_tf_efficientnet_b3_ns_in(num_classes=4, pretrained=True, dropout=0):
+    def instance_norm_builder(channels, **kwargs):
+        norm_layer = InstanceNorm2d(channels, affine=True)
+        return nn.Sequential(OrderedDict([("in", norm_layer)]))
 
-    encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish)
+    encoder = efficientnet.tf_efficientnet_b3_ns(
+        pretrained=pretrained, drop_path_rate=0.2, norm_layer=instance_norm_builder
+    )
+    print(encoder)
     del encoder.classifier
 
-    return TimmRgbMaskModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
@@ -386,34 +324,6 @@ def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0):
     del encoder.classifier
 
     return TimmRgbModel(
-        encoder,
-        num_classes=num_classes,
-        dropout=dropout,
-        mean=encoder.default_cfg["mean"],
-        std=encoder.default_cfg["std"],
-    )
-
-
-# RGB + QF
-def rgb_qf_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained)
-    del encoder.classifier
-
-    return ImageAndQFModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
-def rgb_qf_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
-    encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained)
-    del encoder.classifier
-
-    return ImageAndQFModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
-def rgb_qf_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
-    encoder = resnet.swsl_resnext101_32x8d(pretrained=pretrained)
-    del encoder.fc
-
-    return ImageAndQFModel(
         encoder,
         num_classes=num_classes,
         dropout=dropout,

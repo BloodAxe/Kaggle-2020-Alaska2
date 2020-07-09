@@ -24,19 +24,17 @@ MODEL_REGISTRY = {
     "rgb_tf_efficientnet_b3_ns": timm.rgb_tf_efficientnet_b3_ns,
     "rgb_tf_efficientnet_b1_ns": timm.rgb_tf_efficientnet_b1_ns,
     "rgb_tresnet_m_448": timm.rgb_tresnet_m_448,
-    "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
-    "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,
-    "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
+    # "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
+    # "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,
+    # "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
     "rgb_tf_efficientnet_b7_ns": timm.rgb_tf_efficientnet_b7_ns,
-    "rgb_tf_efficientnet_b2_ns_avgmax": timm.rgb_tf_efficientnet_b2_ns_avgmax,
-
+    # "rgb_tf_efficientnet_b2_ns_avgmax": timm.rgb_tf_efficientnet_b2_ns_avgmax,
     "nr_rgb_tf_efficientnet_b3_ns_mish": timm.nr_rgb_tf_efficientnet_b3_ns_mish,
     "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
     "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
     "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
-    "nr_rgb_tf_efficientnet_b3_ns_mish_mask": timm.nr_rgb_tf_efficientnet_b3_ns_mish_mask,
+    # "nr_rgb_tf_efficientnet_b3_ns_mish_mask": timm.nr_rgb_tf_efficientnet_b3_ns_mish_mask,
     "nr_rgb_tf_efficientnet_b3_ns_gn": timm.nr_rgb_tf_efficientnet_b3_ns_gn,
-
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
@@ -82,7 +80,6 @@ MODEL_REGISTRY = {
     "srnet_inplace": srnet.srnet_inplace,
     # OLD STUFF
     "frank": rgb_ela_blur.frank,
-
 }
 
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
