@@ -312,10 +312,14 @@ def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
     from timm.models.layers import Mish
 
     def group_norm_builder(channels):
-        groups = [8, 7, 6, 5, 4, 3, 2]
+        groups = [32, 24, 16, 8, 7, 6, 5, 4, 3, 2]
         for g in groups:
-            if channels % g == 0:
-                return nn.GroupNorm(g, channels)
+            if channels % g == 0 and channels > g:
+                norm_layer = nn.GroupNorm(g, channels)
+                norm_layer.weight.data.fill_(1.)
+                norm_layer.bias.data.zero_()
+                print(f"Created nn.GroupNorm(groups={g}, channels={channels})")
+                return norm_layer
 
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, norm_layer=group_norm_builder)
     del encoder.classifier
