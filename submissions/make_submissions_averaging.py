@@ -2,12 +2,13 @@ import json
 import os
 import re
 from typing import List
-
+import matplotlib.pyplot as plt
 import numpy as np
 from pytorch_toolbelt.utils import fs
-from sklearn.isotonic import IsotonicRegression as IR
+from scipy.stats import spearmanr
+from sklearn.metrics import ConfusionMatrixDisplay
 
-from alaska2.metric import alaska_weighted_auc
+from alaska2.metric import alaska_weighted_auc, shaky_wauc
 from alaska2.submissions import (
     make_classifier_predictions,
     make_classifier_predictions_calibrated,
@@ -17,9 +18,6 @@ from alaska2.submissions import (
     make_product_predictions,
 )
 from submissions.eval_tta import get_predictions_csv
-
-
-# Used to ignore warnings generated from StackingCVClassifier
 
 
 import pandas as pd
@@ -104,6 +102,11 @@ def main():
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
     ]
 
+    all_predictions = []
+    labels = experiments
+    scoring_fn = alaska_weighted_auc
+    scoring_fn = shaky_wauc
+
     for metric in [
         # "loss",
         # "bauc",
@@ -116,22 +119,24 @@ def main():
         fnames_for_checksum = [x + f"{metric}" for x in experiments]
 
         bin_pred_d4 = make_binary_predictions(predictions_d4)
-        y_true = bin_pred_d4[0].y_true.values
+        y_true = bin_pred_d4[0].y_true_type.values
 
-        bin_pred_d4_score = alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4).Label)
+        bin_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4).Label)
 
         cls_pred_d4 = make_classifier_predictions(predictions_d4)
-        cls_pred_d4_score = alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4).Label)
+        cls_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4).Label)
 
         bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
-        bin_pred_d4_cal_score = alaska_weighted_auc(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
+        bin_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
 
         cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
-        cls_pred_d4_cal_score = alaska_weighted_auc(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
+        cls_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
 
-        prod_pred_d4_cal_score = alaska_weighted_auc(
+        prod_pred_d4_cal_score = scoring_fn(
             y_true, blend_predictions_mean(cls_pred_d4_cal).Label * blend_predictions_mean(bin_pred_d4_cal).Label
         )
+
+        all_predictions = [x.Label for x in make_classifier_predictions(test_predictions_d4)]
 
         print(metric, "Bin NC", "d4", bin_pred_d4_score)
         print(metric, "Bin CL", "d4", cls_pred_d4_score)
@@ -194,6 +199,18 @@ def main():
                 ),
                 index=False,
             )
+
+    # cm = np.zeros((len(all_predictions), len(all_predictions)))
+    # for i in range(len(all_predictions)):
+    #     for j in range(len(all_predictions)):
+    #         cm[i, j] = spearmanr(all_predictions[i], all_predictions[j]).correlation
+    #
+    # print(cm)
+    #
+    # plt.figure(figsize=(20,20))
+    # disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+    # disp.plot(include_values=True, cmap="viridis", ax=plt.gca(), xticks_rotation="horizontal")
+    # plt.show()
 
 
 if __name__ == "__main__":

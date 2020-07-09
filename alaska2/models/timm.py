@@ -37,7 +37,7 @@ __all__ = [
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
-    "nr_rgb_tf_efficientnet_b3_ns_gn"
+    "nr_rgb_tf_efficientnet_b3_ns_gn",
 ]
 
 
@@ -311,7 +311,7 @@ def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0)
 def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
     from timm.models.layers import Mish
 
-    def group_norm_builder(channels):
+    def group_norm_builder(channels, **kwargs):
         groups = [32, 24, 16, 8, 7, 6, 5, 4, 3, 2]
         for g in groups:
             if channels % g == 0 and channels > g:
@@ -320,6 +320,7 @@ def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
                 norm_layer.bias.data.zero_()
                 print(f"Created nn.GroupNorm(groups={g}, channels={channels})")
                 return norm_layer
+        raise ValueError(f"Cannot create GroupNorm layer with number of channels {channels}")
 
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, norm_layer=group_norm_builder)
     del encoder.classifier
