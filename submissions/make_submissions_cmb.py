@@ -8,10 +8,10 @@ import numpy as np
 # Classifiers
 from tqdm import tqdm
 
-from alaska2.metric import alaska_weighted_auc
+from alaska2.metric import alaska_weighted_auc, shaky_wauc
 from alaska2.submissions import blend_predictions_mean, make_binary_predictions, make_classifier_predictions
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
+from submissions.make_submissions_averaging import compute_checksum_v2
 
 # For reading, visualizing, and preprocessing data
 
@@ -29,10 +29,10 @@ def main():
         # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
         # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
@@ -63,7 +63,7 @@ def main():
     )
 
     X = make_binary_predictions(holdout_predictions) + make_classifier_predictions(holdout_predictions)
-    y_true = X[0].y_true.values
+    y_true = X[0].y_true_type.values
     X = np.array([x.Label.values for x in X])
 
     assert len(fnames_for_checksum) == X.shape[0]
@@ -79,7 +79,8 @@ def main():
 
         for c in tqdm(combs, desc=f"{r}"):
             preds = X[np.array(c)].mean(axis=0)
-            score = alaska_weighted_auc(y_true, preds)
+            # score = alaska_weighted_auc(y_true, preds)
+            score = shaky_wauc(y_true, preds)
 
             if score > best_auc:
                 best_auc = score

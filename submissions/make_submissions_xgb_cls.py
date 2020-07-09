@@ -33,18 +33,25 @@ def get_x_y(predictions):
         if "true_modification_flag" in p:
             y = p["true_modification_flag"].values.astype(np.float32)
 
-        X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        X.append(pred_modification_type)
+        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
+        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
+        # X.append(pred_modification_type)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
 
-        if "pred_modification_type_tta" in p:
-            X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
-
-        if "pred_modification_flag_tta" in p:
-            X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
+        # if "pred_modification_type_tta" in p:
+        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+        #
+        # if "pred_modification_flag_tta" in p:
+        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
     X = np.column_stack(X).astype(np.float32)
     if y is not None:
@@ -106,8 +113,9 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
-    x = np.column_stack([x, quality_h])
-    x_test = np.column_stack([x_test, quality_t])
+    if True:
+        x = np.column_stack([x, quality_h])
+        x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
     cv_scores = []
@@ -124,17 +132,17 @@ def main():
             colsample_bylevel=1,
             colsample_bynode=1,
             colsample_bytree=1.0,
-            gamma=0.1,
+            gamma=0.5,
             gpu_id=-1,
             importance_type="gain",
             interaction_constraints="",
-            learning_rate=0.2,
+            learning_rate=0.02,
             max_delta_step=0,
-            max_depth=4,
+            max_depth=3,
             min_child_weight=5,
             # missing=nan,
             monotone_constraints="()",
-            n_estimators=100,
+            n_estimators=600,
             n_jobs=8,
             nthread=1,
             num_parallel_tree=1,

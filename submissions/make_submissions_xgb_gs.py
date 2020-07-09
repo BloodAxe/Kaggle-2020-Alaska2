@@ -21,7 +21,6 @@ from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 
-
 def get_x_y(predictions):
     y = None
     X = []
@@ -155,11 +154,10 @@ def main():
 
     test_pred = random_search.predict_proba(x_test)[:, 1]
 
+    submit_fname = os.path.join(output_dir, f"xgb_cls_gs_{random_search.best_score_:.4f}_{checksum}_.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
-    df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"xgb_gs_{random_search.best_score_:.4f}_{checksum}.csv"), index=False
-    )
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
 
 
 if __name__ == "__main__":

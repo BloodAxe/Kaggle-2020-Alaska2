@@ -14,6 +14,7 @@ import torch.nn.functional as F
 __all__ = [
     "CompetitionMetricCallback",
     "alaska_weighted_auc",
+    "shaky_wauc",
     "OutputDistributionCallback",
     "binary_logits_to_probas",
     "classifier_logits_to_probas",
@@ -24,76 +25,77 @@ from sklearn.metrics import roc_curve
 
 from .dataset import INPUT_IMAGE_QF_KEY
 
+#
+# def anokas_alaska_weighted_auc(y_true, y_pred, **kwargs):
+#     try:
+#         tpr_thresholds = [0.0, 0.4, 1.0]
+#         weights = [2, 1]
+#
+#         fpr, tpr, thresholds = metrics.roc_curve(y_true, y_pred, pos_label=1)
+#
+#         # size of subsets
+#         areas = np.array(tpr_thresholds[1:]) - np.array(tpr_thresholds[:-1])
+#
+#         # The total area is normalized by the sum of weights such that the final weighted AUC is between 0 and 1.
+#         normalization = np.dot(areas, weights)
+#
+#         competition_metric = 0
+#         for idx, weight in enumerate(weights):
+#             y_min = tpr_thresholds[idx]
+#             y_max = tpr_thresholds[idx + 1]
+#             mask = (y_min < tpr) & (tpr <= y_max)
+#
+#             if mask.sum() == 0:
+#                 continue
+#
+#             x_padding = np.linspace(fpr[mask][-1], 1, 100)
+#             x = np.concatenate([fpr[mask], x_padding])
+#             y = np.concatenate([tpr[mask], [y_max] * len(x_padding)])
+#
+#             y = y - y_min  # normalize such that curve starts at y=0
+#             score = metrics.auc(x, y)
+#             submetric = score * weight
+#             best_subscore = (y_max - y_min) * weight
+#             competition_metric += submetric
+#
+#         return competition_metric / normalization
+#     except Exception as e:
+#         print(e)
+#         print("Returning 0 from anokas_alaska_weighted_auc")
+#         return 0
 
-def anokas_alaska_weighted_auc(y_true, y_pred, **kwargs):
-    try:
-        tpr_thresholds = [0.0, 0.4, 1.0]
-        weights = [2, 1]
-
-        fpr, tpr, thresholds = metrics.roc_curve(y_true, y_pred, pos_label=1)
-
-        # size of subsets
-        areas = np.array(tpr_thresholds[1:]) - np.array(tpr_thresholds[:-1])
-
-        # The total area is normalized by the sum of weights such that the final weighted AUC is between 0 and 1.
-        normalization = np.dot(areas, weights)
-
-        competition_metric = 0
-        for idx, weight in enumerate(weights):
-            y_min = tpr_thresholds[idx]
-            y_max = tpr_thresholds[idx + 1]
-            mask = (y_min < tpr) & (tpr <= y_max)
-
-            if mask.sum() == 0:
-                continue
-
-            x_padding = np.linspace(fpr[mask][-1], 1, 100)
-            x = np.concatenate([fpr[mask], x_padding])
-            y = np.concatenate([tpr[mask], [y_max] * len(x_padding)])
-
-            y = y - y_min  # normalize such that curve starts at y=0
-            score = metrics.auc(x, y)
-            submetric = score * weight
-            best_subscore = (y_max - y_min) * weight
-            competition_metric += submetric
-
-        return competition_metric / normalization
-    except Exception as e:
-        print(e)
-        print("Returning 0 from anokas_alaska_weighted_auc")
-        return 0
+#
+# def weighted_roc_auc_score(ytrue, ypred, **kwargs):
+#     fpr, tpr, _ = roc_curve(ytrue, ypred)
+#
+#     # the curve
+#     y = (tpr[1:] + tpr[:-1]) / 2
+#
+#     # tpr threshold
+#     # a = (y < 0.4).astype(np.float32)  # inclusive or exclusive ?
+#     a = (y <= 0.4).astype(np.float32)  # inclusive or exclusive ?
+#
+#     # curve under tpr_threshold
+#     y1 = y * a
+#     y1 = y1 + y1.max() * (1 - a)
+#
+#     # curve above tpr_threshold
+#     y2 = y - y1
+#
+#     # weighted sum
+#     yy = 2 * y1 + y2
+#
+#     # make roc curve great again.
+#     # bugged: yy = (yy - yy.min()) / (yy.max() - yy.min())
+#     yy = yy / yy.max()
+#
+#     # sum to area
+#     return ((fpr[1:] - fpr[:-1]) * yy).sum()
 
 
-def weighted_roc_auc_score(ytrue, ypred, **kwargs):
-    fpr, tpr, _ = roc_curve(ytrue, ypred)
-
-    # the curve
-    y = (tpr[1:] + tpr[:-1]) / 2
-
-    # tpr threshold
-    # a = (y < 0.4).astype(np.float32)  # inclusive or exclusive ?
-    a = (y <= 0.4).astype(np.float32)  # inclusive or exclusive ?
-
-    # curve under tpr_threshold
-    y1 = y * a
-    y1 = y1 + y1.max() * (1 - a)
-
-    # curve above tpr_threshold
-    y2 = y - y1
-
-    # weighted sum
-    yy = 2 * y1 + y2
-
-    # make roc curve great again.
-    # bugged: yy = (yy - yy.min()) / (yy.max() - yy.min())
-    yy = yy / yy.max()
-
-    # sum to area
-    return ((fpr[1:] - fpr[:-1]) * yy).sum()
-
-
-def wauc(true, scores):
-    fpr, tpr, thresholds = roc_curve(true, scores, drop_intermediate=False)
+def wauc(y_true, y_pred):
+    y_true = np.array(y_true)
+    fpr, tpr, thresholds = roc_curve((y_true > 0).astype(int), y_pred, drop_intermediate=False)
     tpr_thresholds = [0.0, 0.4, 1.0]
     weights = [2.0, 1.0]
     auc_x = 0.0
@@ -108,6 +110,27 @@ def wauc(true, scores):
     areas = np.array(tpr_thresholds[1:]) - np.array(tpr_thresholds[:-1])
     normalization = np.dot(areas, np.array(weights))
     return auc_x / normalization
+
+
+def shaky_wauc(y_true, y_pred, n: int = 1000, samples=[2500, 800, 800, 800]):
+    y_true = np.array(y_true, dtype=int)
+    assert len(np.unique(y_true)) > 2
+    y_pred = np.array(y_pred, dtype=np.float32)
+    scores = []
+    for _ in range(n):
+        sample_y_true = []
+        sample_y_pred = []
+        for class_index, num_samples in enumerate(samples):
+            y_true_i = y_true[y_true == class_index]
+            y_pred_i = y_pred[y_true == class_index]
+            indexes = np.random.choice(np.arange(len(y_true_i)), num_samples, replace=False)
+            sample_y_true.extend(y_true_i[indexes])
+            sample_y_pred.extend(y_pred_i[indexes])
+
+        wauc_score = alaska_weighted_auc(sample_y_true, sample_y_pred)
+        scores.append(wauc_score)
+
+    return np.mean(scores)
 
 
 # alaska_weighted_auc = anokas_alaska_weighted_auc
