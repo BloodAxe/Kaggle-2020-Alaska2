@@ -79,7 +79,6 @@ __all__ = [
     "OUTPUT_PRED_MODIFICATION_FLAG",
     "OUTPUT_PRED_MODIFICATION_TYPE",
     "PairedImageDataset",
-    "QuadImageDataset",
     "TrainingValidationDataset",
     "compute_blur_features",
     "compute_dct_fast",
@@ -89,7 +88,6 @@ __all__ = [
     "dct8",
     "get_datasets",
     "get_datasets_paired",
-    "get_datasets_quad",
     "get_test_dataset",
     "idct8",
     "get_holdout",
@@ -519,83 +517,6 @@ class PairedImageDataset(Dataset):
         return sample
 
 
-class QuadImageDataset(Dataset):
-    def __init__(self, images: Union[np.ndarray, List], transform: A.ReplayCompose, features, use_replay=False):
-        self.images = images
-        self.features = features
-        self.transform = transform
-        self.use_replay = use_replay
-
-    def __len__(self):
-        return len(self.images)
-
-    def __repr__(self):
-        return f"QuadImageDataset(images={len(self.images)}, use_replay={self.use_replay})"
-
-    def __getitem__(self, index):
-        class0_fname = self.images[index]
-        class1_fname = class0_fname.replace("Cover", "JMiPOD")
-        class2_fname = class0_fname.replace("Cover", "JUNIWARD")
-        class3_fname = class0_fname.replace("Cover", "UERD")
-
-        class0_image = cv2.imread(class0_fname)
-        class1_image = cv2.imread(class1_fname)
-        class2_image = cv2.imread(class2_fname)
-        class3_image = cv2.imread(class3_fname)
-
-        class0_data = {}
-        class0_data["image"] = class0_image
-        class0_data.update(compute_features(class0_image, class0_fname, self.features))
-        class0_data = self.transform(**class0_data)
-
-        replay = class0_data["replay"]
-
-        class1_data = {}
-        class1_data["image"] = class1_image
-        class1_data.update(compute_features(class1_image, class1_fname, self.features))
-        class1_data = (
-            self.transform.replay(replay, **class1_data) if self.use_replay else self.transform(**class1_data)
-        )
-
-        class2_data = {}
-        class2_data["image"] = class2_image
-        class2_data.update(compute_features(class2_image, class2_fname, self.features))
-        class2_data = (
-            self.transform.replay(replay, **class2_data) if self.use_replay else self.transform(**class2_data)
-        )
-
-        class3_data = {}
-        class3_data["image"] = class3_image
-        class3_data.update(compute_features(class3_image, class3_fname, self.features))
-        class3_data = (
-            self.transform.replay(replay, **class3_data) if self.use_replay else self.transform(**class3_data)
-        )
-
-        sample = {
-            INPUT_IMAGE_ID_KEY: [
-                fs.id_from_fname(class0_fname),
-                fs.id_from_fname(class1_fname),
-                fs.id_from_fname(class2_fname),
-                fs.id_from_fname(class3_fname),
-            ],
-            INPUT_TRUE_MODIFICATION_TYPE: torch.tensor([0, 1, 2, 3]).long(),
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([0, 1, 1, 1]).float(),
-        }
-
-        for key, value in class0_data.items():
-            if key in self.features:
-                sample[key] = torch.stack(
-                    [
-                        tensor_from_rgb_image(class0_data[key]),
-                        tensor_from_rgb_image(class1_data[key]),
-                        tensor_from_rgb_image(class2_data[key]),
-                        tensor_from_rgb_image(class3_data[key]),
-                    ]
-                )
-
-        return sample
-
-
 def get_datasets(
     data_dir: str,
     fold: int,
@@ -827,47 +748,6 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
         ),
         features=features,
     )
-
-
-def get_datasets_quad(
-    data_dir: str,
-    fold: int,
-    augmentation: str = "light",
-    fast: bool = False,
-    image_size: Tuple[int, int] = (512, 512),
-    features=None,
-    use_replay=False,
-):
-    from .augmentations import get_augmentations
-
-    train_transform = get_augmentations(augmentation, image_size)
-    valid_transform = A.NoOp()
-
-    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds.csv"))
-
-    # Ignore holdout fold
-    data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
-
-    train_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] != fold, INPUT_IMAGE_ID_KEY].tolist()
-    train_images = [os.path.join(data_dir, "Cover", x) for x in train_images]
-
-    train_ds = QuadImageDataset(train_images, transform=train_transform, features=features, use_replay=use_replay)
-
-    valid_images = data_folds.loc[data_folds[INPUT_FOLD_KEY] == fold, INPUT_IMAGE_ID_KEY].tolist()
-    valid_images = [os.path.join(data_dir, "Cover", x) for x in valid_images]
-
-    valid_x = valid_images.copy()
-    valid_y = [0] * len(valid_images)
-
-    for i, method in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
-        valid_x += [fname.replace("Cover", method) for fname in valid_images]
-        valid_y += [i + 1] * len(valid_images)
-    valid_ds = TrainingValidationDataset(valid_x, valid_y, transform=valid_transform, features=features)
-
-    sampler = None
-    print("Train", train_ds)
-    print("Valid", valid_ds)
-    return train_ds, valid_ds, sampler
 
 
 def get_test_dataset(data_dir, features):
