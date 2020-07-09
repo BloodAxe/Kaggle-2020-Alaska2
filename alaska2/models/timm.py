@@ -316,7 +316,7 @@ def nr_rgb_tf_efficientnet_b3_ns_gn(num_classes=4, pretrained=True, dropout=0):
         for g in groups:
             if channels % g == 0 and channels > g:
                 norm_layer = nn.GroupNorm(g, channels)
-                norm_layer.weight.data.fill_(1.)
+                norm_layer.weight.data.fill_(1.0)
                 norm_layer.bias.data.zero_()
                 print(f"Created nn.GroupNorm(groups={g}, channels={channels})")
                 return norm_layer
