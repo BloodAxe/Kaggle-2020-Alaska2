@@ -11,30 +11,34 @@ from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
-    # BIT
+    # Big Transfer
     "bit_m_rx152_2": bit.bit_m_rx152_2,
     "bit_m_rx50_1": bit.bit_m_rx50_1,
     "bit_m_rx50_3": bit.bit_m_rx50_3,
     "bit_m_rx101_1": bit.bit_m_rx101_1,
     # TIMM
+    "rgb_tresnet_m_448": timm.rgb_tresnet_m_448,
     "rgb_skresnext50_32x4d": timm.rgb_skresnext50_32x4d,
     "rgb_swsl_resnext101_32x8d": timm.rgb_swsl_resnext101_32x8d,
-    "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
+    # EfficientNets (Rounded Input)
+    "rgb_tf_efficientnet_b1_ns": timm.rgb_tf_efficientnet_b1_ns,
     "rgb_tf_efficientnet_b2_ns": timm.rgb_tf_efficientnet_b2_ns,
     "rgb_tf_efficientnet_b3_ns": timm.rgb_tf_efficientnet_b3_ns,
-    "rgb_tf_efficientnet_b1_ns": timm.rgb_tf_efficientnet_b1_ns,
-    "rgb_tresnet_m_448": timm.rgb_tresnet_m_448,
+    "rgb_tf_efficientnet_b6_ns": timm.rgb_tf_efficientnet_b6_ns,
+    "rgb_tf_efficientnet_b7_ns": timm.rgb_tf_efficientnet_b7_ns,
+    # EfficientNets (Non-Rounded Input)
+    "nr_rgb_tf_efficientnet_b3_ns_mish": timm.nr_rgb_tf_efficientnet_b3_ns_mish,
+    "nr_rgb_tf_efficientnet_b3_ns_gn_mish": timm.nr_rgb_tf_efficientnet_b3_ns_gn_mish,
+    "nr_rgb_tf_efficientnet_b3_ns_in_mish": timm.nr_rgb_tf_efficientnet_b3_ns_in_mish,
+    "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
+    "nr_rgb_tf_efficientnet_b6_ns_mish": timm.nr_rgb_tf_efficientnet_b6_ns_mish,
+    "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
+    "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
+    # RGB + QF
     # "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
     # "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,
     # "rgb_qf_swsl_resnext101_32x8d": timm.rgb_qf_swsl_resnext101_32x8d,
-    "rgb_tf_efficientnet_b7_ns": timm.rgb_tf_efficientnet_b7_ns,
-    # "rgb_tf_efficientnet_b2_ns_avgmax": timm.rgb_tf_efficientnet_b2_ns_avgmax,
-    "nr_rgb_tf_efficientnet_b3_ns_mish": timm.nr_rgb_tf_efficientnet_b3_ns_mish,
-    "nr_rgb_tf_efficientnet_b6_ns": timm.nr_rgb_tf_efficientnet_b6_ns,
-    "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
-    "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
     # "nr_rgb_tf_efficientnet_b3_ns_mish_mask": timm.nr_rgb_tf_efficientnet_b3_ns_mish_mask,
-    "nr_rgb_tf_efficientnet_b3_ns_gn": timm.nr_rgb_tf_efficientnet_b3_ns_gn_mish,
     "rgb_dct_resnet34": rgb_dct.rgb_dct_resnet34,
     "rgb_dct_efficientb3": rgb_dct.rgb_dct_efficientb3,
     "rgb_dct_seresnext50": rgb_dct.rgb_dct_seresnext50,
@@ -85,8 +89,8 @@ MODEL_REGISTRY = {
 __all__ = ["MODEL_REGISTRY", "get_model", "ensemble_from_checkpoints", "wrap_model_with_tta"]
 
 
-def get_model(model_name, num_classes=4, dropout=0, pretrained=True):
-    return MODEL_REGISTRY[model_name](num_classes=num_classes, dropout=dropout, pretrained=pretrained)
+def get_model(model_name, num_classes=4, pretrained=True, **kwargs):
+    return MODEL_REGISTRY[model_name](num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
 def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, strict=True) -> Tuple[nn.Module, Dict]:

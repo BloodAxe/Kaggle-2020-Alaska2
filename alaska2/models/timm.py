@@ -189,7 +189,7 @@ def rgb_swsl_resnext101_32x8d(num_classes=4, pretrained=True, dropout=0):
     )
 
 
-def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):
+def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0.1):
     encoder = efficientnet.tf_efficientnet_b1_ns(pretrained=pretrained, drop_path_rate=0.1)
     del encoder.classifier
 
@@ -202,14 +202,14 @@ def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0):
     )
 
 
-def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0):
+def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0.1):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained, drop_path_rate=0.1)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0):
+def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0.1):
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
 
@@ -286,13 +286,13 @@ def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0):
+def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
-def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0):
+def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0.5):
     encoder = efficientnet.mixnet_xl(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)

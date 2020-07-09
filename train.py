@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 
+import numpy as np
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters, get_optimizable_parameters
@@ -68,11 +69,10 @@ def main():
     parser.add_argument("--mixup", action="store_true")
     parser.add_argument("--cutmix", action="store_true")
     parser.add_argument("--tsa", action="store_true")
-    parser.add_argument("--size", default=None, type=int)
     parser.add_argument("--fold", default=None, type=int)
     parser.add_argument("-s", "--scheduler", default=None, type=str, help="")
     parser.add_argument("-x", "--experiment", default=None, type=str, help="")
-    parser.add_argument("-d", "--dropout", default=0.0, type=float, help="Dropout before head layer")
+    parser.add_argument("-d", "--dropout", default=None, type=float, help="Dropout before head layer")
     parser.add_argument(
         "--warmup", default=0, type=int, help="Number of warmup epochs with reduced LR on encoder parameters"
     )
@@ -133,7 +133,11 @@ def main():
     valid_batch_size = train_batch_size
     run_train = num_epochs > 0
 
-    model: nn.Module = get_model(model_name, dropout=dropout).cuda()
+    custom_model_kwargs = {}
+    if dropout is not None:
+        custom_model_kwargs["dropout"] = float(dropout)
+
+    model: nn.Module = get_model(model_name, **custom_model_kwargs).cuda()
     required_features = model.required_features
 
     if mask_loss is not None:
@@ -162,7 +166,6 @@ def main():
 
     main_metric = "loss"
     main_metric_minimize = True
-    cmd_args = vars(args)
 
     current_time = datetime.now().strftime("%b%d_%H_%M")
     checkpoint_prefix = f"{current_time}_{args.model}_fold{fold}"
@@ -280,7 +283,7 @@ def main():
         print("  TSA            :", tsa)
         print("Model            :", model_name)
         print("  Parameters     :", count_parameters(model))
-        print("  Dropout        :", dropout)
+        print("  Dropout        :", dropout, "(Non-default)" if dropout is not None else "")
         print("Optimizer        :", optimizer_name)
         print("  Learning rate  :", learning_rate)
         print("  Weight decay   :", weight_decay)
@@ -307,7 +310,7 @@ def main():
             verbose=verbose,
             main_metric=main_metric,
             minimize_metric=main_metric_minimize,
-            checkpoint_data={"cmd_args": cmd_args},
+            checkpoint_data={"cmd_args": vars(args)},
         )
 
         del optimizer, loaders, runner, callbacks

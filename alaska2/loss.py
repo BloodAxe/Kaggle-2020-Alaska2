@@ -352,6 +352,7 @@ class ResizeToTarget2d(nn.Module):
         input = F.interpolate(input, target.size()[2:], mode="bilinear", align_corners=False)
         return self.loss(input, target)
 
+
 def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "mask_bce":
         return ResizeToTarget2d(SoftBCEWithLogitsLoss())

@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import argparse
 import collections
 import gc
+import itertools
 import json
 import os
 from datetime import datetime
@@ -11,7 +12,7 @@ import numpy as np
 from catalyst.dl import SupervisedRunner, OptimizerCallback, SchedulerCallback
 from catalyst.utils import load_checkpoint, unpack_checkpoint
 from pytorch_toolbelt.optimization.functional import get_optimizable_parameters
-from pytorch_toolbelt.utils import fs, itertools
+from pytorch_toolbelt.utils import fs, torch_utils
 from pytorch_toolbelt.utils.catalyst import (
     ShowPolarBatchesCallback,
     report_checkpoint,
@@ -97,7 +98,7 @@ def main():
     parser.add_argument("--fold", default=None, type=int)
     parser.add_argument("-s", "--scheduler", default=None, type=str, help="")
     parser.add_argument("-x", "--experiment", default=None, type=str, help="")
-    parser.add_argument("-d", "--dropout", default=0.0, type=float, help="Dropout before head layer")
+    parser.add_argument("-d", "--dropout", default=None, type=float, help="Dropout before head layer")
     parser.add_argument(
         "--warmup", default=0, type=int, help="Number of warmup epochs with reduced LR on encoder parameters"
     )
@@ -154,7 +155,11 @@ def main():
     valid_batch_size = train_batch_size
     run_train = num_epochs > 0
 
-    model: nn.Module = get_model(model_name, dropout=dropout).cuda()
+    custom_model_kwargs = {}
+    if dropout is not None:
+        custom_model_kwargs["dropout"] = float(dropout)
+
+    model: nn.Module = get_model(model_name, **custom_model_kwargs).cuda()
     required_features = model.required_features
 
     if mask_loss is not None:
