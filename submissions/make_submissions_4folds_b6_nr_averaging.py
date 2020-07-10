@@ -7,6 +7,7 @@ from alaska2.submissions import (
     make_binary_predictions,
     make_binary_predictions_calibrated,
     blend_predictions_mean,
+    blend_predictions_ranked,
 )
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
@@ -53,8 +54,6 @@ def main():
         prod_pred_d4_cal_score = scoring_fn(
             y_true, blend_predictions_mean(cls_pred_d4_cal).Label * blend_predictions_mean(bin_pred_d4_cal).Label
         )
-
-        all_predictions = [x.Label for x in make_classifier_predictions(test_predictions_d4)]
 
         print(metric, "Bin NC", "d4", bin_pred_d4_score)
         print(metric, "Bin CL", "d4", cls_pred_d4_score)

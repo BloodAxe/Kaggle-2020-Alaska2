@@ -34,21 +34,21 @@ def get_x_y(predictions):
         # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
         # X.append(pred_modification_type)
 
-        # X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        # X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        # X.append(
-        #     np.expand_dims(
-        #         p["pred_modification_type"].apply(classifier_probas).values
-        #         * p["pred_modification_flag"].apply(sigmoid).values,
-        #         -1,
-        #     )
-        # )
+        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
+        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
 
-        if "pred_modification_type_tta" in p:
-            X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
-
-        if "pred_modification_flag_tta" in p:
-            X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
+        # if "pred_modification_type_tta" in p:
+        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+        #
+        # if "pred_modification_flag_tta" in p:
+        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
     X = np.column_stack(X).astype(np.float32)
     if y is not None:
@@ -122,7 +122,7 @@ def main():
         "subsample": [0.6, 0.8, 1.0],
         "colsample_bytree": [0.6, 0.8, 1.0],
         "max_depth": [3, 4, 5],
-        "n_estimators": [100, 200, 600],
+        "n_estimators": [32, 100, 200, 600],
         "learning_rate": [0.02, 0.2, 0.5],
     }
 
@@ -158,6 +158,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
+    print("Saved to ", submit_fname)
 
 
 if __name__ == "__main__":

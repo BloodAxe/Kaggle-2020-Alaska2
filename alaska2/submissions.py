@@ -292,7 +292,9 @@ def make_binary_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
     return preds_df
 
 
-def make_binary_predictions_calibrated(test_predictions: List[str], oof_predictions: List[str]) -> List[pd.DataFrame]:
+def make_binary_predictions_calibrated(
+    test_predictions: List[str], oof_predictions: List[str], print_results=False
+) -> List[pd.DataFrame]:
     assert isinstance(test_predictions, list)
     assert isinstance(oof_predictions, list)
     assert len(oof_predictions) == len(test_predictions)
@@ -300,7 +302,8 @@ def make_binary_predictions_calibrated(test_predictions: List[str], oof_predicti
     preds_df = []
     for x, y in zip(test_predictions, oof_predictions):
         calibrated_test, scores = calibrated(pd.read_csv(x), pd.read_csv(y))
-        print(scores)
+        if print_results:
+            print(scores)
 
         calibrated_test["Id"] = calibrated_test["image_id"]
         calibrated_test["Label"] = calibrated_test["pred_modification_flag"]

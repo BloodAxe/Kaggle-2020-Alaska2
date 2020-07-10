@@ -112,7 +112,15 @@ def wauc(y_true, y_pred):
     return auc_x / normalization
 
 
-def shaky_wauc(y_true, y_pred, n: int = 1000, samples=[2500, 800, 800, 800]):
+# EXPECTED_TEST_DISTRIBUTION = [0.25, 0.25, 0.25, 0.25]
+EXPECTED_TEST_DISTRIBUTION = [0.5, 0.5 / 3, 0.5 / 3, 0.5 / 3]
+
+
+def shaky_wauc(
+    y_true, y_pred, n: int = 1000, k=5000, j=5000, distribution=EXPECTED_TEST_DISTRIBUTION, return_scores=False
+):
+    samples = (np.array(distribution) * k).astype(int)
+
     y_true = np.array(y_true, dtype=int)
     assert len(np.unique(y_true)) > 2
     y_pred = np.array(y_pred, dtype=np.float32)
@@ -127,13 +135,34 @@ def shaky_wauc(y_true, y_pred, n: int = 1000, samples=[2500, 800, 800, 800]):
             sample_y_true.extend(y_true_i[indexes])
             sample_y_pred.extend(y_pred_i[indexes])
 
+        sample_y_true = np.array(sample_y_true)
+        sample_y_pred = np.array(sample_y_pred)
+        if j != k:
+            public_lb_indexes = np.random.choice(np.arange(len(sample_y_true)), 1000, replace=False)
+            sample_y_true = sample_y_true[public_lb_indexes]
+            sample_y_pred = sample_y_pred[public_lb_indexes]
+
         wauc_score = alaska_weighted_auc(sample_y_true, sample_y_pred)
         scores.append(wauc_score)
+
+    if return_scores:
+        return scores
 
     return np.mean(scores)
 
 
-# alaska_weighted_auc = anokas_alaska_weighted_auc
+def shaky_wauc_public(
+    y_true, y_pred, n: int = 1000, k=5000, distribution=EXPECTED_TEST_DISTRIBUTION, return_scores=False
+):
+    """
+    Compute the "shaky" wAUC metric by bootstraping 5k samples from the (y_true, y_pred) N times, using expected
+    distribution of targets in test.
+    Additionaly it picks 1000 random elements from bootstraped 5k samples and compute wAUC on it.
+    This approach tries to estimate public LB
+    """
+    return shaky_wauc(y_true, y_pred, n, k, 1000, distribution, return_scores)
+
+
 alaska_weighted_auc = wauc
 
 
