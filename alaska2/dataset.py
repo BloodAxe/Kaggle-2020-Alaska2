@@ -549,15 +549,12 @@ def get_datasets(
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
     changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
-    changed_bits["key"] = changed_bits["file"] + "_" + changed_bits["method"].apply(METHOD_TO_INDEX).apply(str)
+    changed_bits["key"] = (
+        changed_bits["file"] + "_" + changed_bits["method"].apply(lambda x: METHOD_TO_INDEX[x]).apply(str)
+    )
     changed_bits_table = {}
     for i, row in changed_bits.iterrows():
-        changed_bits_table[row["key"]] = row["bits"]
-
-    merged_df = pd.merge(data_folds, changed_bits, on="key", sort=True).reset_index()
-    assert len(merged_df) == len(data_folds)
-    assert len(merged_df) == len(changed_bits)
-    data_folds = merged_df
+        changed_bits_table[row["key"]] = row["nbits"]
 
     # Ignore holdout fold
     data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
@@ -733,10 +730,12 @@ def get_holdout(data_dir: str, features=None):
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
     changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
-    changed_bits["key"] = changed_bits["file"] + "_" + changed_bits["method"].apply(METHOD_TO_INDEX).apply(str)
+    changed_bits["key"] = (
+        changed_bits["file"] + "_" + changed_bits["method"].apply(lambda x: METHOD_TO_INDEX[x]).apply(str)
+    )
     changed_bits_table = {}
     for i, row in changed_bits.iterrows():
-        changed_bits_table[row["key"]] = row["bits"]
+        changed_bits_table[row["key"]] = row["nbits"]
 
     # Take only holdout fold
     holdout_df = data_folds[data_folds[INPUT_FOLD_KEY] == HOLDOUT_FOLD]

@@ -538,6 +538,27 @@ def get_criterions(
     need_embedding_auc_score = False
 
     if modification_flag is not None:
+        for criterion in modification_flag:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
+
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_MODIFICATION_FLAG,
+                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
+                prefix=f"modification_flag/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
 
         # Metrics
         callbacks += [
@@ -572,8 +593,8 @@ def get_criterions(
             BestMetricCheckpointCallback(target_metric="auc", target_metric_minimize=False, save_n_best=3),
         ]
 
-        # Losses
-        for criterion in modification_flag:
+    if modification_type is not None:
+        for criterion in modification_type:
             if isinstance(criterion, (list, tuple)):
                 loss_name, loss_weight = criterion
             else:
@@ -582,9 +603,9 @@ def get_criterions(
             cd, criterion, criterion_name = get_criterion_callback(
                 loss_name,
                 num_epochs=num_epochs,
-                input_key=INPUT_TRUE_MODIFICATION_FLAG,
-                output_key=OUTPUT_PRED_MODIFICATION_FLAG,
-                prefix=f"modification_flag/{loss_name}",
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
+                prefix=f"modification_type/{loss_name}",
                 loss_weight=float(loss_weight),
                 mixup=mixup,
                 cutmix=cutmix,
@@ -595,7 +616,6 @@ def get_criterions(
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
 
-    if modification_type is not None:
         # Metrics
         callbacks += [
             ConfusionMatrixCallback(
@@ -622,29 +642,6 @@ def get_criterions(
             ),
             BestMetricCheckpointCallback(target_metric="auc_classifier", target_metric_minimize=False, save_n_best=3),
         ]
-
-        # Losses
-        for criterion in modification_type:
-            if isinstance(criterion, (list, tuple)):
-                loss_name, loss_weight = criterion
-            else:
-                loss_name, loss_weight = criterion, 1.0
-
-            cd, criterion, criterion_name = get_criterion_callback(
-                loss_name,
-                num_epochs=num_epochs,
-                input_key=INPUT_TRUE_MODIFICATION_TYPE,
-                output_key=OUTPUT_PRED_MODIFICATION_TYPE,
-                prefix=f"modification_type/{loss_name}",
-                loss_weight=float(loss_weight),
-                mixup=mixup,
-                cutmix=cutmix,
-                tsa=tsa,
-            )
-            criterions_dict.update(cd)
-            callbacks.append(criterion)
-            losses.append(criterion_name)
-            print("Using loss", loss_name, loss_weight)
 
     if mask_loss is not None:
         for criterion in mask_loss:
@@ -738,19 +735,7 @@ def get_criterions(
                 print("Using loss", fm, loss_name, loss_weight)
 
     if bits_loss is not None:
-        # Metrics
-        callbacks += [
-            CompetitionMetricCallback(
-                input_key=INPUT_TRUE_MODIFICATION_TYPE,
-                output_key=OUTPUT_PRED_PAYLOAD_BITS,
-                output_activation=log_plus_one,
-                prefix="bits",
-            ),
-            BestMetricCheckpointCallback(target_metric="bits", target_metric_minimize=False, save_n_best=3),
-        ]
-
-        # Losses
-        for criterion in modification_type:
+        for criterion in bits_loss:
             if isinstance(criterion, (list, tuple)):
                 loss_name, loss_weight = criterion
             else:
@@ -771,6 +756,17 @@ def get_criterions(
             callbacks.append(criterion)
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
+
+        # Metrics
+        callbacks += [
+            CompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_PAYLOAD_BITS,
+                output_activation=log_plus_one,
+                prefix="bits",
+            ),
+            BestMetricCheckpointCallback(target_metric="bits", target_metric_minimize=False, save_n_best=3),
+        ]
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
     if mixup:

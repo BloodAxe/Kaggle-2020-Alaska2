@@ -32,7 +32,7 @@ class TimmRgbModelBits(TimmRgbModel):
         input_key=INPUT_IMAGE_KEY,
     ):
         super().__init__(encoder, num_classes, dropout, mean, std, max_pixel_value, input_key)
-        self.bits = nn.Sequential(
+        self.bits_regression = nn.Sequential(
             OrderedDict(
                 [
                     ("conv1", nn.Conv2d(encoder.num_features, 128, kernel_size=1)),
