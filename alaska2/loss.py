@@ -15,6 +15,7 @@ from torch import nn
 from .cutmix import CutmixCallback
 from .dataset import *
 from .metric import *
+from .metric import log_plus_one
 from .mixup import MixupCriterionCallback, MixupInputCallback
 from .tsa import TSACriterionCallback
 
@@ -353,7 +354,37 @@ class ResizeToTarget2d(nn.Module):
         return self.loss(input, target)
 
 
+class MSLELoss(nn.Module):
+    """
+    Mean squared logarithmic error
+    https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
+    """
+
+    __constants__ = ["reduction"]
+
+    def __init__(self, reduction="mean"):
+        super().__init__()
+        self.reduction = reduction
+
+    def forward(self, input, target):
+        loss = torch.log((target + 1) / (input + 1)) ** 2
+        if self.reduction == "mean":
+            loss = loss.mean()
+        if self.reduction == "sum":
+            loss = loss.sum()
+        return loss
+
+
 def get_loss(loss_name: str, tsa=False):
+    if loss_name.lower() == "mse":
+        return nn.MSELoss()
+
+    if loss_name.lower() == "msle":
+        return MSLELoss()
+
+    if loss_name.lower() == "smooth_l1":
+        return nn.SmoothL1Loss()
+
     if loss_name.lower() == "mask_bce":
         return ResizeToTarget2d(SoftBCEWithLogitsLoss())
 
@@ -493,6 +524,7 @@ def get_criterions(
     modification_type,
     embedding_loss,
     mask_loss,
+    bits_loss,
     num_epochs: int,
     feature_maps_loss=None,
     mixup=False,
@@ -704,6 +736,41 @@ def get_criterions(
                 callbacks.append(criterion)
                 losses.append(criterion_name)
                 print("Using loss", fm, loss_name, loss_weight)
+
+    if bits_loss is not None:
+        # Metrics
+        callbacks += [
+            CompetitionMetricCallback(
+                input_key=INPUT_TRUE_MODIFICATION_TYPE,
+                output_key=OUTPUT_PRED_PAYLOAD_BITS,
+                output_activation=log_plus_one,
+                prefix="bits",
+            ),
+            BestMetricCheckpointCallback(target_metric="bits", target_metric_minimize=False, save_n_best=3),
+        ]
+
+        # Losses
+        for criterion in modification_type:
+            if isinstance(criterion, (list, tuple)):
+                loss_name, loss_weight = criterion
+            else:
+                loss_name, loss_weight = criterion, 1.0
+
+            cd, criterion, criterion_name = get_criterion_callback(
+                loss_name,
+                num_epochs=num_epochs,
+                input_key=INPUT_TRUE_PAYLOAD_BITS,
+                output_key=OUTPUT_PRED_PAYLOAD_BITS,
+                prefix=f"bits/{loss_name}",
+                loss_weight=float(loss_weight),
+                mixup=mixup,
+                cutmix=cutmix,
+                tsa=tsa,
+            )
+            criterions_dict.update(cd)
+            callbacks.append(criterion)
+            losses.append(criterion_name)
+            print("Using loss", loss_name, loss_weight)
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
     if mixup:

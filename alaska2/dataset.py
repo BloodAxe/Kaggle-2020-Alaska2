@@ -37,10 +37,12 @@ INPUT_FEATURES_CHANNEL_CB_KEY = "input_image_cb"
 INPUT_TRUE_MODIFICATION_TYPE = "true_modification_type"
 INPUT_TRUE_MODIFICATION_FLAG = "true_modification_flag"
 INPUT_TRUE_MODIFICATION_MASK = "true_embedding_mask"
+INPUT_TRUE_PAYLOAD_BITS = "true_payload_bits"
 
 OUTPUT_PRED_MODIFICATION_TYPE = "pred_modification_type"
 OUTPUT_PRED_MODIFICATION_FLAG = "pred_modification_flag"
 OUTPUT_PRED_MODIFICATION_MASK = "pred_embedding_mask"
+OUTPUT_PRED_PAYLOAD_BITS = "pred_payload_bits"
 
 OUTPUT_PRED_EMBEDDING = "pred_embedding"
 
@@ -49,37 +51,42 @@ OUTPUT_FEATURE_MAP_8 = "pred_fm_8"
 OUTPUT_FEATURE_MAP_16 = "pred_fm_16"
 OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
+METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
+
 __all__ = [
-    "bitmix",
-    "INPUT_TRUE_MODIFICATION_MASK",
-    "OUTPUT_PRED_MODIFICATION_MASK",
+    "HOLDOUT_FOLD",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
-    "INPUT_FEATURES_JPEG_FLOAT",
     "INPUT_FEATURES_CHANNEL_CR_KEY",
-    "INPUT_FEATURES_DECODING_RESIDUAL_KEY",
     "INPUT_FEATURES_CHANNEL_Y_KEY",
     "INPUT_FEATURES_DCT_CB_KEY",
     "INPUT_FEATURES_DCT_CR_KEY",
     "INPUT_FEATURES_DCT_KEY",
     "INPUT_FEATURES_DCT_Y_KEY",
+    "INPUT_FEATURES_DECODING_RESIDUAL_KEY",
     "INPUT_FEATURES_ELA_KEY",
     "INPUT_FEATURES_ELA_RICH_KEY",
+    "INPUT_FEATURES_JPEG_FLOAT",
     "INPUT_FOLD_KEY",
     "INPUT_IMAGE_ID_KEY",
     "INPUT_IMAGE_KEY",
     "INPUT_IMAGE_QF_KEY",
     "INPUT_TRUE_MODIFICATION_FLAG",
+    "INPUT_TRUE_MODIFICATION_MASK",
     "INPUT_TRUE_MODIFICATION_TYPE",
+    "INPUT_TRUE_PAYLOAD_BITS",
     "OUTPUT_FEATURE_MAP_16",
     "OUTPUT_FEATURE_MAP_32",
     "OUTPUT_FEATURE_MAP_4",
     "OUTPUT_FEATURE_MAP_8",
     "OUTPUT_PRED_EMBEDDING",
     "OUTPUT_PRED_MODIFICATION_FLAG",
+    "OUTPUT_PRED_MODIFICATION_MASK",
     "OUTPUT_PRED_MODIFICATION_TYPE",
+    "OUTPUT_PRED_PAYLOAD_BITS",
     "PairedImageDataset",
     "TrainingValidationDataset",
+    "bitmix",
     "compute_blur_features",
     "compute_dct_fast",
     "compute_dct_slow",
@@ -88,13 +95,13 @@ __all__ = [
     "dct8",
     "get_datasets",
     "get_datasets_paired",
-    "get_test_dataset",
-    "idct8",
     "get_holdout",
-    "get_negatives_ds",
     "get_istego100k_test_other",
     "get_istego100k_test_same",
     "get_istego100k_train",
+    "get_negatives_ds",
+    "get_test_dataset",
+    "idct8",
 ]
 
 
@@ -342,6 +349,7 @@ class TrainingValidationDataset(Dataset):
         images: Union[List, np.ndarray],
         targets: Optional[Union[List, np.ndarray]],
         quality: Union[List, np.ndarray],
+        bits: Optional[Union[List, np.ndarray]],
         transform: Union[A.Compose, A.BasicTransform],
         features: List[str],
         obliterate: A.Compose = None,
@@ -359,6 +367,7 @@ class TrainingValidationDataset(Dataset):
         self.transform = transform
         self.features = features
         self.quality = quality
+        self.bits = bits
 
         self.obliterate = obliterate
         self.obliterate_p = obliterate_p
@@ -387,6 +396,9 @@ class TrainingValidationDataset(Dataset):
         data = self.transform(**data)
 
         sample = {INPUT_IMAGE_ID_KEY: os.path.basename(self.images[index]), INPUT_IMAGE_QF_KEY: int(qf)}
+
+        if self.bits is not None:
+            sample[INPUT_TRUE_PAYLOAD_BITS] = self.bits[index]
 
         if self.targets is not None:
             target = int(self.targets[index])
@@ -532,7 +544,20 @@ def get_datasets(
     valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+    data_folds["key"] = data_folds["image_id"] + "_" + data_folds["target"].apply(str)
+
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
+
+    changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
+    changed_bits["key"] = changed_bits["file"] + "_" + changed_bits["method"].apply(METHOD_TO_INDEX).apply(str)
+    changed_bits_table = {}
+    for i, row in changed_bits.iterrows():
+        changed_bits_table[row["key"]] = row["bits"]
+
+    merged_df = pd.merge(data_folds, changed_bits, on="key", sort=True).reset_index()
+    assert len(merged_df) == len(data_folds)
+    assert len(merged_df) == len(changed_bits)
+    data_folds = merged_df
 
     # Ignore holdout fold
     data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
@@ -553,10 +578,12 @@ def get_datasets(
     train_x = train_images.copy()
     train_y = [0] * len(train_images)
     train_qf = train_df["quality"].values.tolist()
+    train_bits = [0] * len(train_images)
 
     valid_x = valid_images.copy()
     valid_y = [0] * len(valid_images)
     valid_qf = valid_df["quality"].values.tolist()
+    valid_bits = [0] * len(valid_images)
 
     for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
         # Filter images that does not have any alterations DCT (there are 250 of them)
@@ -569,6 +596,9 @@ def get_datasets(
                 train_x.append(fname)
                 train_y.append(method_index + 1)
                 train_qf.append(qf)
+
+                key = os.path.basename(fname) + "_" + str(method_index)
+                train_bits.append(changed_bits_table[key])
             else:
                 # print("Removed unchanged file from the train set", fname)
                 pass
@@ -576,9 +606,13 @@ def get_datasets(
         for fname, qf in zip(valid_images, valid_df["quality"].values):
             if fs.id_from_fname(fname) not in unchanged_files:
                 fname = fname.replace("Cover", method_name)
+
                 valid_x.append(fname)
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
+
+                key = os.path.basename(fname) + "_" + str(method_index)
+                valid_bits.append(changed_bits_table[key])
             else:
                 # print("Removed unchanged file from the valid set", fname)
                 pass
@@ -597,13 +631,19 @@ def get_datasets(
         images=train_x,
         targets=train_y,
         quality=train_qf,
+        bits=train_bits,
         transform=train_transform,
         features=features,
         obliterate=get_obliterate_augs() if obliterate_p > 0 else None,
         obliterate_p=obliterate_p,
     )
     valid_ds = TrainingValidationDataset(
-        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+        images=valid_x,
+        targets=valid_y,
+        quality=valid_qf,
+        bits=valid_bits,
+        transform=valid_transform,
+        features=features,
     )
 
     sampler = None
@@ -686,11 +726,17 @@ def get_datasets_paired(
     return train_ds, valid_ds, sampler
 
 
-def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), features=None):
+def get_holdout(data_dir: str, features=None):
     valid_transform = A.NoOp()
 
     data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
+
+    changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
+    changed_bits["key"] = changed_bits["file"] + "_" + changed_bits["method"].apply(METHOD_TO_INDEX).apply(str)
+    changed_bits_table = {}
+    for i, row in changed_bits.iterrows():
+        changed_bits_table[row["key"]] = row["bits"]
 
     # Take only holdout fold
     holdout_df = data_folds[data_folds[INPUT_FOLD_KEY] == HOLDOUT_FOLD]
@@ -701,6 +747,7 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
     valid_x = holdout_images.copy()
     valid_y = [0] * len(holdout_images)
     valid_qf = holdout_df["quality"].values.tolist()
+    valid_bits = [0] * len(holdout_images)
 
     for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
         # Filter images that does not have any alterations DCT (there are 250 of them)
@@ -713,12 +760,21 @@ def get_holdout(data_dir: str, image_size: Tuple[int, int] = (512, 512), feature
                 valid_x.append(fname)
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
+
+                key = os.path.basename(fname) + "_" + str(method_index)
+                valid_bits.append(changed_bits_table[key])
+
             else:
                 # print("Removed unchanged file from the holdout set", fname)
                 pass
 
     holdout_ds = TrainingValidationDataset(
-        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+        images=valid_x,
+        targets=valid_y,
+        quality=valid_qf,
+        bits=valid_bits,
+        transform=valid_transform,
+        features=features,
     )
 
     print("Holdout", holdout_ds)
@@ -735,6 +791,7 @@ def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(51
         images=negative_images,
         targets=[0] * len(negative_images),
         quality=[0] * len(negative_images),
+        bits=None,
         transform=A.Compose(
             [
                 A.Transpose(p=0.5),
@@ -759,6 +816,7 @@ def get_test_dataset(data_dir, features):
     return TrainingValidationDataset(
         images=test_df["image_fname"].values.tolist(),
         targets=None,
+        bits=None,
         quality=test_df["quality"].values.tolist(),
         transform=valid_transform,
         features=features,
@@ -891,8 +949,6 @@ def get_istego100k_test_other(data_dir: str, features, output_size="full"):
 def get_istego100k_train(data_dir: str, fold: int, features, output_size="full"):
     assert output_size in {"full", "random_crop", "center_crop", "tiles"}
     from .augmentations import RandomCrop8
-
-    METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
 
     labels = json.load(open(os.path.join(data_dir, "train.parameter.json")))
 

@@ -174,6 +174,10 @@ def classifier_logits_to_probas(x):
     return x.softmax(dim=1)[:, 1:].sum(dim=1)
 
 
+def log_plus_one(x):
+    return torch.log(x + 1)
+
+
 def embedding_to_probas(x: torch.Tensor):
     background = torch.zeros(x.size(1), device=x.device, dtype=x.dtype)
     background[0] = 1

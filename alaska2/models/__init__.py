@@ -6,7 +6,7 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits
 from ..dataset import *
 from ..predict import *
 
@@ -35,6 +35,9 @@ MODEL_REGISTRY = {
     "nr_rgb_tf_efficientnet_b7_ns_mish": timm.nr_rgb_tf_efficientnet_b7_ns_mish,
     "nr_rgb_mixnet_xl": timm.nr_rgb_mixnet_xl,
     "nr_rgb_mixnet_xxl": timm.nr_rgb_mixnet_xxl,
+    # Bits
+    "nr_rgb_tf_efficientnet_b3_ns_in_mish_bits": timm_bits.nr_rgb_tf_efficientnet_b3_ns_in_mish_bits,
+    "nr_rgb_tf_efficientnet_b3_ns_mish_bits": timm_bits.nr_rgb_tf_efficientnet_b3_ns_mish_bits,
     # RGB + QF
     # "rgb_qf_tf_efficientnet_b2_ns": timm.rgb_qf_tf_efficientnet_b2_ns,
     # "rgb_qf_tf_efficientnet_b6_ns": timm.rgb_qf_tf_efficientnet_b6_ns,
