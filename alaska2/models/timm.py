@@ -162,7 +162,7 @@ def patched_tf_efficientnet_b7_ns(pretrained=False, **kwargs):
     kwargs["bn_eps"] = BN_EPS_TF_DEFAULT
     kwargs["pad_type"] = "same"
     model = patched_gen_efficientnet(
-        "tf_efficientnet_b7_ns", channel_multiplier=1.8, depth_multiplier=2.6, pretrained=pretrained, **kwargs
+        "tf_efficientnet_b7_ns", channel_multiplier=2.0, depth_multiplier=3.1, pretrained=pretrained, **kwargs
     )
     return model
 
