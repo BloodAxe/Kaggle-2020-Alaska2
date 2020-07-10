@@ -12,10 +12,7 @@ from alaska2.dataset import (
     INPUT_FEATURES_JPEG_FLOAT,
 )
 
-__all__ = [
-    "nr_rgb_tf_efficientnet_b3_ns_mish_bits",
-    "nr_rgb_tf_efficientnet_b3_ns_in_mish_bits",
-]
+__all__ = ["nr_rgb_tf_efficientnet_b3_ns_mish_bits", "nr_rgb_tf_efficientnet_b3_ns_in_mish_bits"]
 
 from alaska2.models.timm import TimmRgbModel, patched_tf_efficientnet_b3_ns
 
@@ -52,7 +49,7 @@ class TimmRgbModelBits(TimmRgbModel):
         return {
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
-            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(last_fm).sum(),
+            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(last_fm).sum(dim=(2, 3)),
         }
 
     @property

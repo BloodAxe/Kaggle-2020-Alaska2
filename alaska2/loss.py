@@ -763,9 +763,9 @@ def get_criterions(
                 input_key=INPUT_TRUE_MODIFICATION_TYPE,
                 output_key=OUTPUT_PRED_PAYLOAD_BITS,
                 output_activation=log_plus_one,
-                prefix="bits",
+                prefix="auc_bits",
             ),
-            BestMetricCheckpointCallback(target_metric="bits", target_metric_minimize=False, save_n_best=3),
+            BestMetricCheckpointCallback(target_metric="auc_bits", target_metric_minimize=False, save_n_best=3),
         ]
 
     callbacks.append(CriterionAggregatorCallback(prefix="loss", loss_keys=losses))
