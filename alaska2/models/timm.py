@@ -217,6 +217,7 @@ def patched_mixnet_xxl(pretrained=False, **kwargs):
     )
     return model
 
+
 # Model zoo
 
 
@@ -281,7 +282,7 @@ def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0.1):
 
 
 def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0.2):
-    encoder = patched_tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
+    encoder = patched_tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
@@ -295,14 +296,14 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
 
 
 def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
-    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
+    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
 def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
-    encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
+    encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
