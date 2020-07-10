@@ -29,6 +29,7 @@ __all__ = [
     "nr_rgb_tf_efficientnet_b3_ns_mish",
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_tf_efficientnet_b6_ns_mish",
+    "nr_rgb_tf_efficientnet_b7_ns_mish",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
     "nr_rgb_tf_efficientnet_b3_ns_gn_mish",
@@ -153,6 +154,19 @@ def patched_tf_efficientnet_b6_ns(pretrained=False, **kwargs):
     return model
 
 
+def patched_tf_efficientnet_b7_ns(pretrained=False, **kwargs):
+    """ EfficientNet-B6 NoisyStudent. Tensorflow compatible variant """
+    # NOTE for train, drop_rate should be 0.5
+    from timm.models.efficientnet_blocks import BN_EPS_TF_DEFAULT
+
+    kwargs["bn_eps"] = BN_EPS_TF_DEFAULT
+    kwargs["pad_type"] = "same"
+    model = patched_gen_efficientnet(
+        "tf_efficientnet_b7_ns", channel_multiplier=1.8, depth_multiplier=2.6, pretrained=pretrained, **kwargs
+    )
+    return model
+
+
 # Model zoo
 
 
@@ -232,6 +246,13 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
 
 def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
     encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
+    del encoder.classifier
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+
+
+def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
+    encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, path_drop_rate=0.2)
     del encoder.classifier
 
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)

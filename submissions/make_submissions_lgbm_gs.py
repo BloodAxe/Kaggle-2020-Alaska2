@@ -15,14 +15,11 @@ from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array
+from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 import lightgbm as lgb
-
-# Classifiers
-warnings.simplefilter("ignore")
 
 
 def get_x_y(predictions):
@@ -34,9 +31,9 @@ def get_x_y(predictions):
         if "true_modification_flag" in p:
             y = p["true_modification_flag"].values.astype(np.float32)
 
-        X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        X.append(pred_modification_type)
+        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
+        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
+        # X.append(pred_modification_type)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
         X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
@@ -49,10 +46,18 @@ def get_x_y(predictions):
         )
 
         if "pred_modification_type_tta" in p:
-            X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+            col = p["pred_modification_type_tta"].apply(parse_and_softmax)
+            col_act = col.tolist()
+
+            X.append(col_act)
 
         if "pred_modification_flag_tta" in p:
-            X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
+            col = p["pred_modification_flag_tta"].apply(parse_array)
+            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist()).tolist()
+            std = col.apply(lambda x: torch.tensor(x).sigmoid().std().item())
+
+            X.append(col_act)
+            X.append(std)
 
     X = np.column_stack(X).astype(np.float32)
     if y is not None:
@@ -85,7 +90,7 @@ def main():
         "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
@@ -127,18 +132,19 @@ def main():
 
     params = {
         "num_leaves": [16, 32, 64, 128],
-        "reg_alpha": [0.1, 0.5],
+        "reg_alpha": [0, 0.01, 0.1, 0.5],
+        "reg_lambda": [0, 0.01, 0.1, 0.5],
         "min_data_in_leaf": [30, 50, 100, 300],
-        "lambda_l1": [0, 0.1, 0.5, 1],
-        "lambda_l2": [0, 0.1, 1],
         "learning_rate": [0.01, 0.1, 0.5],
     }
 
     lgb_estimator = lgb.LGBMClassifier(
         boosting_type="gbdt",
+        min_child_samples="5",
+        max_depth=10,
         objective="binary",
-        num_boost_round=2000,
-        # metric=wauc_metric,
+        n_estimators=128,
+        silent=False,
     )
 
     random_search = RandomizedSearchCV(
@@ -148,6 +154,7 @@ def main():
         n_jobs=4,
         cv=group_kfold.split(x, y, groups=image_ids),
         verbose=3,
+        random_state=42,
     )
 
     # Here we go
@@ -156,11 +163,10 @@ def main():
     test_pred = random_search.predict_proba(x_test)[:, 1]
     print(test_pred)
 
+    submit_fname = os.path.join(output_dir, f"lgbm_gs_{random_search.best_score_:.4f}_{checksum}.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
-    df[["Id", "Label"]].to_csv(
-        os.path.join(output_dir, f"lgbm_gs_{random_search.best_score_:.4f}_{checksum}.csv"), index=False
-    )
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
 
     print("\n All results:")
     print(random_search.cv_results_)

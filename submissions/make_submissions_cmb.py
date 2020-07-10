@@ -29,10 +29,10 @@ def main():
         # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
         # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
         #
-        "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
@@ -40,7 +40,7 @@ def main():
         "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
@@ -79,8 +79,8 @@ def main():
 
         for c in tqdm(combs, desc=f"{r}"):
             preds = X[np.array(c)].mean(axis=0)
-            # score = alaska_weighted_auc(y_true, preds)
-            score = shaky_wauc(y_true, preds)
+            score = alaska_weighted_auc(y_true, preds)
+            # score = shaky_wauc(y_true, preds)
 
             if score > best_auc:
                 best_auc = score

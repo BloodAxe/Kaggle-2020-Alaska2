@@ -8,19 +8,18 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from lazypredict.Supervised import LazyClassifier
 from pytorch_toolbelt.utils import fs
-from sklearn.model_selection import GroupKFold
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import GroupKFold, RandomizedSearchCV, GridSearchCV
+from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax
 from submissions.eval_tta import get_predictions_csv
-
-# Classifiers
 from submissions.make_submissions_averaging import compute_checksum_v2
 
-warnings.simplefilter("ignore")
+import catboost as cat
 
 
 def get_x_y(predictions):
@@ -64,6 +63,11 @@ def get_x_y(predictions):
     if y is not None:
         y = y.astype(int)
     return X, y
+
+
+def wauc_metric(y_true, y_pred):
+    wauc = alaska_weighted_auc(y_true, y_pred)
+    return ("wauc", wauc, True)
 
 
 def main():
@@ -115,18 +119,52 @@ def main():
     x_test, _ = get_x_y(test_predictions)
     print(x_test.shape)
 
-    # x = np.column_stack([x, quality_h])
+    if True:
+        sc = StandardScaler()
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
+    if True:
+        x = np.column_stack([x, quality_h])
+        x_test = np.column_stack([x_test, quality_t])
+
     group_kfold = GroupKFold(n_splits=5)
 
-    for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+    params = {"learning_rate": [1e-3, 1e-2, 1e-1, 1], "depth": [4, 8, 16]}
 
-        clf = LazyClassifier(verbose=True, ignore_warnings=False, custom_metric=alaska_weighted_auc, predictions=True)
-        models, predictions = clf.fit(x_train, x_valid, y_train, y_valid)
-        print(models)
+    lgb_estimator = cat.CatBoostClassifier(iterations=1024, verbose=True)
 
-        models.to_csv(os.path.join(output_dir, f"lazypredict_models_{fold_index}.csv"))
-        predictions.to_csv(os.path.join(output_dir, f"lazypredict_preds_{fold_index}.csv"))
+    random_search = RandomizedSearchCV(
+        lgb_estimator,
+        param_distributions=params,
+        n_iter=10,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        cv=group_kfold.split(x, y, groups=image_ids),
+        verbose=3,
+        random_state=42,
+    )
+
+    # Here we go
+    random_search.fit(x, y)
+
+    test_pred = random_search.predict_proba(x_test)[:, 1]
+    print(test_pred)
+
+    submit_fname = os.path.join(output_dir, f"catboost_gs_{random_search.best_score_:.4f}_{checksum}.csv")
+    df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
+    df["Label"] = test_pred
+    df[["Id", "Label"]].to_csv(submit_fname, index=False)
+    print("Saved predictions to ", submit_fname)
+
+    print("\n All results:")
+    print(random_search.cv_results_)
+    print("\n Best estimator:")
+    print(random_search.best_estimator_)
+    print(random_search.best_score_)
+    print("\n Best hyperparameters:")
+    print(random_search.best_params_)
+
+    # print(model.feature_importances_)
 
 
 if __name__ == "__main__":

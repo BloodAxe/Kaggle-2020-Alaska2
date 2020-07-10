@@ -7,8 +7,11 @@ import warnings
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
-from sklearn.model_selection import GroupKFold
+from sklearn.decomposition import PCA
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
@@ -17,11 +20,6 @@ from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
-import torch.nn.functional as F
-
-# Classifiers
-
-warnings.simplefilter("ignore")
 
 
 def get_x_y(predictions):
@@ -79,7 +77,7 @@ def main():
         "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
@@ -113,6 +111,11 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
+    if False:
+        sc = PCA(n_components=16)
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
     if True:
         x = np.column_stack([x, quality_h])
         x_test = np.column_stack([x_test, quality_t])
@@ -120,7 +123,7 @@ def main():
     group_kfold = GroupKFold(n_splits=5)
     cv_scores = []
     test_pred = None
-    one_over_n = 1.0 / 5
+    one_over_n = 1.0 / group_kfold.n_splits
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
@@ -132,17 +135,17 @@ def main():
             colsample_bylevel=1,
             colsample_bynode=1,
             colsample_bytree=1.0,
-            gamma=0.5,
+            gamma=2,
             gpu_id=-1,
             importance_type="gain",
             interaction_constraints="",
-            learning_rate=0.02,
+            learning_rate=0.2,
             max_delta_step=0,
-            max_depth=3,
-            min_child_weight=5,
+            max_depth=6,
+            min_child_weight=1,
             # missing=nan,
             monotone_constraints="()",
-            n_estimators=600,
+            n_estimators=32,
             n_jobs=8,
             nthread=1,
             num_parallel_tree=1,
@@ -155,7 +158,7 @@ def main():
             subsample=0.8,
             tree_method="exact",
             validate_parameters=1,
-            verbosity=3,
+            verbosity=2,
         )
 
         cls.fit(x_train, y_train)
@@ -177,6 +180,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
+    print("Saved submission to ", submit_fname)
 
 
 if __name__ == "__main__":
