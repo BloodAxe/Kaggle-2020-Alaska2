@@ -295,20 +295,6 @@ def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
 
 
-def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
-    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
-    del encoder.classifier
-
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
-def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
-    encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
-    del encoder.classifier
-
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
-
-
 def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0.5):
     encoder = efficientnet.tf_efficientnet_b7_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
@@ -341,7 +327,7 @@ def nr_rgb_tf_efficientnet_b3_ns_gn_mish(num_classes=4, pretrained=True, dropout
     print(encoder)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
 def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout=0.2):
@@ -355,12 +341,26 @@ def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout
     print(encoder)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
 def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+
+
+def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
+    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
+    del encoder.classifier
+
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+
+
+def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
+    encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
+    del encoder.classifier
+
     return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
 
 
