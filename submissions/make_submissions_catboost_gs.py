@@ -128,7 +128,7 @@ def main():
         x = np.column_stack([x, quality_h])
         x_test = np.column_stack([x_test, quality_t])
 
-    group_kfold = GroupKFold(n_splits=5)
+    group_kfold = GroupKFold(n_splits=2)
 
     params = {"learning_rate": [1e-3, 1e-2, 1e-1, 1], "depth": [4, 8, 16]}
 
