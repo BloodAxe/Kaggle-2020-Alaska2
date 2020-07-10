@@ -57,6 +57,7 @@ def main():
     parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--feature-maps-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--mask-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
+    parser.add_argument("--bits-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -96,6 +97,7 @@ def main():
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
     mask_loss = args.mask_loss
+    bits_loss = args.bits_loss
 
     freeze_encoder = args.freeze_encoder
     data_dir = args.data_dir
@@ -215,6 +217,7 @@ def main():
             modification_type=modification_type_loss,
             embedding_loss=embedding_loss,
             mask_loss=mask_loss,
+            bits_loss=bits_loss,
             feature_maps_loss=feature_maps_loss,
             num_epochs=warmup,
             mixup=mixup,
@@ -295,6 +298,7 @@ def main():
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
         print("  Mask           :", mask_loss)
+        print("  Bits           :", bits_loss)
 
         runner = SupervisedRunner(input_key=required_features, output_key=None)
         runner.train(
@@ -350,6 +354,7 @@ def main():
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
             mask_loss=mask_loss,
+            bits_loss=bits_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
@@ -420,6 +425,7 @@ def main():
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
         print("  Mask           :", mask_loss)
+        print("  Bits           :", bits_loss)
 
         optimizer = get_optimizer(
             optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
@@ -477,6 +483,7 @@ def main():
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
             mask_loss=mask_loss,
+            bits_loss=bits_loss,
             num_epochs=fine_tune,
             mixup=False,
             cutmix=False,
@@ -547,6 +554,7 @@ def main():
         print("  Embedding      :", embedding_loss)
         print("  Feature maps   :", feature_maps_loss)
         print("  Mask           :", mask_loss)
+        print("  Bits           :", bits_loss)
 
         optimizer = get_optimizer(
             "SGD", get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
