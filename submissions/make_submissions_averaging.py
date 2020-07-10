@@ -92,7 +92,7 @@ def main():
         "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
+        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
         "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
@@ -105,47 +105,59 @@ def main():
     all_predictions = []
     labels = experiments
     scoring_fn = alaska_weighted_auc
-    scoring_fn = shaky_wauc
 
     for metric in [
         # "loss",
         # "bauc",
         "cauc"
     ]:
-        predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
-        oof_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        holdout_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        oof_predictions_d4 = get_predictions_csv(experiments, metric, "oof", "d4")
         test_predictions_d4 = get_predictions_csv(experiments, metric, "test", "d4")
 
         fnames_for_checksum = [x + f"{metric}" for x in experiments]
 
-        bin_pred_d4 = make_binary_predictions(predictions_d4)
+        bin_pred_d4 = make_binary_predictions(holdout_predictions_d4)
         y_true = bin_pred_d4[0].y_true_type.values
 
         bin_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4).Label)
 
-        cls_pred_d4 = make_classifier_predictions(predictions_d4)
+        cls_pred_d4 = make_classifier_predictions(holdout_predictions_d4)
         cls_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4).Label)
 
-        bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
-        bin_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
-
-        cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
-        cls_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
-
-        prod_pred_d4_cal_score = scoring_fn(
-            y_true, blend_predictions_mean(cls_pred_d4_cal).Label * blend_predictions_mean(bin_pred_d4_cal).Label
+        prod_pred_d4_score = scoring_fn(
+            y_true, blend_predictions_mean(cls_pred_d4).Label * blend_predictions_mean(bin_pred_d4).Label
         )
 
-        all_predictions = [x.Label for x in make_classifier_predictions(test_predictions_d4)]
+        if False:
+            bin_pred_d4_cal = make_binary_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
+            bin_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
+
+            cls_pred_d4_cal = make_classifier_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
+            cls_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
+
+            prod_pred_d4_cal_score = scoring_fn(
+                y_true, blend_predictions_mean(cls_pred_d4_cal).Label * blend_predictions_mean(bin_pred_d4_cal).Label
+            )
+        else:
+            bin_pred_d4_cal_score = 0
+            cls_pred_d4_cal_score = 0
+            prod_pred_d4_cal_score = 0
 
         print(metric, "Bin NC", "d4", bin_pred_d4_score)
         print(metric, "Bin CL", "d4", cls_pred_d4_score)
+        print(metric, "Prod  ", "d4", prod_pred_d4_score)
         print(metric, "Cls NC", "d4", bin_pred_d4_cal_score)
         print(metric, "Cls CL", "d4", cls_pred_d4_cal_score)
         print(metric, "Prod  ", "d4", prod_pred_d4_cal_score)
 
         max_score = max(
-            bin_pred_d4_score, cls_pred_d4_score, bin_pred_d4_cal_score, cls_pred_d4_cal_score, prod_pred_d4_cal_score
+            bin_pred_d4_score,
+            cls_pred_d4_score,
+            bin_pred_d4_cal_score,
+            cls_pred_d4_cal_score,
+            prod_pred_d4_score,
+            prod_pred_d4_cal_score,
         )
 
         if bin_pred_d4_score == max_score:
@@ -184,6 +196,19 @@ def main():
                 ),
                 index=False,
             )
+        if prod_pred_d4_score == max_score:
+            cls_predictions = make_classifier_predictions(test_predictions_d4)
+            bin_predictions = make_binary_predictions(test_predictions_d4)
+
+            predictions1 = blend_predictions_mean(cls_predictions)
+            predictions2 = blend_predictions_mean(bin_predictions)
+            predictions = predictions1.copy()
+            predictions.Label = predictions1.Label * predictions2.Label
+
+            predictions.to_csv(
+                os.path.join(output_dir, f"mean_{max_score:.4f}_prod_{compute_checksum_v2(fnames_for_checksum)}.csv"),
+                index=False,
+            )
         if prod_pred_d4_cal_score == max_score:
             cls_predictions = make_classifier_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
             bin_predictions = make_binary_predictions_calibrated(test_predictions_d4, oof_predictions_d4)
@@ -199,18 +224,6 @@ def main():
                 ),
                 index=False,
             )
-
-    # cm = np.zeros((len(all_predictions), len(all_predictions)))
-    # for i in range(len(all_predictions)):
-    #     for j in range(len(all_predictions)):
-    #         cm[i, j] = spearmanr(all_predictions[i], all_predictions[j]).correlation
-    #
-    # print(cm)
-    #
-    # plt.figure(figsize=(20,20))
-    # disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-    # disp.plot(include_values=True, cmap="viridis", ax=plt.gca(), xticks_rotation="horizontal")
-    # plt.show()
 
 
 if __name__ == "__main__":

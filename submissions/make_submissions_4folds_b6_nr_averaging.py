@@ -24,31 +24,30 @@ def main():
     ]
 
     scoring_fn = alaska_weighted_auc
-    # scoring_fn = shaky_wauc
 
     for metric in [
         # "loss",
         # "bauc",
         "cauc"
     ]:
-        predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
-        oof_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        holdout_predictions_d4 = get_predictions_csv(experiments, metric, "holdout", "d4")
+        oof_predictions_d4 = get_predictions_csv(experiments, metric, "oof", "d4")
         test_predictions_d4 = get_predictions_csv(experiments, metric, "test", "d4")
 
         fnames_for_checksum = [x + f"{metric}" for x in experiments]
 
-        bin_pred_d4 = make_binary_predictions(predictions_d4)
+        bin_pred_d4 = make_binary_predictions(holdout_predictions_d4)
         y_true = bin_pred_d4[0].y_true_type.values
 
         bin_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4).Label)
 
-        cls_pred_d4 = make_classifier_predictions(predictions_d4)
+        cls_pred_d4 = make_classifier_predictions(holdout_predictions_d4)
         cls_pred_d4_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4).Label)
 
-        bin_pred_d4_cal = make_binary_predictions_calibrated(predictions_d4, oof_predictions_d4)
+        bin_pred_d4_cal = make_binary_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
         bin_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
 
-        cls_pred_d4_cal = make_classifier_predictions_calibrated(predictions_d4, oof_predictions_d4)
+        cls_pred_d4_cal = make_classifier_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
         cls_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(cls_pred_d4_cal).Label)
 
         prod_pred_d4_cal_score = scoring_fn(
