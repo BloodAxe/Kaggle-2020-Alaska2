@@ -167,6 +167,56 @@ def patched_tf_efficientnet_b7_ns(pretrained=False, **kwargs):
     return model
 
 
+def patched_gen_mixnet_m(variant, channel_multiplier=1.0, depth_multiplier=1.0, pretrained=False, **kwargs):
+    """Creates a MixNet Medium-Large model.
+
+    Ref impl: https://github.com/tensorflow/tpu/tree/master/models/official/mnasnet/mixnet
+    Paper: https://arxiv.org/abs/1907.09595
+    """
+    arch_def = [
+        # stage 0, 112x112 in
+        ["ds_r1_k3_s1_e1_c24"],  # relu
+        # stage 1, 112x112 in
+        ["ir_r1_k3.5.7_a1.1_p1.1_s2_e6_c32", "ir_r1_k3_a1.1_p1.1_s1_e3_c32"],  # relu
+        # stage 2, 56x56 in
+        ["ir_r1_k3.5.7.9_s2_e6_c40_se0.5_nsw", "ir_r3_k3.5_a1.1_p1.1_s1_e6_c40_se0.5_nsw"],  # swish
+        # stage 3, 28x28 in
+        ["ir_r1_k3.5.7_s2_e6_c80_se0.25_nsw", "ir_r3_k3.5.7.9_a1.1_p1.1_s1_e6_c80_se0.25_nsw"],  # swish
+        # stage 4, 14x14in
+        ["ir_r1_k3_s1_e6_c120_se0.5_nsw", "ir_r3_k3.5.7.9_a1.1_p1.1_s1_e3_c120_se0.5_nsw"],  # swish
+        # stage 5, 14x14in
+        ["ir_r1_k3.5.7.9_s2_e6_c200_se0.5_nsw", "ir_r3_k3.5.7.9_p1.1_s1_e6_c200_se0.5_nsw"],  # swish
+        # 7x7
+    ]
+
+    from timm.models.efficientnet import _create_model, default_cfgs
+    from timm.models.efficientnet_builder import decode_arch_def
+    from timm.models.efficientnet_blocks import round_channels, resolve_bn_args
+
+    model_kwargs = dict(
+        block_args=decode_arch_def(arch_def, depth_multiplier, depth_trunc="round"),
+        num_features=1536,
+        stem_size=24,
+        channel_multiplier=channel_multiplier,
+        norm_kwargs=resolve_bn_args(kwargs),
+        # **kwargs
+    )
+    # Update of model_kwargs allows to override activation
+    model_kwargs.update(kwargs)
+
+    model = _create_model(model_kwargs, default_cfgs[variant], pretrained)
+    return model
+
+
+def patched_mixnet_xxl(pretrained=False, **kwargs):
+    """Creates a MixNet Double Extra Large model.
+    Not a paper spec, experimental def by RW w/ depth scaling.
+    """
+    model = patched_gen_mixnet_m(
+        "mixnet_xxl", channel_multiplier=2.4, depth_multiplier=1.3, pretrained=pretrained, **kwargs
+    )
+    return model
+
 # Model zoo
 
 
@@ -320,7 +370,7 @@ def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0.5):
 
 
 def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0.5):
-    encoder = efficientnet.mixnet_xxl(pretrained=pretrained, drop_path_rate=0.2)
+    encoder = patched_mixnet_xxl(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
     mean = encoder.default_cfg["mean"]
     std = encoder.default_cfg["std"]

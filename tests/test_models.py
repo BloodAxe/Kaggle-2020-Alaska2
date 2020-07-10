@@ -31,6 +31,7 @@ def test_nr_rgb_tf_efficientnet_b6_ns():
         print(output_name, output_value.size())
 
 
+@torch.no_grad()
 def test_nr_rgb_mixnet_xxl():
     model = nr_rgb_mixnet_xxl(num_classes=4).cuda()
 
@@ -41,7 +42,6 @@ def test_nr_rgb_mixnet_xxl():
     output = model(**input)
     for output_name, output_value in output.items():
         print(output_name, output_value.size())
-
 
 
 @torch.no_grad()
