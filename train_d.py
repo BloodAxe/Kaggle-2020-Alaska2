@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--embedding-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--feature-maps-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
     parser.add_argument("--mask-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
+    parser.add_argument("--bits-loss", type=str, default=None, action="append", nargs="+")  # [["ce", 1.0]],
 
     parser.add_argument("-o", "--optimizer", default="RAdam", help="Name of the optimizer")
     parser.add_argument(
@@ -113,6 +114,7 @@ def main():
     embedding_loss = args.embedding_loss
     feature_maps_loss = args.feature_maps_loss
     mask_loss = args.mask_loss
+    bits_loss = args.bits_loss
 
     data_dir = args.data_dir
     cache = args.cache
@@ -241,6 +243,7 @@ def main():
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
             mask_loss=mask_loss,
+            bits_loss=bits_loss,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,
