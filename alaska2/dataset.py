@@ -398,7 +398,8 @@ class TrainingValidationDataset(Dataset):
         sample = {INPUT_IMAGE_ID_KEY: os.path.basename(self.images[index]), INPUT_IMAGE_QF_KEY: int(qf)}
 
         if self.bits is not None:
-            sample[INPUT_TRUE_PAYLOAD_BITS] = self.bits[index]
+            # Normalize by image area to get average bpp payload
+            sample[INPUT_TRUE_PAYLOAD_BITS] = float(self.bits[index]) / (512 * 512)
 
         if self.targets is not None:
             target = int(self.targets[index])
