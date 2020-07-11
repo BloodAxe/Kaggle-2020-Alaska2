@@ -336,8 +336,8 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int] = (5
                 A.OneOf(
                     [
                         A.RandomGridShuffle(grid=(2, 2)),
-                        A.RandomGridShuffle(grid=(3, 3)),
                         A.RandomGridShuffle(grid=(4, 4)),
+                        A.RandomGridShuffle(grid=(6, 6)),
                     ],
                     p=0.1,
                 ),
