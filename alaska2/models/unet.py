@@ -6,6 +6,7 @@ from pytorch_toolbelt.modules import EncoderModule, DecoderModule, make_n_channe
 from timm.models.efficientnet_blocks import InvertedResidual, DepthwiseSeparableConv
 from timm.models.layers import Mish
 from torch import nn
+import torch.nn.functional as F
 
 from alaska2.dataset import (
     INPUT_IMAGE_KEY,

@@ -48,16 +48,16 @@ def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=16
             mask_overlay = image.copy()
 
             mask_overlay[true_mask & pred_mask] = np.array(
-                [0, 250, 0], dtype=overlay.dtype
+                [0, 250, 0], dtype=mask_overlay.dtype
             )  # Correct predictions (Hits) painted with green
             mask_overlay[true_mask & ~pred_mask] = np.array(
-                [250, 0, 0], dtype=overlay.dtype
+                [250, 0, 0], dtype=mask_overlay.dtype
             )  # Misses painted with red
             mask_overlay[~true_mask & pred_mask] = np.array(
-                [250, 250, 0], dtype=overlay.dtype
+                [250, 250, 0], dtype=mask_overlay.dtype
             )  # False alarm painted with yellow
             mask_overlay = cv2.addWeighted(image, 0.5, mask_overlay, 0.5, 0, dtype=cv2.CV_8U)
-            mask_overlay = np.row_stack([mask_overlay, overlay])
+            mask_overlay = np.row_stack([header, mask_overlay])
 
             overlay = np.column_stack([overlay, mask_overlay])
 
