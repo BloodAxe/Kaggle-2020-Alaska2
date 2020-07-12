@@ -33,11 +33,13 @@ def read_from_dct(image_fname):
     return decode_bgr_from_dct(fs.change_extension(image_fname, ".npz"))
 
 
-def count_pixel_difference(cover_fname, stego_fname, read_fn):
-    cover = read_fn(cover_fname)
-    stego = read_fn(stego_fname)
+def compute_mask(cover, stego):
     eps = 1e-6
-    return np.count_nonzero((cv2.absdiff(cover, stego) > eps).any(axis=2))
+    return (cv2.absdiff(cover, stego) > eps).any(axis=2)
+
+
+def count_pixel_difference(cover, stego):
+    return np.count_nonzero(compute_mask(cover, stego))
 
 
 def count_dct_difference(cover_dct, stego_dct):
@@ -62,16 +64,22 @@ def count_dct_difference_bits(cover_dct, stego_dct):
 
 def compute_statistics(cover_fname):
     results_df = defaultdict(list)
-    cover_dct = np.load(fs.change_extension(cover_fname, ".npz"))
+    # cover_dct = np.load(fs.change_extension(cover_fname, ".npz"))
+
+    cover = decode_bgr_from_dct(cover_fname)
 
     for method_name in ["JMiPOD", "JUNIWARD", "UERD"]:
         stego_fname = cover_fname.replace("Cover", method_name)
+        stego = decode_bgr_from_dct(stego_fname)
+
+        mask_fname = fs.change_extension(stego_fname, ".png")
+        mask = compute_mask(cover, stego)
 
         results_df["image"].append(os.path.basename(cover_fname))
         results_df["method"].append(os.path.basename(method_name))
+        results_df["pd"].append(count_pixel_difference(cover, stego))
 
-        results_df["pd"].append(count_pixel_difference(cover_fname, stego_fname, read_from_dct))
-
+        cv2.imwrite(mask_fname, mask * 255)
         # stego_dct = np.load(fs.change_extension(stego_fname, ".npz"))
 
         # dct_y, dct_cr, dct_cb = count_dct_difference(cover_dct, stego_dct)
