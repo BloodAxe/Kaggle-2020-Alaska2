@@ -669,6 +669,15 @@ def get_criterions(
             callbacks.append(criterion)
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
+            # Metrics
+            callbacks += [
+                CompetitionMetricCallbackFromMask(
+                    input_key=INPUT_TRUE_MODIFICATION_MASK,
+                    output_key=OUTPUT_PRED_MODIFICATION_MASK,
+                    prefix="auc_mask",
+                ),
+                BestMetricCheckpointCallback(target_metric="auc_mask", target_metric_minimize=False, save_n_best=3),
+            ]
 
     if embedding_loss is not None:
         for criterion in embedding_loss:

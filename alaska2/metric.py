@@ -10,6 +10,9 @@ from pytorch_toolbelt.utils.torch_utils import to_numpy
 from sklearn import metrics
 import numpy as np
 import torch.nn.functional as F
+from sklearn.metrics import roc_curve
+
+from .dataset import INPUT_IMAGE_QF_KEY
 
 __all__ = [
     "CompetitionMetricCallback",
@@ -19,11 +22,9 @@ __all__ = [
     "binary_logits_to_probas",
     "classifier_logits_to_probas",
     "embedding_to_probas",
+    "CompetitionMetricCallbackFromMask",
 ]
 
-from sklearn.metrics import roc_curve
-
-from .dataset import INPUT_IMAGE_QF_KEY
 
 #
 # def anokas_alaska_weighted_auc(y_true, y_pred, **kwargs):
@@ -305,6 +306,57 @@ class CompetitionMetricCallback(Callback):
             plt.show()
 
         return f
+
+
+def target_from_mask(x):
+    return (x > 0).sum(dim=(2, 3))
+
+
+def probas_from_mask(x):
+    return x.sigmoid().sum(dim=(2, 3))
+
+
+class CompetitionMetricCallbackFromMask(CompetitionMetricCallback):
+    def __init__(
+        self,
+        input_key: str,
+        output_key: str,
+        prefix: str,
+        input_activation=target_from_mask,
+        output_activation=probas_from_mask,
+    ):
+        super().__init__(input_key, output_key, output_activation, prefix)
+        self.input_activation = input_activation
+
+    def on_loader_start(self, state: RunnerState):
+        self.true_labels = []
+        self.pred_labels = []
+
+    @torch.no_grad()
+    def on_batch_end(self, state: RunnerState):
+        target = self.input_activation(state.input[self.input_key].detach().cpu())
+        output = self.output_activation(state.output[self.output_key].detach().cpu())
+
+        self.true_labels.extend(to_numpy(target).flatten())
+        self.pred_labels.extend(to_numpy(output).flatten())
+
+    def on_loader_end(self, state: RunnerState):
+        true_labels = np.array(self.true_labels)
+        pred_labels = np.array(self.pred_labels)
+
+        true_labels = all_gather(true_labels)
+        true_labels = np.concatenate(true_labels)
+
+        pred_labels = all_gather(pred_labels)
+        pred_labels = np.concatenate(pred_labels)
+
+        true_labels_b = (true_labels > 0).astype(int)
+        # Just ensure true_labels are 0,1
+        score = alaska_weighted_auc(true_labels_b, pred_labels)
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
+
+        logger = get_tensorboard_logger(state)
+        logger.add_pr_curve(self.prefix, true_labels_b, pred_labels)
 
 
 class OutputDistributionCallback(Callback):
