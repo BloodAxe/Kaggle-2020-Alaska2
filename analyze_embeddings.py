@@ -35,8 +35,9 @@ def read_from_dct(image_fname):
 
 def compute_mask(cover, stego):
     eps = 1e-6
-    return (cv2.absdiff(cover, stego) > eps).any(axis=2)
-
+    m = cv2.absdiff(cover, stego)
+    m2 = (m > eps).any(axis=2)
+    return m2
 
 def count_pixel_difference(cover, stego):
     return np.count_nonzero(compute_mask(cover, stego))
@@ -79,7 +80,7 @@ def compute_statistics(cover_fname):
         results_df["method"].append(os.path.basename(method_name))
         results_df["pd"].append(count_pixel_difference(cover, stego))
 
-        cv2.imwrite(mask_fname, mask * 255)
+        cv2.imwrite(mask_fname, ((mask > 0) * 255).astype(np.uint8))
         # stego_dct = np.load(fs.change_extension(stego_fname, ".npz"))
 
         # dct_y, dct_cr, dct_cb = count_dct_difference(cover_dct, stego_dct)

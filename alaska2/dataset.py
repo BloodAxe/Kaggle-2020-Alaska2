@@ -671,8 +671,8 @@ def get_datasets_paired(
     train_df = train_df[~train_df[INPUT_IMAGE_ID_KEY].isin(unchanged.file)]
 
     if fast:
-        train_df = train_df[::200]
-        valid_df = valid_df[::200]
+        train_df = train_df[::1000]
+        valid_df = valid_df[::1000]
         # valid_df = train_df.copy()
 
     train_images = train_df[INPUT_IMAGE_ID_KEY].tolist()

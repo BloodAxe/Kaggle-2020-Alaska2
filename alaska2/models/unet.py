@@ -24,7 +24,7 @@ class EfficientUnetBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, act_layer=Mish, stride=1):
         super().__init__()
         self.ds1 = DepthwiseSeparableConv(in_channels, out_channels, stride=stride, act_layer=act_layer)
-        self.ir1 = InvertedResidual(out_channels, out_channels, act_layer=act_layer, se_ratio=0.25, drop_path_rate=0.1)
+        self.ir1 = InvertedResidual(out_channels, out_channels, act_layer=act_layer, se_ratio=0.25)
         self.ds2 = DepthwiseSeparableConv(out_channels, out_channels, act_layer=act_layer)
         self.ir2 = InvertedResidual(out_channels, out_channels, act_layer=act_layer, se_ratio=0.25, drop_path_rate=0.1)
 
