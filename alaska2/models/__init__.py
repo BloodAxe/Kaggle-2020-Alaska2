@@ -6,11 +6,14 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits,unet
 from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
+    # Unet
+    "nr_rgb_unet": unet.nr_rgb_unet,
+
     # Big Transfer
     "bit_m_rx152_2": bit.bit_m_rx152_2,
     "bit_m_rx50_1": bit.bit_m_rx50_1,

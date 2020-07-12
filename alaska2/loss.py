@@ -11,6 +11,7 @@ from pytorch_toolbelt.utils.catalyst import (
     TrainOnlyCriterionCallback,
 )
 from torch import nn
+from pytorch_toolbelt.losses import DiceLoss
 
 from .cutmix import CutmixCallback
 from .dataset import *
@@ -376,6 +377,9 @@ class MSLELoss(nn.Module):
 
 
 def get_loss(loss_name: str, tsa=False):
+    if loss_name.lower() == "dice":
+        return DiceLoss(mode="binary")
+
     if loss_name.lower() == "mse":
         return nn.MSELoss()
 

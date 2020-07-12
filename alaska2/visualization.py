@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import torch
-from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor
+from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor, to_numpy
+from pytorch_toolbelt.utils.catalyst import draw_binary_segmentation_predictions
 
 from .dataset import *
 
@@ -15,8 +16,13 @@ def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=16
     num_images = len(input[INPUT_IMAGE_ID_KEY])
     for i in range(num_images):
         image_id = input[INPUT_IMAGE_ID_KEY][i]
-        image = rgb_image_from_tensor(input[INPUT_IMAGE_KEY][i], mean, std, max_pixel_value=1)
-        overlay = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        if INPUT_IMAGE_KEY in input:
+            image = rgb_image_from_tensor(input[INPUT_IMAGE_KEY][i], mean, std, max_pixel_value=1)
+        elif INPUT_FEATURES_JPEG_FLOAT in input:
+            image = rgb_image_from_tensor(input[INPUT_FEATURES_JPEG_FLOAT][i], mean, std, max_pixel_value=1)
+
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        overlay = image.copy()
         true_type = int(input[INPUT_TRUE_MODIFICATION_TYPE][i])
         true_flag = float(input[INPUT_TRUE_MODIFICATION_FLAG][i])
         pred_type = int(output[OUTPUT_PRED_MODIFICATION_TYPE][i].argmax())
@@ -34,6 +40,27 @@ def draw_predictions(input: dict, output: dict, mean=0.0, std=1.0, max_images=16
         )
 
         overlay = np.row_stack([header, overlay])
+
+        if INPUT_TRUE_MODIFICATION_MASK in input and OUTPUT_PRED_MODIFICATION_MASK in output:
+            true_mask = to_numpy(input[INPUT_TRUE_MODIFICATION_MASK][i, 0] > 0)
+            pred_mask = to_numpy(output[OUTPUT_PRED_MODIFICATION_MASK][i, 0] > 0)
+
+            mask_overlay = image.copy()
+
+            mask_overlay[true_mask & pred_mask] = np.array(
+                [0, 250, 0], dtype=overlay.dtype
+            )  # Correct predictions (Hits) painted with green
+            mask_overlay[true_mask & ~pred_mask] = np.array(
+                [250, 0, 0], dtype=overlay.dtype
+            )  # Misses painted with red
+            mask_overlay[~true_mask & pred_mask] = np.array(
+                [250, 250, 0], dtype=overlay.dtype
+            )  # False alarm painted with yellow
+            mask_overlay = cv2.addWeighted(image, 0.5, mask_overlay, 0.5, 0, dtype=cv2.CV_8U)
+            mask_overlay = np.row_stack([mask_overlay, overlay])
+
+            overlay = np.column_stack([overlay, mask_overlay])
+
         images.append(overlay)
         if len(images) >= max_images:
             break

@@ -296,9 +296,14 @@ def compute_features(image: np.ndarray, image_fname: str, features):
         sample[INPUT_FEATURES_ELA_KEY] = compute_ela(image)
 
     if INPUT_TRUE_MODIFICATION_MASK in features:
-        mask = fs.change_extension(image_fname, ".png")
-        mask = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
-        mask = cv2.resize(mask, (512, 512), interpolation=cv2.INTER_NEAREST)
+        if "Cover" in image_fname:
+            mask = np.zeros((512, 512, 1), dtype=np.float32)
+        else:
+            mask_fname = fs.change_extension(image_fname, ".png")
+            mask = cv2.imread(mask_fname, cv2.IMREAD_GRAYSCALE)
+            mask = (mask > 0).astype(np.float32)
+            mask = np.expand_dims(mask, -1)
+
         sample[INPUT_TRUE_MODIFICATION_MASK] = mask
 
     if INPUT_FEATURES_ELA_RICH_KEY in features:
@@ -413,10 +418,6 @@ class TrainingValidationDataset(Dataset):
 
         for key, value in data.items():
             if key in self.features:
-                # Mask handling requires some special attention
-                if key == INPUT_TRUE_MODIFICATION_MASK:
-                    value = np.expand_dims(block8_sum(value) > 0, -1).astype(np.float32)
-
                 sample[key] = tensor_from_rgb_image(value)
 
         return sample
