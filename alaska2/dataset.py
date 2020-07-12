@@ -398,14 +398,8 @@ class TrainingValidationDataset(Dataset):
         sample = {INPUT_IMAGE_ID_KEY: os.path.basename(self.images[index]), INPUT_IMAGE_QF_KEY: int(qf)}
 
         if self.bits is not None:
-            # Normalize by image area to get average bpp payload
-            # and restrict bpp to [0..2] (max bpp on train is 2)
-            # sample[INPUT_TRUE_PAYLOAD_BITS] = torch.tensor(float(self.bits[index]), dtype=torch.float32)
-
             # OK
-            sample[INPUT_TRUE_PAYLOAD_BITS] = torch.tensor(
-                float(self.bits[index]) / (512 * 512), dtype=torch.float32
-            ).clamp(0, 2)
+            sample[INPUT_TRUE_PAYLOAD_BITS] = torch.tensor(self.bits[index], dtype=torch.float32)
 
         if self.targets is not None:
             target = int(self.targets[index])
@@ -555,13 +549,13 @@ def get_datasets(
 
     unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
 
-    changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
+    changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "analyze_embeddings.csv"))
     changed_bits["key"] = (
-        changed_bits["file"] + "_" + changed_bits["method"].apply(lambda x: METHOD_TO_INDEX[x]).apply(str)
+        changed_bits["image"] + "_" + changed_bits["method"].apply(lambda x: METHOD_TO_INDEX[x]).apply(str)
     )
     changed_bits_table = {}
     for i, row in changed_bits.iterrows():
-        changed_bits_table[row["key"]] = row["nbits"]
+        changed_bits_table[row["key"]] = float(row["pd"]) / (512 * 512)
 
     # Ignore holdout fold
     data_folds = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]

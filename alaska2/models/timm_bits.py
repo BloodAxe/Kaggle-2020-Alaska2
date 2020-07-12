@@ -52,7 +52,7 @@ class TimmRgbModelBits(TimmRgbModel):
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
             # OK
-            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(x).clamp(0, 2),
+            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(x).sigmoid(),
             # Not OK
             # OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(x).clamp_min(0),
             # Not OK
