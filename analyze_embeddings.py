@@ -10,6 +10,8 @@ from pytorch_toolbelt.utils import fs
 from tqdm import tqdm
 import numpy as np
 
+from alaska2.dataset import decode_bgr_from_dct
+
 
 def read_pil(image_fname):
     from PIL import Image
@@ -30,7 +32,8 @@ def read_jpeg4py(image_fname):
 def count_pixel_difference(cover_fname, stego_fname, read_fn):
     cover = read_fn(cover_fname)
     stego = read_fn(stego_fname)
-    return np.count_nonzero((cv2.absdiff(cover, stego) > 0).any(axis=2))
+    eps = 1e-6
+    return np.count_nonzero((cv2.absdiff(cover, stego) > eps).any(axis=2))
 
 
 def count_dct_difference(cover_dct, stego_dct):
@@ -63,9 +66,7 @@ def compute_statistics(cover_fname):
         results_df["image"].append(os.path.basename(cover_fname))
         results_df["method"].append(os.path.basename(method_name))
 
-        results_df["pd_cv2"].append(count_pixel_difference(cover_fname, stego_fname, read_cv2))
-        results_df["pd_pil"].append(count_pixel_difference(cover_fname, stego_fname, read_pil))
-        results_df["pd_jpeg4py"].append(count_pixel_difference(cover_fname, stego_fname, read_jpeg4py))
+        results_df["pd"].append(count_pixel_difference(cover_fname, stego_fname, decode_bgr_from_dct))
 
         stego_dct = np.load(fs.change_extension(stego_fname, ".npz"))
 
@@ -74,7 +75,7 @@ def compute_statistics(cover_fname):
         results_df["dct_y"].append(dct_y)
         results_df["dct_cr"].append(dct_cr)
         results_df["dct_cb"].append(dct_cb)
-
+        #
         dct_y, dct_cr, dct_cb = count_dct_difference_bits(cover_dct, stego_dct)
         results_df["dct_bits_total"].append(dct_y + dct_cr + dct_cb)
         results_df["dct_bits_y"].append(dct_y)
