@@ -66,11 +66,11 @@ def compute_statistics(cover_fname):
     results_df = defaultdict(list)
     # cover_dct = np.load(fs.change_extension(cover_fname, ".npz"))
 
-    cover = decode_bgr_from_dct(cover_fname)
+    cover = read_from_dct(cover_fname)
 
     for method_name in ["JMiPOD", "JUNIWARD", "UERD"]:
         stego_fname = cover_fname.replace("Cover", method_name)
-        stego = decode_bgr_from_dct(stego_fname)
+        stego = read_from_dct(stego_fname)
 
         mask_fname = fs.change_extension(stego_fname, ".png")
         mask = compute_mask(cover, stego)

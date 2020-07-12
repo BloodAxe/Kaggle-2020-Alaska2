@@ -595,7 +595,7 @@ def get_datasets(
                 train_y.append(method_index + 1)
                 train_qf.append(qf)
 
-                key = os.path.basename(fname) + "_" + str(method_index)
+                key = os.path.basename(fname) + "_" + str(method_index + 1)
                 train_bits.append(changed_bits_table[key])
             else:
                 # print("Removed unchanged file from the train set", fname)
@@ -609,7 +609,7 @@ def get_datasets(
                 valid_y.append(method_index + 1)
                 valid_qf.append(qf)
 
-                key = os.path.basename(fname) + "_" + str(method_index)
+                key = os.path.basename(fname) + "_" + str(method_index + 1)
                 valid_bits.append(changed_bits_table[key])
             else:
                 # print("Removed unchanged file from the valid set", fname)
