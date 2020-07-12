@@ -29,6 +29,10 @@ def read_jpeg4py(image_fname):
     return jpeg.JPEG(image_fname).decode()
 
 
+def read_from_dct(image_fname):
+    return decode_bgr_from_dct(fs.change_extension(image_fname, ".npz"))
+
+
 def count_pixel_difference(cover_fname, stego_fname, read_fn):
     cover = read_fn(cover_fname)
     stego = read_fn(stego_fname)
@@ -66,21 +70,21 @@ def compute_statistics(cover_fname):
         results_df["image"].append(os.path.basename(cover_fname))
         results_df["method"].append(os.path.basename(method_name))
 
-        results_df["pd"].append(count_pixel_difference(cover_fname, stego_fname, decode_bgr_from_dct))
+        results_df["pd"].append(count_pixel_difference(cover_fname, stego_fname, read_from_dct))
 
-        stego_dct = np.load(fs.change_extension(stego_fname, ".npz"))
+        # stego_dct = np.load(fs.change_extension(stego_fname, ".npz"))
 
-        dct_y, dct_cr, dct_cb = count_dct_difference(cover_dct, stego_dct)
-        results_df["dct_total"].append(dct_y + dct_cr + dct_cb)
-        results_df["dct_y"].append(dct_y)
-        results_df["dct_cr"].append(dct_cr)
-        results_df["dct_cb"].append(dct_cb)
+        # dct_y, dct_cr, dct_cb = count_dct_difference(cover_dct, stego_dct)
+        # results_df["dct_total"].append(dct_y + dct_cr + dct_cb)
+        # results_df["dct_y"].append(dct_y)
+        # results_df["dct_cr"].append(dct_cr)
+        # results_df["dct_cb"].append(dct_cb)
         #
-        dct_y, dct_cr, dct_cb = count_dct_difference_bits(cover_dct, stego_dct)
-        results_df["dct_bits_total"].append(dct_y + dct_cr + dct_cb)
-        results_df["dct_bits_y"].append(dct_y)
-        results_df["dct_bits_cr"].append(dct_cr)
-        results_df["dct_bits_cb"].append(dct_cb)
+        # dct_y, dct_cr, dct_cb = count_dct_difference_bits(cover_dct, stego_dct)
+        # results_df["dct_bits_total"].append(dct_y + dct_cr + dct_cb)
+        # results_df["dct_bits_y"].append(dct_y)
+        # results_df["dct_bits_cr"].append(dct_cr)
+        # results_df["dct_bits_cb"].append(dct_cb)
 
     return results_df
 
@@ -92,7 +96,8 @@ def main():
     args = parser.parse_args()
 
     data_dir = args.data_dir
-    cover_images = fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
+    cover_images = [x for x in fs.find_images_in_dir(os.path.join(data_dir, "Cover")) if str.endswith(x, ".jpg")]
+
     # cover_images = cover_images[:100]
 
     pool = Pool(6)

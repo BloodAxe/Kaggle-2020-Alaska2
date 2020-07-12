@@ -29,17 +29,19 @@ class TimmRgbModelBits(TimmRgbModel):
         input_key=INPUT_IMAGE_KEY,
     ):
         super().__init__(encoder, num_classes, dropout, mean, std, max_pixel_value, input_key)
-        self.bits_regression = nn.Sequential(
-            OrderedDict(
-                [
-                    ("conv1", nn.Conv2d(encoder.num_features, 128, kernel_size=1)),
-                    ("act1", Mish()),
-                    ("drop", nn.Dropout2d(0.2, inplace=True)),
-                    ("conv2", nn.Conv2d(128, 1, kernel_size=1)),
-                    ("relu", nn.ReLU(True)),
-                ]
-            )
-        )
+        self.bits_regression = nn.Linear(encoder.num_features, 1)
+
+        # self.bits_regression = nn.Sequential(
+        #     OrderedDict(
+        #         [
+        #             ("conv1", nn.Conv2d(encoder.num_features, 128, kernel_size=1)),
+        #             ("act1", nn.ReLU(True)),
+        #             ("conv2", nn.Conv2d(128, 128, kernel_size=1)),
+        #             ("act2", nn.ReLU(True)),
+        #             ("conv3", nn.Conv2d(128, 1, kernel_size=1)),
+        #         ]
+        #     )
+        # )
 
     def forward(self, **kwargs):
         x = kwargs[self.input_key]
@@ -49,7 +51,12 @@ class TimmRgbModelBits(TimmRgbModel):
         return {
             OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
             OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
-            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(last_fm).sum(dim=(2, 3)),
+            # OK
+            OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(x).clamp(0, 2),
+            # Not OK
+            # OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(x).clamp_min(0),
+            # Not OK
+            # OUTPUT_PRED_PAYLOAD_BITS: self.bits_regression(last_fm).sum(dim=(2, 3)).clamp(0, 2),
         }
 
     @property

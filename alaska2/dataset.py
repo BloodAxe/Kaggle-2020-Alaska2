@@ -399,7 +399,13 @@ class TrainingValidationDataset(Dataset):
 
         if self.bits is not None:
             # Normalize by image area to get average bpp payload
-            sample[INPUT_TRUE_PAYLOAD_BITS] = float(self.bits[index]) / (512 * 512)
+            # and restrict bpp to [0..2] (max bpp on train is 2)
+            # sample[INPUT_TRUE_PAYLOAD_BITS] = torch.tensor(float(self.bits[index]), dtype=torch.float32)
+
+            # OK
+            sample[INPUT_TRUE_PAYLOAD_BITS] = torch.tensor(
+                float(self.bits[index]) / (512 * 512), dtype=torch.float32
+            ).clamp(0, 2)
 
         if self.targets is not None:
             target = int(self.targets[index])
