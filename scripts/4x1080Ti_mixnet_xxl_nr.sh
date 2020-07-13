@@ -13,7 +13,7 @@ export KAGGLE_2020_ALASKA2=/home/bloodaxe/datasets/ALASKA2
 #  -c /home/bloodaxe/develop/Kaggle-2020-Alaska2/runs/Jul08_13_05_nr_rgb_mixnet_xxl_fold1_paired_local_rank_0_fp16/main/checkpoints_auc_classifier/train.1.pth
 
 python -m torch.distributed.launch --nproc_per_node=4 train_d.py\
-  -m nr_rgb_mixnet_xxl -b 10 -w 6 -d 0.2 -s cos -o RAdam --epochs 75 -a light\
-  --modification-flag-loss wbce 1 --modification-type-loss ce 1 -lr 3e-4 -wd 1e-5 -v --fp16\
-  --fold 1 --seed 4101\
-  --transfer /home/bloodaxe/develop/Kaggle-2020-Alaska2/runs/Jul08_17_21_nr_rgb_mixnet_xxl_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/last.pth
+  -m nr_rgb_mixnet_xxl -b 10 -w 6 -s cos -o SGD --epochs 75 -a medium\
+  --modification-flag-loss wbce 1 --modification-type-loss ce 1 -lr 8e-5 -wd 1e-5 -v --fp16\
+  --fold 1 --seed 40101\
+  -c /home/bloodaxe/develop/Kaggle-2020-Alaska2/runs/Jul09_23_37_nr_rgb_mixnet_xxl_fold1_local_rank_0_fp16/main/checkpoints_auc_classifier/best.pth
