@@ -11,6 +11,7 @@ import pandas as pd
 import torch
 from pytorch_toolbelt.utils import fs
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
+from scipy import fftpack
 from torch.utils.data import Dataset, ConcatDataset
 
 INPUT_IMAGE_KEY = "image"
@@ -206,10 +207,16 @@ def idct8(dct):
 def idct8v2(dct, qm=None):
     decoded_image = np.zeros((dct.shape[0], dct.shape[1], 1), dtype=np.float32)
 
+    def idct2(a):
+        import scipy
+
+        return scipy.fftpack.idct(scipy.fftpack.idct(a, axis=0, norm="ortho"), axis=1, norm="ortho")
+
     if qm is None:
         for i in range(0, dct.shape[0] // 8):
             for j in range(0, dct.shape[1] // 8):
-                img = DCTMTX.T @ (dct[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8]) @ DCTMTX
+                img = idct2(dct[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8])
+                # img = DCTMTX.T @ (dct[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8]) @ DCTMTX
                 decoded_image[i * 8 : (i + 1) * 8, j * 8 : (j + 1) * 8, 0] = img
     else:
         for i in range(0, dct.shape[0] // 8):
