@@ -159,6 +159,9 @@ def main():
     if dropout is not None:
         custom_model_kwargs["dropout"] = float(dropout)
 
+    if embedding_loss is not None:
+        custom_model_kwargs["need_embedding"] = True
+
     model: nn.Module = get_model(model_name, **custom_model_kwargs).cuda()
     required_features = model.required_features
 
