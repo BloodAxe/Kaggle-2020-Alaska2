@@ -105,7 +105,8 @@ def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, s
     checkpoint = torch.load(model_checkpoint, map_location="cpu")
     model_name = model_name or checkpoint["checkpoint_data"]["cmd_args"]["model"]
 
-    model = get_model(model_name, pretrained=False)
+    # Always disable pretrained models since we load model afterwards and request embeddings
+    model = get_model(model_name, pretrained=False, need_embedding=True)
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
     return model.eval(), checkpoint
 
