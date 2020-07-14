@@ -46,6 +46,7 @@ OUTPUT_PRED_MODIFICATION_MASK = "pred_embedding_mask"
 OUTPUT_PRED_PAYLOAD_BITS = "pred_payload_bits"
 
 OUTPUT_PRED_EMBEDDING = "pred_embedding"
+OUTPUT_PRED_EMBEDDING_ARC_MARGIN = "pred_embedding_arc_margin"
 
 OUTPUT_FEATURE_MAP_4 = "pred_fm_4"
 OUTPUT_FEATURE_MAP_8 = "pred_fm_8"
@@ -56,6 +57,7 @@ METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD
 
 __all__ = [
     "HOLDOUT_FOLD",
+    "OUTPUT_PRED_EMBEDDING_ARC_MARGIN",
     "INPUT_FEATURES_BLUR_KEY",
     "INPUT_FEATURES_CHANNEL_CB_KEY",
     "INPUT_FEATURES_CHANNEL_CR_KEY",

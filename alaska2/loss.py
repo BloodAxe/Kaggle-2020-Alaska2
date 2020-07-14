@@ -12,6 +12,7 @@ from pytorch_toolbelt.utils.catalyst import (
 )
 from torch import nn
 from pytorch_toolbelt.losses import DiceLoss
+from torch.nn import Parameter
 
 from .cutmix import CutmixCallback
 from .dataset import *
@@ -24,6 +25,7 @@ from .tsa import TSACriterionCallback
 __all__ = [
     "OHEMCrossEntropyLoss",
     "ArcFaceLoss",
+    "ArcMarginProduct",
     "PairwiseRankingLoss",
     "PairwiseRankingLossV2",
     "get_loss",
@@ -94,12 +96,14 @@ class ArcFaceLoss(nn.modules.Module):
     def forward(self, cos_theta: torch.Tensor, labels):
         num_classes = cos_theta.size(1)
         sine = torch.sqrt(1.0 - torch.pow(cos_theta, 2))
-        phi = (cos_theta * self.cos_m - sine * self.sin_m).type(cos_theta.dtype)
+        phi = (cos_theta * self.cos_m - sine * self.sin_m).type_as(cos_theta)
         if self.easy_margin:
             phi = torch.where(cos_theta > 0, phi, cos_theta)
         else:
             phi = torch.where(cos_theta > self.th, phi, cos_theta - self.mm)
 
+        # one_hot = torch.zeros(cosine.size(), device='cuda')
+        # one_hot.scatter_(1, labels.view(-1, 1).long(), 1)
         one_hot = F.one_hot(labels, num_classes).type(cos_theta.dtype)
 
         # -------------torch.where(out_i = {x_i if condition_i else y_i) -------------
@@ -110,6 +114,30 @@ class ArcFaceLoss(nn.modules.Module):
 
         loss = (loss1 + self.gamma * loss2) / (1 + self.gamma)
         return loss
+
+
+class ArcMarginProduct(nn.Module):
+    r"""Implement of large margin arc distance: :
+        Args:
+            in_features: size of each input sample
+            out_features: size of each output sample
+            s: norm of input feature
+            m: margin
+            cos(theta + m)
+        """
+
+    def __init__(self, in_features: int, out_features: int):
+        super(ArcMarginProduct, self).__init__()
+        self.weight = Parameter(torch.FloatTensor(out_features, in_features), requires_grad=True)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1.0 / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+
+    def forward(self, features):
+        cosine = F.linear(F.normalize(features), F.normalize(self.weight))
+        return cosine
 
 
 class ContrastiveCosineEmbeddingLoss(nn.Module):
@@ -413,8 +441,6 @@ def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "roc_auc_ce":
         return RocAucLossCE()
 
-    if loss_name.lower() == "cntrv2":
-        return EmbeddingLossV2()
 
     if loss_name.lower() == "bce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean")
@@ -450,6 +476,10 @@ def get_loss(loss_name: str, tsa=False):
 
     if loss_name.lower() == "ohem_ce":
         return OHEMCrossEntropyLoss()
+
+    # losses for embedding
+    if loss_name.lower() == "cntrv2":
+        return EmbeddingLossV2()
 
     if loss_name.lower() == "arc_face":
         return ArcFaceLoss()
@@ -690,7 +720,7 @@ def get_criterions(
                 loss_name,
                 num_epochs=num_epochs,
                 input_key=INPUT_TRUE_MODIFICATION_TYPE,
-                output_key=OUTPUT_PRED_EMBEDDING,
+                output_key=OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
                 prefix=f"embedding/{loss_name}",
                 loss_weight=float(loss_weight),
                 mixup=mixup,
@@ -702,23 +732,26 @@ def get_criterions(
             losses.append(criterion_name)
             print("Using loss", loss_name, loss_weight)
 
-            if loss_name == "cntrv2":
+            if loss_name == "arc_face":
                 need_embedding_auc_score = True
 
         if need_embedding_auc_score:
             callbacks += [
                 OutputDistributionCallback(
                     input_key=INPUT_TRUE_MODIFICATION_FLAG,
-                    output_key=OUTPUT_PRED_EMBEDDING,
-                    output_activation=embedding_to_probas,
+                    output_key=OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
+                    output_activation=classifier_logits_to_probas,
                     prefix="distribution/embedding",
                 ),
                 CompetitionMetricCallback(
                     input_key=INPUT_TRUE_MODIFICATION_TYPE,
-                    output_key=OUTPUT_PRED_EMBEDDING,
+                    output_key=OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
                     prefix="auc_embedding",
-                    output_activation=embedding_to_probas,
+                    output_activation=classifier_logits_to_probas,
                     class_names=class_names,
+                ),
+                BestMetricCheckpointCallback(
+                    target_metric="auc_embedding", target_metric_minimize=False, save_n_best=3
                 ),
             ]
 

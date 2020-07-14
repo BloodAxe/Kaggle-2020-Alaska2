@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 import numpy as np
+import torch
 from pytorch_toolbelt.modules import Normalize, GlobalAvgPool2d
 from timm.models import skresnext50_32x4d
 from timm.models import tresnet, efficientnet, resnet
@@ -9,11 +10,13 @@ from timm.models.layers import Swish, Mish
 from torch import nn
 from torch.nn import InstanceNorm2d
 
+from alaska2.loss import ArcMarginProduct
 from alaska2.dataset import (
     INPUT_IMAGE_KEY,
     OUTPUT_PRED_MODIFICATION_FLAG,
     OUTPUT_PRED_MODIFICATION_TYPE,
     INPUT_FEATURES_JPEG_FLOAT,
+    OUTPUT_PRED_EMBEDDING, OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
 )
 
 __all__ = [
@@ -29,12 +32,46 @@ __all__ = [
     "nr_rgb_tf_efficientnet_b3_ns_mish",
     "nr_rgb_tf_efficientnet_b6_ns",
     "nr_rgb_tf_efficientnet_b6_ns_mish",
+    "nr_rgb_tf_efficientnet_b6_ns_mish_gep",
     "nr_rgb_tf_efficientnet_b7_ns_mish",
     "nr_rgb_mixnet_xl",
     "nr_rgb_mixnet_xxl",
     "nr_rgb_tf_efficientnet_b3_ns_gn_mish",
     "nr_rgb_tf_efficientnet_b3_ns_in_mish",
 ]
+
+from torch.nn.parameter import Parameter
+import torch.nn.functional as F
+
+
+def gem(x, p=3, eps=1e-6):
+    return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
+
+class GeneralizedMeanPooling2d(nn.Module):
+    def __init__(self, p=3, eps=1e-6, flatten=False):
+        super(GeneralizedMeanPooling2d, self).__init__()
+        self.p = Parameter(torch.ones(1) * p, requires_grad=True)
+        self.eps = eps
+        self.flatten = flatten
+
+    def forward(self, x):
+        x = gem(x, p=self.p, eps=self.eps)
+        if self.flatten:
+            x = x.view(x.size(0), x.size(1))
+        return x
+
+    def __repr__(self):
+        return (
+            self.__class__.__name__
+            + "("
+            + "p="
+            + "{:.4f}".format(self.p.data.tolist()[0])
+            + ", "
+            + "eps="
+            + str(self.eps)
+            + ")"
+        )
 
 
 class TimmRgbModel(nn.Module):
@@ -47,26 +84,37 @@ class TimmRgbModel(nn.Module):
         std=[0.17819773, 0.17319807, 0.18128773],
         max_pixel_value=255,
         input_key=INPUT_IMAGE_KEY,
+        need_embedding=False,
+        pooling_module=GlobalAvgPool2d,
+        arc_margin=None
     ):
         super().__init__()
         self.encoder = encoder
 
         self.rgb_bn = Normalize(np.array(mean) * max_pixel_value, np.array(std) * max_pixel_value)
-        self.pool = GlobalAvgPool2d(flatten=True)
+        self.pool = pooling_module(flatten=True)
         self.drop = nn.Dropout(dropout)
         self.type_classifier = nn.Linear(encoder.num_features, num_classes)
         self.flag_classifier = nn.Linear(encoder.num_features, 1)
         self.input_key = input_key
+        self.need_embedding = need_embedding
+        self.arc_margin = arc_margin
 
     def forward(self, **kwargs):
         x = kwargs[self.input_key]
         x = self.rgb_bn(x)
         x = self.encoder.forward_features(x)
-        x = self.pool(x)
-        return {
-            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(x)),
-            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(x)),
+        embedding = self.pool(x)
+        result = {
+            OUTPUT_PRED_MODIFICATION_FLAG: self.flag_classifier(self.drop(embedding)),
+            OUTPUT_PRED_MODIFICATION_TYPE: self.type_classifier(self.drop(embedding)),
         }
+        if self.need_embedding:
+            result[OUTPUT_PRED_EMBEDDING] = embedding
+        if self.arc_margin is not None:
+            result[OUTPUT_PRED_EMBEDDING_ARC_MARGIN] = self.arc_margin(embedding)
+
+        return result
 
     @property
     def required_features(self):
@@ -301,14 +349,20 @@ def rgb_tf_efficientnet_b7_ns(num_classes=4, pretrained=True, dropout=0.5):
     )
 
 
-def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0.2):
+def nr_rgb_tf_efficientnet_b3_ns_mish(num_classes=4, pretrained=True, dropout=0.2, need_embedding=False):
     encoder = patched_tf_efficientnet_b3_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_tf_efficientnet_b3_ns_gn_mish(num_classes=4, pretrained=True, dropout=0.2):
+def nr_rgb_tf_efficientnet_b3_ns_gn_mish(num_classes=4, pretrained=True, dropout=0.2, need_embedding=False):
     def group_norm_builder(channels, **kwargs):
         groups = [32, 24, 16, 8, 7, 6, 5, 4, 3, 2]
         for g in groups:
@@ -327,10 +381,16 @@ def nr_rgb_tf_efficientnet_b3_ns_gn_mish(num_classes=4, pretrained=True, dropout
     print(encoder)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout=0.2):
+def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout=0.2, need_embedding=False):
     def instance_norm_builder(channels, **kwargs):
         norm_layer = InstanceNorm2d(channels, affine=True)
         return nn.Sequential(OrderedDict([("in", norm_layer)]))
@@ -341,36 +401,81 @@ def nr_rgb_tf_efficientnet_b3_ns_in_mish(num_classes=4, pretrained=True, dropout
     print(encoder)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):
+def nr_rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
     encoder = efficientnet.tf_efficientnet_b6_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
+def nr_rgb_tf_efficientnet_b6_ns_mish(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
     encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5):
+def nr_rgb_tf_efficientnet_b6_ns_mish_gep(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
+    encoder = patched_tf_efficientnet_b6_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
+    del encoder.classifier
+
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+        pooling_module=GeneralizedMeanPooling2d,
+        arc_margin=ArcMarginProduct(encoder.num_features, num_classes) if need_embedding else None
+    )
+
+
+def nr_rgb_tf_efficientnet_b7_ns_mish(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
     encoder = patched_tf_efficientnet_b7_ns(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0.5):
+def nr_rgb_mixnet_xl(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
     encoder = efficientnet.mixnet_xl(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
 
 
-def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0.5):
+def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0.5, need_embedding=False):
     encoder = patched_mixnet_xxl(pretrained=pretrained, act_layer=Mish, drop_path_rate=0.2)
     del encoder.classifier
     mean = encoder.default_cfg["mean"]
@@ -399,4 +504,10 @@ def nr_rgb_mixnet_xxl(num_classes=4, pretrained=True, dropout=0.5):
 
         encoder.load_state_dict(src_state_dict, strict=False)
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, input_key=INPUT_FEATURES_JPEG_FLOAT)
+    return TimmRgbModel(
+        encoder,
+        num_classes=num_classes,
+        dropout=dropout,
+        input_key=INPUT_FEATURES_JPEG_FLOAT,
+        need_embedding=need_embedding,
+    )
