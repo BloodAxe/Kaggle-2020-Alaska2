@@ -4,3 +4,4 @@ pytorch-ranger==0.1.1
 catalyst==19.12.3
 albumentations==0.4.5
 git+https://github.com/BloodAxe/pytorch-toolbelt.git@develop
+git+https://github.com/dwgoon/jpegio
