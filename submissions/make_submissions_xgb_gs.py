@@ -45,16 +45,14 @@ def get_x_y(predictions):
         )
 
         if "pred_modification_type_tta" in p:
-            col = p["pred_modification_type_tta"].apply(parse_and_softmax)
+            col = p["pred_modification_type_tta"].apply(parse_array)
             col_act = col.tolist()
-
             X.append(col_act)
 
         if "pred_modification_flag_tta" in p:
             col = p["pred_modification_flag_tta"].apply(parse_array)
             col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist()).tolist()
             std = col.apply(lambda x: torch.tensor(x).sigmoid().std().item())
-
             X.append(col_act)
             X.append(std)
 
@@ -81,7 +79,7 @@ def main():
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
         "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
@@ -92,6 +90,8 @@ def main():
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16"
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -118,6 +118,11 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
+    if False:
+        sc = PCA(n_components=16)
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
     if True:
         x = np.column_stack([x, quality_h])
         x_test = np.column_stack([x_test, quality_t])
@@ -134,7 +139,7 @@ def main():
         "learning_rate": [0.02, 0.2, 0.5, 1],
     }
 
-    xgb = XGBClassifier(objective="binary:logistic", n_estimators=1000, nthread=1)
+    xgb = XGBClassifier(objective="binary:logistic", nthread=1)
 
     random_search = RandomizedSearchCV(
         xgb,
@@ -165,7 +170,7 @@ def main():
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
-    print("Saved to ", submit_fname)
+    print("Saved submission to ", submit_fname)
 
 
 if __name__ == "__main__":

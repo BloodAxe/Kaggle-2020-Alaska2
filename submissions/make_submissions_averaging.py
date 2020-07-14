@@ -86,20 +86,22 @@ def main():
         # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16"
     ]
 
     all_predictions = []
@@ -129,7 +131,7 @@ def main():
             y_true, blend_predictions_mean(cls_pred_d4).Label * blend_predictions_mean(bin_pred_d4).Label
         )
 
-        if False:
+        if True:
             bin_pred_d4_cal = make_binary_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
             bin_pred_d4_cal_score = scoring_fn(y_true, blend_predictions_mean(bin_pred_d4_cal).Label)
 
@@ -144,12 +146,12 @@ def main():
             cls_pred_d4_cal_score = 0
             prod_pred_d4_cal_score = 0
 
-        print(metric, "Bin NC", "d4", bin_pred_d4_score)
-        print(metric, "Bin CL", "d4", cls_pred_d4_score)
-        print(metric, "Prod  ", "d4", prod_pred_d4_score)
-        print(metric, "Cls NC", "d4", bin_pred_d4_cal_score)
-        print(metric, "Cls CL", "d4", cls_pred_d4_cal_score)
-        print(metric, "Prod  ", "d4", prod_pred_d4_cal_score)
+        print(metric, "Bin  NC", "d4", bin_pred_d4_score)
+        print(metric, "Cls  NC", "d4", cls_pred_d4_score)
+        print(metric, "Prod NC", "d4", prod_pred_d4_score)
+        print(metric, "Bin  CL", "d4", bin_pred_d4_cal_score)
+        print(metric, "Cls  CL", "d4", cls_pred_d4_cal_score)
+        print(metric, "Prod CL", "d4", prod_pred_d4_cal_score)
 
         max_score = max(
             bin_pred_d4_score,
