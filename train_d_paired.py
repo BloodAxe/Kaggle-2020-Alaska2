@@ -231,6 +231,7 @@ def main():
             embedding_loss=embedding_loss,
             feature_maps_loss=feature_maps_loss,
             mask_loss=mask_loss,
+            bits_loss=None,
             num_epochs=num_epochs,
             mixup=mixup,
             cutmix=cutmix,

@@ -484,11 +484,23 @@ class PairedImageDataset(Dataset):
         cover_image = cv2.imread(cover_image_fname)
         stego_image = cv2.imread(stego_image_fname)
 
+        cover_data = {}
+        cover_data["image"] = cover_image
+        cover_data.update(compute_features(cover_image, cover_image_fname, self.features))
+        cover_data = self.transform(**cover_data)
+
+        stego_data = {}
+        stego_data["image"] = stego_image
+        stego_data.update(compute_features(stego_image, stego_image_fname, self.features))
+        stego_data = self.transform.replay(cover_data["replay"], **stego_data)
+
         if self.bitmix:
             if random.random() > 0.5:
+                bitmix_p = random.uniform(0.25 - 0.03, 0.25 + 0.03)
+
                 try:
-                    cover_image, stego_image, cover_target, stego_target, mask = bitmix(
-                        cover_image, stego_image, random.uniform(0.25 - 0.03, 0.25 + 0.03)
+                    cover_data["image"], stego_data["image"], cover_target, stego_target, mask = bitmix(
+                        cover_data["image"], stego_data["image"], bitmix_p
                     )
                 except ZeroDivisionError:
                     print("Bitmix failed due to matching images")
@@ -497,6 +509,13 @@ class PairedImageDataset(Dataset):
                     print(stego_image_fname)
                     cover_target = 0
                     stego_target = 1
+
+                if INPUT_FEATURES_JPEG_FLOAT in cover_data and INPUT_FEATURES_JPEG_FLOAT in stego_data:
+                    cover_data[INPUT_FEATURES_JPEG_FLOAT], stego_data[
+                        INPUT_FEATURES_JPEG_FLOAT
+                    ], cover_target, stego_target, mask = bitmix(
+                        cover_data[INPUT_FEATURES_JPEG_FLOAT], stego_data[INPUT_FEATURES_JPEG_FLOAT], bitmix_p
+                    )
 
                 # NOTE: Type loss is not compatible with bitmix
                 type_target = torch.tensor([0, self.target]).long()
@@ -509,23 +528,13 @@ class PairedImageDataset(Dataset):
             type_target = torch.tensor([0, self.target]).long()
             flag_target = torch.tensor([0, 1]).float()
 
-        cover_data = {}
-        cover_data["image"] = cover_image
-        cover_data.update(compute_features(cover_image, cover_image_fname, self.features))
-        cover_data = self.transform(**cover_data)
-
-        stego_data = {}
-        stego_data["image"] = stego_image
-        stego_data.update(compute_features(stego_image, stego_image_fname, self.features))
-        stego_data = self.transform.replay(cover_data["replay"], **stego_data)
-
-        qf = int(self.quality[index])
+        quality_factor = int(self.quality[index])
 
         sample = {
             INPUT_IMAGE_ID_KEY: [fs.id_from_fname(cover_image_fname), fs.id_from_fname(stego_image_fname)],
             INPUT_TRUE_MODIFICATION_TYPE: type_target,
             INPUT_TRUE_MODIFICATION_FLAG: flag_target,
-            INPUT_IMAGE_QF_KEY: torch.tensor([qf, qf]),
+            INPUT_IMAGE_QF_KEY: torch.tensor([quality_factor, quality_factor]),
         }
 
         # TODO: Add support of mask if this idea will work
@@ -723,7 +732,7 @@ def get_datasets_paired(
     )
 
     valid_ds = TrainingValidationDataset(
-        images=valid_x, targets=valid_y, quality=valid_qf, transform=valid_transform, features=features
+        images=valid_x, targets=valid_y, quality=valid_qf, bits=None, transform=valid_transform, features=features
     )
 
     sampler = None
