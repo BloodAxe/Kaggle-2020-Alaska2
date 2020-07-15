@@ -56,7 +56,7 @@ class GeneralizedMeanPooling2d(nn.Module):
         self.flatten = flatten
 
     def forward(self, x):
-        x = gem(x, p=self.p, eps=self.eps)
+        x = gem(x, p=self.p.clamp_min(1), eps=self.eps)
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
         return x
