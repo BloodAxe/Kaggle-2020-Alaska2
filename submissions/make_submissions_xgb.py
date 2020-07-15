@@ -19,64 +19,6 @@ from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 import torch.nn.functional as F
 
-
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        # X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
-
-        if False and "pred_modification_type_tta" in p:
-
-            def prase_tta_softmax(x):
-                x = parse_array(x)
-                x = torch.tensor(x)
-
-                x = x.view((4, 8))
-                x = x.softmax(dim=0)
-
-                # x = x.view((8,4))
-                # x = x.softmax(dim=1)
-                x = x.view(-1)
-                return x.tolist()
-
-            col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
-            X.append(col.tolist())
-
-        if False and "pred_modification_flag_tta" in p:
-            col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist())
-            X.append(col_act.tolist())
-
-        # if "pred_modification_type_tta" in p:
-        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
-        #
-        # if "pred_modification_flag_tta" in p:
-        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
-
-
 def xgb_weighted_auc(predt: np.ndarray, dtrain: xgb.DMatrix) -> Tuple[str, float]:
     y_true = dtrain.get_label()
     result = "wauc", alaska_weighted_auc(y_true.astype(int), predt)
@@ -113,7 +55,7 @@ def main():
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
-        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
+        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")

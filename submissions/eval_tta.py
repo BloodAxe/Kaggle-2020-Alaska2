@@ -7,15 +7,21 @@ from alaska2 import alaska_weighted_auc
 from alaska2.submissions import as_hv_tta, as_d4_tta, classifier_probas, sigmoid, infer_fold
 
 
-def get_predictions_csv(experiment, metric: str, type: str, tta: str = None):
+def get_predictions_csv(experiment, metric: str, type: str, tta: str = None, need_embedding=False):
     if isinstance(experiment, list):
-        return [get_predictions_csv(x, metric, type, tta) for x in experiment]
+        return [
+            get_predictions_csv(x, metric=metric, type=type, tta=tta, need_embedding=need_embedding)
+            for x in experiment
+        ]
+
+    embedding_suffix = "_w_emb" if need_embedding else ""
 
     assert type in {"test", "holdout", "oof"}
     assert metric in {"loss", "bauc", "cauc"}
     assert tta in {None, "d4", "hv"}
     checkpoints_dir = {"loss": "checkpoints", "bauc": "checkpoints_auc", "cauc": "checkpoints_auc_classifier"}[metric]
-    csv = os.path.join("models", experiment, "main", checkpoints_dir, f"best_{type}_predictions.csv")
+    csv = os.path.join("models", experiment, "main", checkpoints_dir, f"best_{type}_predictions{embedding_suffix}.csv")
+
     if tta == "d4":
         csv = as_d4_tta([csv])[0]
     elif tta == "hv":
@@ -44,7 +50,7 @@ def main():
         "Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
         "Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
-        "Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16"
+        "Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
     ]
 
     all_predictions = [

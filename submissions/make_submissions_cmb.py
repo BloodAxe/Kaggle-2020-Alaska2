@@ -6,6 +6,7 @@ import warnings
 import numpy as np
 
 # Classifiers
+from scipy.stats import rankdata
 from tqdm import tqdm
 
 from alaska2.metric import alaska_weighted_auc, shaky_wauc
@@ -36,7 +37,7 @@ def main():
         #
         "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
         # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
@@ -49,7 +50,8 @@ def main():
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16"
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
+        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -74,18 +76,17 @@ def main():
 
     indices = np.arange(len(X))
 
-    for r in range(2, 16):
+    for r in range(2, 8):
         best_comb = None
         best_auc = 0
         combs = list(itertools.combinations(indices, r))
 
         for c in tqdm(combs, desc=f"{r}"):
-            preds = X[np.array(c)].mean(axis=0)
-            score = alaska_weighted_auc(y_true, preds)
-            # score = shaky_wauc(y_true, preds)
+            avg_preds = X[np.array(c)].mean(axis=0)
+            score_averaging = alaska_weighted_auc(y_true, avg_preds)
 
-            if score > best_auc:
-                best_auc = score
+            if score_averaging > best_auc:
+                best_auc = score_averaging
                 best_comb = c
 
         print(r, best_auc, best_comb)
@@ -94,7 +95,28 @@ def main():
 
         test_preds = [X_test[i] for i in best_comb]
         test_preds = blend_predictions_mean(test_preds)
-        test_preds.to_csv(os.path.join(output_dir, f"cmb_{best_auc:.4f}_{r}_{checksum}.csv"), index=False)
+        test_preds.to_csv(os.path.join(output_dir, f"cmb_mean_{best_auc:.4f}_{r}_{checksum}.csv"), index=False)
+
+    for r in range(2, 8):
+        best_comb = None
+        best_auc = 0
+        combs = list(itertools.combinations(indices, r))
+
+        for c in tqdm(combs, desc=f"{r}"):
+            rnk_preds = rankdata(X[np.array(c)], axis=1).mean(axis=0)
+            score_averaging = alaska_weighted_auc(y_true, rnk_preds)
+
+            if score_averaging > best_auc:
+                best_auc = score_averaging
+                best_comb = c
+
+        print(r, best_auc, best_comb)
+
+        checksum = compute_checksum_v2(fnames_for_checksum[np.array(best_comb)])
+
+        test_preds = [X_test[i] for i in best_comb]
+        test_preds = blend_predictions_mean(test_preds)
+        test_preds.to_csv(os.path.join(output_dir, f"cmb_rank_{best_auc:.4f}_{r}_{checksum}.csv"), index=False)
 
 
 if __name__ == "__main__":

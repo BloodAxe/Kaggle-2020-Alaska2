@@ -10,7 +10,13 @@ from scipy.stats import rankdata
 
 from sklearn.calibration import CalibratedClassifierCV
 from torch.nn import functional as F
-from alaska2 import OUTPUT_PRED_MODIFICATION_FLAG, alaska_weighted_auc, OUTPUT_PRED_MODIFICATION_TYPE
+from alaska2 import (
+    OUTPUT_PRED_MODIFICATION_FLAG,
+    alaska_weighted_auc,
+    OUTPUT_PRED_MODIFICATION_TYPE,
+    OUTPUT_PRED_EMBEDDING,
+)
+import re
 
 __all__ = [
     "make_classifier_predictions",
@@ -31,6 +37,8 @@ __all__ = [
     "as_d4_tta",
     "as_hv_tta",
     "infer_fold",
+    "compute_checksum_v2",
+    "evaluate_wauc_shakeup_using_bagging",
 ]
 
 
@@ -59,9 +67,8 @@ def sigmoid(x):
 
 
 def parse_array(x):
-    x = x.replace("[", "").replace("]", "").split(",")
-    x = [float(i) for i in x]
-    return x
+    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
+    return x.tolist()
 
 
 def parse_and_softmax(x):
@@ -452,3 +459,73 @@ def get_x_y_for_stacking(
     if y is not None:
         y = y.astype(int)
     return X, y
+
+
+def get_x_y_embedding_for_stacking(predictions: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get X and Y for 2nd level stacking
+    """
+    y = None
+    X = []
+
+    for p in predictions:
+        p = pd.read_csv(p)
+
+        if "true_modification_flag" in p:
+            y = p["true_modification_flag"].values.astype(np.float32)
+
+        X.append(np.array(p[OUTPUT_PRED_EMBEDDING].apply(parse_array).tolist()))
+
+    X = np.column_stack(X).astype(np.float32)
+    if y is not None:
+        y = y.astype(int)
+    return X, y
+
+
+def evaluate_wauc_shakeup_using_bagging(oof_predictions: pd.DataFrame, y_true_type, n):
+    wauc = []
+
+    distribution = [3500, 500, 500, 500]
+
+    oof_predictions = oof_predictions.copy()
+    oof_predictions["y_true_type"] = y_true_type
+    oof_predictions["y_true"] = y_true_type > 0
+
+    cover = oof_predictions[oof_predictions["y_true_type"] == 0]
+    juni = oof_predictions[oof_predictions["y_true_type"] == 1]
+    jimi = oof_predictions[oof_predictions["y_true_type"] == 2]
+    uerd = oof_predictions[oof_predictions["y_true_type"] == 3]
+
+    for _ in range(n):
+        bagging_df = pd.concat(
+            [
+                cover.sample(distribution[0]),
+                juni.sample(distribution[1]),
+                jimi.sample(distribution[2]),
+                uerd.sample(distribution[3]),
+            ]
+        )
+        auc = alaska_weighted_auc(bagging_df["y_true"], bagging_df["Label"])
+        wauc.append(auc)
+
+    return wauc
+
+
+def compute_checksum_v2(fnames: List[str]):
+    def sanitize_fname(x):
+        x = fs.id_from_fname(x)
+        x = (
+            x.replace("fp16", "")
+            .replace("fold", "f")
+            .replace("local_rank_0", "")
+            .replace("nr_rgb_tf_efficientnet_b6_ns", "")
+            .replace("rgb_tf_efficientnet_b2_ns", "")
+            .replace("rgb_tf_efficientnet_b3_ns", "")
+            .replace("rgb_tf_efficientnet_b6_ns", "")
+            .replace("rgb_tf_efficientnet_b7_ns", "")
+        )
+        x = re.sub(r"\w{3}\d{2}_\d{2}_\d{2}", "", x).replace("_", "")
+        return x
+
+    fnames = [sanitize_fname(x) for x in fnames]
+    return "_".join(fnames)

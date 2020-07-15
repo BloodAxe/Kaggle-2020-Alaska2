@@ -12,69 +12,13 @@ from pytorch_toolbelt.utils import fs, to_numpy
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, XGBRanker
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax
+from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
-
-
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        # X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
-
-        if False and "pred_modification_type_tta" in p:
-            def prase_tta_softmax(x):
-                x = parse_array(x)
-                x = torch.tensor(x)
-
-                x = x.view((4,8))
-                x = x.softmax(dim=0)
-
-                # x = x.view((8,4))
-                # x = x.softmax(dim=1)
-                x = x.view(-1)
-                return x.tolist()
-
-            col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
-            X.append(col.tolist())
-
-        if False and "pred_modification_flag_tta" in p:
-            col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist())
-            X.append(col_act.tolist())
-
-        # if "pred_modification_type_tta" in p:
-        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
-        #
-        # if "pred_modification_flag_tta" in p:
-        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
 
 
 def main():
@@ -107,13 +51,12 @@ def main():
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
-        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
+        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    fnames_for_checksum = [x + f"cauc" for x in experiments]
-    checksum = compute_checksum_v2(fnames_for_checksum)
+    checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -123,10 +66,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y(holdout_predictions)
+    x, y = get_x_y_for_stacking(holdout_predictions,with_logits=True)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions,with_logits=True)
     print(x_test.shape)
 
     if True:

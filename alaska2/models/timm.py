@@ -315,18 +315,18 @@ def rgb_tf_efficientnet_b1_ns(num_classes=4, pretrained=True, dropout=0.1):
     )
 
 
-def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0.1):
+def rgb_tf_efficientnet_b2_ns(num_classes=4, pretrained=True, dropout=0.1, need_embedding=False):
     encoder = efficientnet.tf_efficientnet_b2_ns(pretrained=pretrained, drop_path_rate=0.1)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, need_embedding=need_embedding)
 
 
-def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0.1):
+def rgb_tf_efficientnet_b3_ns(num_classes=4, pretrained=True, dropout=0.1, need_embedding=False):
     encoder = efficientnet.tf_efficientnet_b3_ns(pretrained=pretrained, drop_path_rate=0.2)
     del encoder.classifier
 
-    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout)
+    return TimmRgbModel(encoder, num_classes=num_classes, dropout=dropout, need_embedding=need_embedding)
 
 
 def rgb_tf_efficientnet_b6_ns(num_classes=4, pretrained=True, dropout=0.5):

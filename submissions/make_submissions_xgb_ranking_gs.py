@@ -8,15 +8,15 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from pytorch_toolbelt.utils import fs
+from pytorch_toolbelt.utils import fs, to_numpy
 from sklearn.metrics import make_scorer
-from sklearn.model_selection import GroupKFold, RandomizedSearchCV
-from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV, GroupShuffleSplit
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier, XGBRanker
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, get_x_y_for_stacking
+from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
@@ -59,7 +59,7 @@ def main():
     checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-    image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
+    image_ids = np.array([fs.id_from_fname(x) for x in holdout_ds.images])
 
     quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
 
@@ -77,43 +77,41 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
+    if False:
+        sc = PCA(n_components=16)
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
     if True:
         x = np.column_stack([x, quality_h])
         x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
     cv_scores = []
-    test_pred = None
-    one_over_n = 1.0 / group_kfold.n_splits
 
-    for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
+    for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
 
-        cls = MLPClassifier(
-            activation="relu",
-            alpha=0.1,
-            learning_rate="adaptive",
-            hidden_layer_sizes=(64, 32),
-            max_iter=10000,
-            random_state=42,
-        )
+        xgb = XGBRanker(nthread=1)
+        groups = [1] * len(x_train)
+        xgb.fit(x_train, y_train, groups)
 
-        cls.fit(x_train, y_train)
+        y_pred = xgb.predict(x_valid)
 
-        y_valid_pred = cls.predict_proba(x_valid)[:, 1]
-        score = alaska_weighted_auc(y_valid, y_valid_pred)
+        score = alaska_weighted_auc(y_valid, y_pred)
+
         cv_scores.append(score)
 
         if test_pred is not None:
-            test_pred += cls.predict_proba(x_test)[:, 1] * one_over_n
+            test_pred += xgb.predict(x_test) * one_over_n
         else:
-            test_pred = cls.predict_proba(x_test)[:, 1] * one_over_n
+            test_pred = xgb.predict(x_test) * one_over_n
 
     for s in cv_scores:
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
-    submit_fname = os.path.join(output_dir, f"mlp_{np.mean(cv_scores):.4f}_{checksum}.csv")
+    submit_fname = os.path.join(output_dir, f"xgb_ranking_{np.mean(cv_scores):.4f}_{checksum}_.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)

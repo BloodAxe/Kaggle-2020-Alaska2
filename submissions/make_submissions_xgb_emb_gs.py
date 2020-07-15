@@ -1,8 +1,5 @@
 import os
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
@@ -11,14 +8,19 @@ import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GroupKFold, RandomizedSearchCV
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, get_x_y_for_stacking
+from alaska2.submissions import (
+    get_x_y_embedding_for_stacking,
+)
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
+
+
+# Used to ignore warnings generated from StackingCVClassifier
 
 
 def main():
@@ -54,8 +56,8 @@ def main():
         "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
-    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
-    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", tta=None, need_embedding=True)
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", tta=None, need_embedding=True)
     checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
@@ -66,14 +68,19 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions)
+    x, y = get_x_y_embedding_for_stacking(holdout_predictions)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions)
+    x_test, _ = get_x_y_embedding_for_stacking(test_predictions)
     print(x_test.shape)
 
-    if True:
+    if False:
         sc = StandardScaler()
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
+    if False:
+        sc = PCA(n_components=16)
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
@@ -82,38 +89,46 @@ def main():
         x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
-    cv_scores = []
-    test_pred = None
-    one_over_n = 1.0 / group_kfold.n_splits
 
-    for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+    params = {
+        "min_child_weight": [1, 5, 10],
+        "gamma": [1e-3, 1e-2, 1e-2, 0.5, 2],
+        "subsample": [0.6, 0.8, 1.0],
+        "colsample_bytree": [0.6, 0.8, 1.0],
+        "max_depth": [2, 3, 4, 5, 6],
+        "n_estimators": [16, 32, 64, 128, 256, 1000],
+        "learning_rate": [0.001, 0.01, 0.05, 0.2, 1],
+    }
 
-        cls = MLPClassifier(
-            activation="relu",
-            alpha=0.1,
-            learning_rate="adaptive",
-            hidden_layer_sizes=(64, 32),
-            max_iter=10000,
-            random_state=42,
-        )
+    xgb = XGBClassifier(objective="binary:logistic", nthread=1)
 
-        cls.fit(x_train, y_train)
+    random_search = RandomizedSearchCV(
+        xgb,
+        param_distributions=params,
+        scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
+        n_jobs=4,
+        n_iter=25,
+        cv=group_kfold.split(x, y, groups=image_ids),
+        verbose=3,
+        random_state=42,
+    )
 
-        y_valid_pred = cls.predict_proba(x_valid)[:, 1]
-        score = alaska_weighted_auc(y_valid, y_valid_pred)
-        cv_scores.append(score)
+    # Here we go
+    random_search.fit(x, y)
 
-        if test_pred is not None:
-            test_pred += cls.predict_proba(x_test)[:, 1] * one_over_n
-        else:
-            test_pred = cls.predict_proba(x_test)[:, 1] * one_over_n
+    print("\n All results:")
+    print(random_search.cv_results_)
+    print("\n Best estimator:")
+    print(random_search.best_estimator_)
+    print(random_search.best_score_)
+    print("\n Best hyperparameters:")
+    print(random_search.best_params_)
+    results = pd.DataFrame(random_search.cv_results_)
+    results.to_csv("xgb-embedding-random-grid-search-results-01.csv", index=False)
 
-    for s in cv_scores:
-        print(s)
-    print(np.mean(cv_scores), np.std(cv_scores))
+    test_pred = random_search.predict_proba(x_test)[:, 1]
 
-    submit_fname = os.path.join(output_dir, f"mlp_{np.mean(cv_scores):.4f}_{checksum}.csv")
+    submit_fname = os.path.join(output_dir, f"xgb_cls_emb_gs_{random_search.best_score_:.4f}_{checksum}_.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
