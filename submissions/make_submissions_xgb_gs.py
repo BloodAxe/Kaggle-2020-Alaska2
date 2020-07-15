@@ -44,17 +44,32 @@ def get_x_y(predictions):
             )
         )
 
-        if "pred_modification_type_tta" in p:
-            col = p["pred_modification_type_tta"].apply(parse_array)
-            col_act = col.tolist()
-            X.append(col_act)
+        if False and "pred_modification_type_tta" in p:
+            def prase_tta_softmax(x):
+                x = parse_array(x)
+                x = torch.tensor(x)
 
-        if "pred_modification_flag_tta" in p:
+                x = x.view((4,8))
+                x = x.softmax(dim=0)
+
+                # x = x.view((8,4))
+                # x = x.softmax(dim=1)
+                x = x.view(-1)
+                return x.tolist()
+
+            col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
+            X.append(col.tolist())
+
+        if False and "pred_modification_flag_tta" in p:
             col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist()).tolist()
-            std = col.apply(lambda x: torch.tensor(x).sigmoid().std().item())
-            X.append(col_act)
-            X.append(std)
+            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist())
+            X.append(col_act.tolist())
+
+        # if "pred_modification_type_tta" in p:
+        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
+        #
+        # if "pred_modification_flag_tta" in p:
+        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
 
     X = np.column_stack(X).astype(np.float32)
     if y is not None:
@@ -76,22 +91,23 @@ def main():
         # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
         # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16"
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
+        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -135,8 +151,8 @@ def main():
         "subsample": [0.6, 0.8, 1.0],
         "colsample_bytree": [0.6, 0.8, 1.0],
         "max_depth": [2, 3, 4, 5, 6],
-        "n_estimators": [16, 32, 64, 128, 256],
-        "learning_rate": [0.02, 0.2, 0.5, 1],
+        "n_estimators": [16, 32, 64, 128, 256, 1000],
+        "learning_rate": [0.001, 0.01, 0.05, 0.2, 1],
     }
 
     xgb = XGBClassifier(objective="binary:logistic", nthread=1)
@@ -146,6 +162,7 @@ def main():
         param_distributions=params,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         n_jobs=4,
+        n_iter=25,
         cv=group_kfold.split(x, y, groups=image_ids),
         verbose=3,
         random_state=42,

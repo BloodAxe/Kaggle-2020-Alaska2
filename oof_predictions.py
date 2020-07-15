@@ -1,14 +1,7 @@
 import warnings
 
-from alaska2.submissions import sigmoid, classifier_probas
-
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
-
-from collections import defaultdict
-from catalyst.utils import any2device
-from pytorch_toolbelt.utils import to_numpy, fs
-from pytorch_toolbelt.utils.catalyst import report_checkpoint
 
 import argparse
 import os
@@ -18,8 +11,13 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from collections import defaultdict
+from catalyst.utils import any2device
+from pytorch_toolbelt.utils import to_numpy, fs
+from pytorch_toolbelt.utils.catalyst import report_checkpoint
+
 from alaska2 import *
-from predict import compute_test_predictions
+from alaska2.submissions import sigmoid, classifier_probas
 
 
 @torch.no_grad()
@@ -32,13 +30,16 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
     ):
         batch = any2device(batch, device="cuda")
 
-        image_ids = batch[INPUT_IMAGE_ID_KEY]
-        y_trues = to_numpy(batch[INPUT_TRUE_MODIFICATION_FLAG]).flatten()
-        y_labels = to_numpy(batch[INPUT_TRUE_MODIFICATION_TYPE]).flatten()
+        if INPUT_TRUE_MODIFICATION_FLAG in batch:
+            y_trues = to_numpy(batch[INPUT_TRUE_MODIFICATION_FLAG]).flatten()
+            df[INPUT_TRUE_MODIFICATION_FLAG].extend(y_trues)
 
+        if INPUT_TRUE_MODIFICATION_TYPE in batch:
+            y_labels = to_numpy(batch[INPUT_TRUE_MODIFICATION_TYPE]).flatten()
+            df[INPUT_TRUE_MODIFICATION_TYPE].extend(y_labels)
+
+        image_ids = batch[INPUT_IMAGE_ID_KEY]
         df[INPUT_IMAGE_ID_KEY].extend(image_ids)
-        df[INPUT_TRUE_MODIFICATION_FLAG].extend(y_trues)
-        df[INPUT_TRUE_MODIFICATION_TYPE].extend(y_labels)
 
         outputs = model(**batch)
 
@@ -47,6 +48,12 @@ def compute_oof_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
 
         if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
             df[OUTPUT_PRED_MODIFICATION_TYPE].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE]).tolist())
+
+        if OUTPUT_PRED_EMBEDDING in outputs:
+            df[OUTPUT_PRED_EMBEDDING].extend(to_numpy(outputs[OUTPUT_PRED_EMBEDDING]).tolist())
+
+        if OUTPUT_PRED_EMBEDDING_ARC_MARGIN in outputs:
+            df[OUTPUT_PRED_EMBEDDING_ARC_MARGIN].extend(to_numpy(outputs[OUTPUT_PRED_EMBEDDING_ARC_MARGIN]).tolist())
 
         # Save also TTA predictions for future use
         if OUTPUT_PRED_MODIFICATION_FLAG + "_tta" in outputs:
@@ -101,6 +108,7 @@ def main():
     parser.add_argument("-hv", "--hv-tta", action="store_true")
     parser.add_argument("-f", "--force-recompute", action="store_true")
     parser.add_argument("-oof", "--need-oof", action="store_true")
+    parser.add_argument("-emb", "--need-embedding", action="store_true")
 
     args = parser.parse_args()
 
@@ -112,11 +120,14 @@ def main():
     d4_tta = args.d4_tta
     hv_tta = args.hv_tta
     force_recompute = args.force_recompute
+    need_embedding = args.need_embedding
+
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
+    embedding_suffix = "_w_emb" if need_embedding else ""
 
     for checkpoint_fname in checkpoint_fnames:
         model, checkpoints, required_features = ensemble_from_checkpoints(
-            [checkpoint_fname], strict=True, outputs=outputs, activation=None, tta=None
+            [checkpoint_fname], strict=True, outputs=outputs, activation=None, tta=None, need_embedding=need_embedding
         )
 
         report_checkpoint(checkpoints[0])
@@ -128,7 +139,7 @@ def main():
 
         # Holdout
         holdout_ds = get_holdout(data_dir, features=required_features)
-        holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions.csv")
+        holdout_predictions_csv = fs.change_extension(checkpoint_fname, f"_holdout_predictions{embedding_suffix}.csv")
         if force_recompute or not os.path.exists(holdout_predictions_csv):
             holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
             holdout_predictions.to_csv(holdout_predictions_csv, index=False)
@@ -137,15 +148,17 @@ def main():
 
         # Also compute test predictions
         test_ds = get_test_dataset(data_dir, features=required_features)
-        test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions.csv")
+        test_predictions_csv = fs.change_extension(checkpoint_fname, f"_test_predictions{embedding_suffix}.csv")
         if force_recompute or not os.path.exists(test_predictions_csv):
-            test_predictions = compute_test_predictions(model, test_ds, batch_size=batch_size, workers=workers)
+            test_predictions = compute_oof_predictions(model, test_ds, batch_size=batch_size, workers=workers)
             test_predictions.to_csv(test_predictions_csv, index=False)
 
         if hv_tta:
             tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
 
-            holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_flip_hv_tta.csv")
+            holdout_predictions_csv = fs.change_extension(
+                checkpoint_fname, f"_holdout_predictions{embedding_suffix}_flip_hv_tta.csv"
+            )
             if force_recompute or not os.path.exists(holdout_predictions_csv):
                 holdout_predictions = compute_oof_predictions(
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
@@ -154,14 +167,18 @@ def main():
             print("Holdout score with HV TTA")
             score_predictions(holdout_predictions_csv)
 
-            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_flip_hv_tta.csv")
+            test_predictions_csv = fs.change_extension(
+                checkpoint_fname, f"_test_predictions{embedding_suffix}_flip_hv_tta.csv"
+            )
             if force_recompute or not os.path.exists(test_predictions_csv):
-                test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+                test_predictions = compute_oof_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
                 test_predictions.to_csv(test_predictions_csv, index=False)
 
         if d4_tta:
             tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
-            holdout_predictions_csv = fs.change_extension(checkpoint_fname, "_holdout_predictions_d4_tta.csv")
+            holdout_predictions_csv = fs.change_extension(
+                checkpoint_fname, f"_holdout_predictions{embedding_suffix}_d4_tta.csv"
+            )
             if force_recompute or not os.path.exists(holdout_predictions_csv):
                 holdout_predictions = compute_oof_predictions(
                     tta_model, holdout_ds, batch_size=batch_size, workers=workers
@@ -170,16 +187,18 @@ def main():
             print("Holdout score with D4 TTA")
             score_predictions(holdout_predictions_csv)
 
-            test_predictions_csv = fs.change_extension(checkpoint_fname, "_test_predictions_d4_tta.csv")
+            test_predictions_csv = fs.change_extension(
+                checkpoint_fname, f"_test_predictions{embedding_suffix}_d4_tta.csv"
+            )
             if force_recompute or not os.path.exists(test_predictions_csv):
-                test_predictions = compute_test_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
+                test_predictions = compute_oof_predictions(tta_model, test_ds, batch_size=batch_size, workers=workers)
                 test_predictions.to_csv(test_predictions_csv, index=False)
 
         if args.need_oof:
             fold = checkpoints[0]["checkpoint_data"]["cmd_args"]["fold"]
             _, valid_ds, _ = get_datasets(data_dir, fold=fold, features=required_features)
 
-            oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions.csv")
+            oof_predictions_csv = fs.change_extension(checkpoint_fname, f"_oof_predictions{embedding_suffix}.csv")
             if force_recompute or not os.path.exists(oof_predictions_csv):
                 oof_predictions = compute_oof_predictions(model, valid_ds, batch_size=batch_size, workers=workers)
                 oof_predictions.to_csv(oof_predictions_csv, index=False)
@@ -187,7 +206,9 @@ def main():
             score_predictions(oof_predictions_csv)
 
             if hv_tta:
-                oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_flip_hv_tta.csv")
+                oof_predictions_csv = fs.change_extension(
+                    checkpoint_fname, f"_oof_predictions{embedding_suffix}_flip_hv_tta.csv"
+                )
                 if force_recompute or not os.path.exists(oof_predictions_csv):
                     tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
                     oof_predictions = compute_oof_predictions(
@@ -198,7 +219,9 @@ def main():
                 score_predictions(oof_predictions_csv)
 
             if d4_tta:
-                oof_predictions_csv = fs.change_extension(checkpoint_fname, "_oof_predictions_d4_tta.csv")
+                oof_predictions_csv = fs.change_extension(
+                    checkpoint_fname, f"_oof_predictions{embedding_suffix}_d4_tta.csv"
+                )
                 if force_recompute or not os.path.exists(oof_predictions_csv):
                     tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
                     oof_predictions = compute_oof_predictions(

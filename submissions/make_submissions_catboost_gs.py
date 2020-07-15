@@ -15,54 +15,11 @@ from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax
+from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 import catboost as cat
-
-
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        # X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
-
-        if "pred_modification_type_tta" in p:
-            col = p["pred_modification_type_tta"].apply(parse_and_softmax)
-            col_act = col.tolist()
-
-            X.append(col_act)
-
-        if "pred_modification_flag_tta" in p:
-            col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist()).tolist()
-            std = col.apply(lambda x: torch.tensor(x).sigmoid().std().item())
-
-            X.append(col_act)
-            X.append(std)
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
 
 
 def wauc_metric(y_true, y_pred):
@@ -84,20 +41,23 @@ def main():
         # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
+        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -113,14 +73,19 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y(holdout_predictions)
+    x, y = get_x_y_for_stacking(holdout_predictions)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions)
     print(x_test.shape)
 
     if True:
         sc = StandardScaler()
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
+    if False:
+        sc = PCA(n_components=16)
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
@@ -130,9 +95,19 @@ def main():
 
     group_kfold = GroupKFold(n_splits=2)
 
-    params = {"learning_rate": [1e-3, 1e-2, 1e-1, 1], "depth": [4, 8, 16]}
+    params = {
+        "depth": [3, 1, 2, 6, 4, 5, 7, 8, 9, 10],
+        # "iterations": [250, 100, 500, 1000],
+        "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3],
+        "l2_leaf_reg": [3, 1, 5, 10, 100],
+    }
 
-    lgb_estimator = cat.CatBoostClassifier(iterations=1024, verbose=True)
+    lgb_estimator = cat.CatBoostClassifier(
+        verbose=True,
+        iterations=2500,
+        # use_best_model=True, eval_metric="AUC",
+        task_type="GPU"
+    )
 
     random_search = RandomizedSearchCV(
         lgb_estimator,

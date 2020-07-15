@@ -16,7 +16,7 @@ from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
-from submissions.make_submissions_averaging import compute_checksum, compute_checksum_v2
+from submissions.make_submissions_averaging import compute_checksum_v2
 import torch.nn.functional as F
 
 
@@ -42,6 +42,28 @@ def get_x_y(predictions):
                 -1,
             )
         )
+
+        if False and "pred_modification_type_tta" in p:
+
+            def prase_tta_softmax(x):
+                x = parse_array(x)
+                x = torch.tensor(x)
+
+                x = x.view((4, 8))
+                x = x.softmax(dim=0)
+
+                # x = x.view((8,4))
+                # x = x.softmax(dim=1)
+                x = x.view(-1)
+                return x.tolist()
+
+            col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
+            X.append(col.tolist())
+
+        if False and "pred_modification_flag_tta" in p:
+            col = p["pred_modification_flag_tta"].apply(parse_array)
+            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist())
+            X.append(col_act.tolist())
 
         # if "pred_modification_type_tta" in p:
         #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
@@ -75,20 +97,23 @@ def main():
         # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
+        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -133,8 +158,8 @@ def main():
 
     params = {
         "base_score": 0.5,
-        # "booster": "gblinear",
-        "booster": "gbtree",
+        "booster": "gblinear",
+        # "booster": "gbtree",
         "colsample_bylevel": 1,
         "colsample_bynode": 1,
         "colsample_bytree": 1,
@@ -147,12 +172,12 @@ def main():
         "subsample": 0.8,
         "scale_pos_weight": 1,
         "min_child_weight": 2,
-        "max_depth": 6,
+        "max_depth": 5,
         "tree_method": "exact",
         "seed": 42,
         "alpha": 0.01,
         "lambda": 0.01,
-        "n_estimators": 100,
+        "n_estimators": 256,
         "gamma": 0.01,
         "disable_default_eval_metric": 1,
         # "eval_metric": "wauc",
@@ -164,27 +189,25 @@ def main():
         train_dmatrix = xgb.DMatrix(x_train.copy(), y_train.copy())
         valid_dmatrix = xgb.DMatrix(x_valid.copy(), y_valid.copy())
 
-
-
         xgb_model = xgb.train(
             params,
             train_dmatrix,
-            num_boost_round=1500,
+            num_boost_round=5000,
             verbose_eval=True,
             feval=xgb_weighted_auc,
             maximize=True,
             evals=[(valid_dmatrix, "validation")],
         )
 
-        y_valid_pred = xgb_model.predict_proba(valid_dmatrix)[:, 1]
+        y_valid_pred = xgb_model.predict(valid_dmatrix)
         score = alaska_weighted_auc(y_valid, y_valid_pred)
 
         cv_scores.append(score)
 
         if test_pred is not None:
-            test_pred += xgb_model.predict_proba(test_dmatrix)[:, 1] * one_over_n
+            test_pred += xgb_model.predict(test_dmatrix) * one_over_n
         else:
-            test_pred = xgb_model.predict_proba(test_dmatrix)[:, 1] * one_over_n
+            test_pred = xgb_model.predict(test_dmatrix) * one_over_n
 
     for s in cv_scores:
         print(s)

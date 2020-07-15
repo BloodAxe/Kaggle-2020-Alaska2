@@ -6,14 +6,13 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits,unet
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits, unet
 from ..dataset import *
 from ..predict import *
 
 MODEL_REGISTRY = {
     # Unet
     "nr_rgb_unet": unet.nr_rgb_unet,
-
     # Big Transfer
     "bit_m_rx152_2": bit.bit_m_rx152_2,
     "bit_m_rx50_1": bit.bit_m_rx50_1,
@@ -101,12 +100,13 @@ def get_model(model_name, num_classes=4, pretrained=True, **kwargs):
     return MODEL_REGISTRY[model_name](num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def model_from_checkpoint(model_checkpoint: str, model_name=None, report=True, strict=True) -> Tuple[nn.Module, Dict]:
+def model_from_checkpoint(
+    model_checkpoint: str, model_name=None, report=True, need_embedding=False, strict=True
+) -> Tuple[nn.Module, Dict]:
     checkpoint = torch.load(model_checkpoint, map_location="cpu")
     model_name = model_name or checkpoint["checkpoint_data"]["cmd_args"]["model"]
 
-    # Always disable pretrained models since we load model afterwards and request embeddings
-    model = get_model(model_name, pretrained=False, need_embedding=True)
+    model = get_model(model_name, pretrained=False, need_embedding=need_embedding)
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
     return model.eval(), checkpoint
 
@@ -123,12 +123,20 @@ def wrap_model_with_tta(model, tta_mode, inputs, outputs):
 
 
 def ensemble_from_checkpoints(
-    checkpoints, strict=True, outputs=None, activation: Optional[str] = "after_model", tta=None, temperature=1
+    checkpoints,
+    strict=True,
+    outputs=None,
+    activation: Optional[str] = "after_model",
+    tta=None,
+    temperature=1,
+    need_embedding=False,
 ):
     if activation not in {None, "after_model", "after_tta", "after_ensemble"}:
         raise KeyError(activation)
 
-    models, loaded_checkpoints = zip(*[model_from_checkpoint(ck, strict=strict) for ck in checkpoints])
+    models, loaded_checkpoints = zip(
+        *[model_from_checkpoint(ck, need_embedding=need_embedding, strict=strict) for ck in checkpoints]
+    )
 
     required_features = itertools.chain(*[m.required_features for m in models])
     required_features = list(set(list(required_features)))

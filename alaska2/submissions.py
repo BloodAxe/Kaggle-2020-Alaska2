@@ -4,7 +4,7 @@ import warnings
 import pandas as pd
 import torch
 from pytorch_toolbelt.utils import logit, fs, to_numpy
-from typing import List, Union
+from typing import List, Union, Tuple
 import numpy as np
 from scipy.stats import rankdata
 
@@ -383,3 +383,72 @@ def make_classifier_predictions_calibrated(
         preds_df.append(calibrated_test[keys])
 
     return preds_df
+
+
+def get_x_y_for_stacking(
+    predictions: List[str], with_logits=False, tta_logits=False, tta_probas=False
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get X and Y for 2nd level stacking
+    """
+    y = None
+    X = []
+
+    for p in predictions:
+        p = pd.read_csv(p)
+
+        if "true_modification_flag" in p:
+            y = p["true_modification_flag"].values.astype(np.float32)
+
+        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
+        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(
+            np.expand_dims(
+                p["pred_modification_type"].apply(classifier_probas).values
+                * p["pred_modification_flag"].apply(sigmoid).values,
+                -1,
+            )
+        )
+
+        if with_logits:
+            X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
+            X.append(np.array(p["pred_modification_type"].apply(parse_array).tolist()))
+
+        if "pred_modification_type_tta" in p:
+
+            def prase_tta_softmax(x):
+                x = parse_array(x)
+                x = torch.tensor(x)
+
+                x = x.view((4, 8))
+                x = x.softmax(dim=0)
+
+                # x = x.view((8,4))
+                # x = x.softmax(dim=1)
+                x = x.view(-1)
+                return x.tolist()
+
+            if tta_logits:
+                col = p["pred_modification_type_tta"].apply(parse_array)
+                X.append(col.tolist())
+
+            if tta_probas:
+                col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
+                X.append(col.tolist())
+
+        if "pred_modification_flag_tta" in p:
+            if tta_logits:
+                col = p["pred_modification_flag_tta"].apply(parse_array)
+                X.append(col.tolist())
+            if tta_probas:
+                col = (
+                    p["pred_modification_flag_tta"]
+                    .apply(parse_array)
+                    .apply(lambda x: torch.tensor(x).sigmoid().tolist())
+                )
+                X.append(col.tolist())
+
+    X = np.column_stack(X).astype(np.float32)
+    if y is not None:
+        y = y.astype(int)
+    return X, y
