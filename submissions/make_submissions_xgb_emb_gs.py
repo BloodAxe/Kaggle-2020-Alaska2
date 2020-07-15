@@ -9,18 +9,14 @@ from pytorch_toolbelt.utils import fs
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GroupKFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import (
-    get_x_y_embedding_for_stacking,
-)
+from alaska2.submissions import get_x_y_for_stacking, get_x_y_embedding_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
-
-
-# Used to ignore warnings generated from StackingCVClassifier
 
 
 def main():
@@ -79,8 +75,8 @@ def main():
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
-    if False:
-        sc = PCA(n_components=16)
+    if True:
+        sc = PCA(n_components=512)
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 

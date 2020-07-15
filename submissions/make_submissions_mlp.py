@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, get_x_y_for_stacking
+from alaska2.submissions import get_x_y_for_stacking, get_x_y_embedding_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
@@ -54,8 +54,11 @@ def main():
         "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
-    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
-    test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
+    # holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
+    # test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
+
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", tta=None, need_embedding=True)
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", tta=None, need_embedding=True)
     checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
@@ -66,10 +69,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions)
+    x, y = get_x_y_embedding_for_stacking(holdout_predictions)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions)
+    x_test, _ = get_x_y_embedding_for_stacking(test_predictions)
     print(x_test.shape)
 
     if True:
@@ -93,9 +96,10 @@ def main():
             activation="relu",
             alpha=0.1,
             learning_rate="adaptive",
-            hidden_layer_sizes=(64, 32),
-            max_iter=10000,
+            hidden_layer_sizes=(2048, 1024),
+            max_iter=1000,
             random_state=42,
+            verbose=True
         )
 
         cls.fit(x_train, y_train)
@@ -113,7 +117,7 @@ def main():
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
-    submit_fname = os.path.join(output_dir, f"mlp_{np.mean(cv_scores):.4f}_{checksum}.csv")
+    submit_fname = os.path.join(output_dir, f"mlp_emb_{np.mean(cv_scores):.4f}_{checksum}.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
