@@ -66,10 +66,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions,with_logits=True)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=True, tta_logits=True)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions,with_logits=True)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
     print(x_test.shape)
 
     if True:
@@ -131,6 +131,10 @@ def main():
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)
     print("Saved submission to ", submit_fname)
+
+    import json
+    with open(fs.change_extension(submit_fname, ".json"), "w") as f:
+        json.dump(random_search.best_params_, f, indent=2)
 
 
 if __name__ == "__main__":

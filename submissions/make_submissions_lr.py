@@ -7,15 +7,19 @@ import torch
 import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
 from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
+from sklearn.linear_model import LogisticRegression
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
+
+
+# Used to ignore warnings generated from StackingCVClassifier
 
 
 def main():
@@ -63,10 +67,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=True, tta_logits=True)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=False, tta_logits=False)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=False, tta_logits=False)
     print(x_test.shape)
 
     if True:
@@ -90,40 +94,8 @@ def main():
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
-        print(np.bincount(y_train), np.bincount(y_valid))
 
-        cls = XGBClassifier(
-            base_score=0.5,
-            booster="gbtree",
-            colsample_bylevel=1,
-            colsample_bynode=1,
-            colsample_bytree=0.6,
-            gamma=0.5,
-            gpu_id=-1,
-            importance_type="gain",
-            interaction_constraints="",
-            learning_rate=0.01,
-            max_delta_step=0,
-            max_depth=3,
-            min_child_weight=10,
-            # missing=nan,
-            monotone_constraints="()",
-            n_estimators=1000,
-            n_jobs=8,
-            nthread=1,
-            num_parallel_tree=1,
-            objective="binary:logistic",
-            random_state=0,
-            reg_alpha=0,
-            reg_lambda=1,
-            scale_pos_weight=1,
-            silent=True,
-            subsample=0.8,
-            tree_method="exact",
-            validate_parameters=1,
-            verbosity=2,
-        )
-
+        cls = LogisticRegression(max_iter=10000, tol=1e-5, C=1)
         cls.fit(x_train, y_train)
 
         y_valid_pred = cls.predict_proba(x_valid)[:, 1]
@@ -139,7 +111,7 @@ def main():
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
-    submit_fname = os.path.join(output_dir, f"xgb_cls_{np.mean(cv_scores):.4f}_{checksum}.csv")
+    submit_fname = os.path.join(output_dir, f"logreg_{np.mean(cv_scores):.4f}_{checksum}.csv")
     df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
     df["Label"] = test_pred
     df[["Id", "Label"]].to_csv(submit_fname, index=False)

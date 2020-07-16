@@ -210,7 +210,8 @@ class CompetitionMetricCallback(Callback):
     @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
         output = self.output_activation(state.output[self.output_key].detach().cpu())
-        self.quality_factors.extend(to_numpy(state.input[INPUT_IMAGE_QF_KEY]).flatten())
+        if INPUT_IMAGE_QF_KEY in state.input:
+            self.quality_factors.extend(to_numpy(state.input[INPUT_IMAGE_QF_KEY]).flatten())
         self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
         self.pred_labels.extend(to_numpy(output).flatten())
 
@@ -231,37 +232,38 @@ class CompetitionMetricCallback(Callback):
         true_labels_b = (true_labels > 0).astype(int)
         # Just ensure true_labels are 0,1
         score = alaska_weighted_auc(true_labels_b, pred_labels)
-
-        # Compute
-        score_75 = alaska_weighted_auc(true_labels_b[quality_factors == 0], pred_labels[quality_factors == 0])
-        score_90 = alaska_weighted_auc(true_labels_b[quality_factors == 1], pred_labels[quality_factors == 1])
-        score_95 = alaska_weighted_auc(true_labels_b[quality_factors == 2], pred_labels[quality_factors == 2])
-
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(score)
-        state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_75"] = float(score_75)
-        state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_90"] = float(score_90)
-        state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_95"] = float(score_95)
 
         logger = get_tensorboard_logger(state)
         logger.add_pr_curve(self.prefix, true_labels_b, pred_labels)
 
-        score_mask = np.zeros((3, 3))
-        for qf in [0, 1, 2]:
-            for target in range(len(self.class_names) - 1):
-                mask = (quality_factors == qf) & ((true_labels == 0) | (true_labels == target + 1))
-                score = alaska_weighted_auc(true_labels_b[mask], pred_labels[mask])
-                score_mask[qf, target] = score
+        # Compute
+        if len(quality_factors) > 0:
+            score_75 = alaska_weighted_auc(true_labels_b[quality_factors == 0], pred_labels[quality_factors == 0])
+            score_90 = alaska_weighted_auc(true_labels_b[quality_factors == 1], pred_labels[quality_factors == 1])
+            score_95 = alaska_weighted_auc(true_labels_b[quality_factors == 2], pred_labels[quality_factors == 2])
 
-        fig = self.plot_matrix(
-            score_mask,
-            figsize=(8, 8),
-            x_names=self.class_names[1:],
-            y_names=["75", "90", "95"],
-            normalize=False,
-            noshow=True,
-        )
-        fig = render_figure_to_tensor(fig)
-        logger.add_image(f"{self.prefix}/matrix", fig, global_step=state.step)
+            state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_75"] = float(score_75)
+            state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_90"] = float(score_90)
+            state.metrics.epoch_values[state.loader_name][self.prefix + "/qf_95"] = float(score_95)
+
+            score_mask = np.zeros((3, 3))
+            for qf in [0, 1, 2]:
+                for target in range(len(self.class_names) - 1):
+                    mask = (quality_factors == qf) & ((true_labels == 0) | (true_labels == target + 1))
+                    score = alaska_weighted_auc(true_labels_b[mask], pred_labels[mask])
+                    score_mask[qf, target] = score
+
+            fig = self.plot_matrix(
+                score_mask,
+                figsize=(8, 8),
+                x_names=self.class_names[1:],
+                y_names=["75", "90", "95"],
+                normalize=False,
+                noshow=True,
+            )
+            fig = render_figure_to_tensor(fig)
+            logger.add_image(f"{self.prefix}/matrix", fig, global_step=state.step)
 
     @staticmethod
     def plot_matrix(

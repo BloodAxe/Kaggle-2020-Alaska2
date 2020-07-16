@@ -1,79 +1,24 @@
 import os
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
+from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array
+from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        # X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
-
-        if False and "pred_modification_type_tta" in p:
-            def prase_tta_softmax(x):
-                x = parse_array(x)
-                x = torch.tensor(x)
-
-                x = x.view((4,8))
-                x = x.softmax(dim=0)
-
-                # x = x.view((8,4))
-                # x = x.softmax(dim=1)
-                x = x.view(-1)
-                return x.tolist()
-
-            col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
-            X.append(col.tolist())
-
-        if False and "pred_modification_flag_tta" in p:
-            col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist())
-            X.append(col_act.tolist())
-
-        # if "pred_modification_type_tta" in p:
-        #     X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
-        #
-        # if "pred_modification_flag_tta" in p:
-        #     X.append(p["pred_modification_flag_tta"].apply(parse_array).tolist())
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
+# Used to ignore warnings generated from StackingCVClassifier
 
 
 def main():
@@ -101,19 +46,17 @@ def main():
         # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        # "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
-        "Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
+        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
     checksum = compute_checksum_v2(experiments)
-
-    import torch.nn.functional as F
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -123,13 +66,13 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y(holdout_predictions)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=True, tta_logits=True)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
     print(x_test.shape)
 
-    if True:
+    if False:
         sc = StandardScaler()
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
@@ -150,7 +93,9 @@ def main():
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
         x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        print(np.bincount(y_train), np.bincount(y_valid))
 
+        # cls = LinearDiscriminantAnalysis()
         cls = LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto", priors=[0.5, 0.5])
         cls.fit(x_train, y_train)
 

@@ -15,54 +15,11 @@ from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax
+from alaska2.submissions import classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 import lightgbm as lgb
-
-
-def get_x_y(predictions):
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        # X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-        # pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
-        # X.append(pred_modification_type)
-
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
-
-        if "pred_modification_type_tta" in p:
-            col = p["pred_modification_type_tta"].apply(parse_and_softmax)
-            col_act = col.tolist()
-
-            X.append(col_act)
-
-        if "pred_modification_flag_tta" in p:
-            col = p["pred_modification_flag_tta"].apply(parse_array)
-            col_act = col.apply(lambda x: torch.tensor(x).sigmoid().tolist()).tolist()
-            std = col.apply(lambda x: torch.tensor(x).sigmoid().std().item())
-
-            X.append(col_act)
-            X.append(std)
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
 
 
 def wauc_metric(y_true, y_pred):
@@ -84,26 +41,28 @@ def main():
         # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
-        "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
+        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
         #
-        "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
+        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
+        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
         #
         # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
         #
-        "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
+        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        #
+        "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
+        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
-    fnames_for_checksum = [x + f"cauc" for x in experiments]
-    checksum = compute_checksum_v2(fnames_for_checksum)
+    checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
     image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
@@ -113,14 +72,19 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y(holdout_predictions)
+    x, y = get_x_y_for_stacking(holdout_predictions)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions)
     print(x_test.shape)
 
     if True:
         sc = StandardScaler()
+        x = sc.fit_transform(x)
+        x_test = sc.transform(x_test)
+
+    if False:
+        sc = PCA(n_components=16)
         x = sc.fit_transform(x)
         x_test = sc.transform(x_test)
 
@@ -136,15 +100,12 @@ def main():
         "reg_lambda": [0, 0.01, 0.1, 0.5],
         "min_data_in_leaf": [30, 50, 100, 300],
         "learning_rate": [0.01, 0.1, 0.5],
+        "n_estimators": [32, 64, 126, 512],
+        "max_depth": [2, 4, 8, 10],
     }
 
     lgb_estimator = lgb.LGBMClassifier(
-        boosting_type="gbdt",
-        min_child_samples="5",
-        max_depth=10,
-        objective="binary",
-        n_estimators=128,
-        silent=False,
+        boosting_type="gbdt", min_child_samples="5", max_depth=10, objective="binary", silent=False
     )
 
     random_search = RandomizedSearchCV(
@@ -152,6 +113,7 @@ def main():
         param_distributions=params,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         n_jobs=4,
+        n_iter=100,
         cv=group_kfold.split(x, y, groups=image_ids),
         verbose=3,
         random_state=42,
