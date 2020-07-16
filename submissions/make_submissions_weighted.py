@@ -14,7 +14,7 @@ from scipy.optimize import Bounds
 from scipy.special import softmax
 
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid
+from alaska2.submissions import parse_classifier_probas, sigmoid
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum
 
@@ -31,7 +31,7 @@ def get_x_y(predictions):
             y = p["true_modification_flag"].values.astype(np.float32)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(np.expand_dims(p["pred_modification_type"].apply(parse_classifier_probas).values, -1))
 
     X = np.column_stack(X).astype(np.float32)
     return X, y

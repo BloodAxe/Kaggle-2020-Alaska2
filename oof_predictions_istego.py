@@ -1,6 +1,6 @@
 import warnings
 
-from alaska2.submissions import classifier_probas, sigmoid
+from alaska2.submissions import parse_classifier_probas, sigmoid
 
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
@@ -146,7 +146,7 @@ def main():
                     "\tcAUC",
                     alaska_weighted_auc(
                         holdout_predictions[INPUT_TRUE_MODIFICATION_FLAG].values,
-                        holdout_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(classifier_probas).values,
+                        holdout_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(parse_classifier_probas).values,
                     ),
                 )
 

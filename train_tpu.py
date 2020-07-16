@@ -41,7 +41,7 @@ import time
 
 
 from alaska2 import *
-from alaska2.submissions import classifier_probas
+from alaska2.submissions import parse_classifier_probas
 
 
 def xla_all_gather(data, device):
@@ -140,7 +140,7 @@ def _run(
 
             loss = criterion(y_pred, y_true)
 
-            pred_scores.extend(to_numpy(classifier_probas(y_pred)))
+            pred_scores.extend(to_numpy(parse_classifier_probas(y_pred)))
             true_scores.extend(to_numpy(y_true))
 
             xm.master_print(f"Batch: {batch_idx}, loss: {loss.item()}")

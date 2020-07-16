@@ -1,6 +1,6 @@
 import pandas as pd
 
-from alaska2.submissions import classifier_probas
+from alaska2.submissions import parse_classifier_probas
 from alaska2.dataset import OUTPUT_PRED_MODIFICATION_TYPE
 
 dfs = []
@@ -17,7 +17,7 @@ for fold_index, fname in enumerate(
     dfs.append(df)
 
 df = pd.concat(dfs)
-df["y_pred"] = df[OUTPUT_PRED_MODIFICATION_TYPE].apply(classifier_probas)
+df["y_pred"] = df[OUTPUT_PRED_MODIFICATION_TYPE].apply(parse_classifier_probas)
 df["error"] = (df["true_modification_flag"] - df["y_pred"]).abs()
 df = df.sort_values(by="error", ascending=False)
 print(len(df))

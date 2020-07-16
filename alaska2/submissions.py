@@ -27,7 +27,7 @@ __all__ = [
     "sigmoid",
     "noop",
     "winsorize",
-    "classifier_probas",
+    "parse_classifier_probas",
     "submit_from_average_binary",
     "submit_from_average_classifier",
     "submit_from_median_classifier",
@@ -77,12 +77,16 @@ def parse_and_softmax(x):
     return to_numpy(x)
 
 
-def classifier_probas(x):
+def parse_classifier_probas(x):
     x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
     x = torch.tensor(x).softmax(dim=0)
     x = x[1:].sum()
     return float(x)
 
+def classifier_probas(x):
+    x = torch.tensor(x).softmax(dim=0)
+    x = x[1:].sum()
+    return float(x)
 
 def noop(x):
     return x
@@ -95,7 +99,7 @@ def winsorize(x):
     return x_w
 
 
-def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_transform=classifier_probas):
+def calibrated(test_predictions, oof_predictions, flag_transform=sigmoid, type_transform=parse_classifier_probas):
     """
     Update test predictions w.r.t to calibration trained on OOF predictions
     :param test_predictions:
@@ -203,7 +207,7 @@ def submit_from_average_classifier(preds: List[str]):
     preds_df = [pd.read_csv(x) for x in preds]
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Label"] = sum([df["pred_modification_type"].apply(classifier_probas).values for df in preds_df]) / len(
+    submission["Label"] = sum([df["pred_modification_type"].apply(parse_classifier_probas).values for df in preds_df]) / len(
         preds_df
     )
     return submission
@@ -212,7 +216,7 @@ def submit_from_average_classifier(preds: List[str]):
 def submit_from_median_classifier(test_predictions: List[str]):
     preds_df = [pd.read_csv(x) for x in test_predictions]
 
-    p = np.stack([df["pred_modification_type"].apply(classifier_probas).values for df in preds_df])
+    p = np.stack([df["pred_modification_type"].apply(parse_classifier_probas).values for df in preds_df])
     p = np.median(p, axis=0)
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
@@ -322,7 +326,7 @@ def make_classifier_predictions(test_predictions: List[str]) -> List[pd.DataFram
     for x in test_predictions:
         df = pd.read_csv(x)
         df = df.rename(columns={"image_id": "Id"})
-        df["Label"] = df["pred_modification_type"].apply(classifier_probas)
+        df["Label"] = df["pred_modification_type"].apply(parse_classifier_probas)
 
         keys = ["Id", "Label"]
         if "true_modification_flag" in df:
@@ -346,7 +350,7 @@ def make_product_predictions(test_predictions: List[str]) -> List[pd.DataFrame]:
     for x in test_predictions:
         df = pd.read_csv(x)
         df = df.rename(columns={"image_id": "Id"})
-        df["Label"] = df["pred_modification_type"].apply(classifier_probas) * df["pred_modification_flag"].apply(
+        df["Label"] = df["pred_modification_type"].apply(parse_classifier_probas) * df["pred_modification_flag"].apply(
             sigmoid
         )
 
@@ -413,7 +417,7 @@ def get_x_y_for_stacking(
 
         if with_probas:
             pred_modification_flag = np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1)
-            pred_modification_type = np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1)
+            pred_modification_type = np.expand_dims(p["pred_modification_type"].apply(parse_classifier_probas).values, -1)
             X.append(pred_modification_flag)
             X.append(pred_modification_type)
             X.append(pred_modification_type * pred_modification_flag)

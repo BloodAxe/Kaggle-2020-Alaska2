@@ -17,7 +17,7 @@ from pytorch_toolbelt.utils import to_numpy, fs
 from pytorch_toolbelt.utils.catalyst import report_checkpoint
 
 from alaska2 import *
-from alaska2.submissions import sigmoid, classifier_probas
+from alaska2.submissions import sigmoid, parse_classifier_probas
 
 
 @torch.no_grad()
@@ -86,7 +86,7 @@ def score_predictions(predictions_fname):
         "\tcAUC",
         alaska_weighted_auc(
             holdout_predictions[INPUT_TRUE_MODIFICATION_FLAG].values,
-            holdout_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(classifier_probas).values,
+            holdout_predictions[OUTPUT_PRED_MODIFICATION_TYPE].apply(parse_classifier_probas).values,
         ),
     )
 

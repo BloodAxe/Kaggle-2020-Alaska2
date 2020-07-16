@@ -4,7 +4,7 @@ from collections import defaultdict
 import pandas as pd
 
 from alaska2 import alaska_weighted_auc
-from alaska2.submissions import as_hv_tta, as_d4_tta, classifier_probas, sigmoid, infer_fold
+from alaska2.submissions import as_hv_tta, as_d4_tta, parse_classifier_probas, sigmoid, infer_fold
 
 
 def get_predictions_csv(experiment, metric: str, type: str, tta: str = None, need_embedding=False):
@@ -90,7 +90,7 @@ def main():
                 )
                 summary_df["cauc"].append(
                     alaska_weighted_auc(
-                        df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
+                        df["true_modification_flag"], df["pred_modification_type"].apply(parse_classifier_probas)
                     )
                 )
 
@@ -106,7 +106,7 @@ def main():
                 )
                 summary_df["cauc (HV tta)"].append(
                     alaska_weighted_auc(
-                        df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
+                        df["true_modification_flag"], df["pred_modification_type"].apply(parse_classifier_probas)
                     )
                 )
 
@@ -122,7 +122,7 @@ def main():
                 )
                 summary_df["cauc (D4 tta)"].append(
                     alaska_weighted_auc(
-                        df["true_modification_flag"], df["pred_modification_type"].apply(classifier_probas)
+                        df["true_modification_flag"], df["pred_modification_type"].apply(parse_classifier_probas)
                     )
                 )
 

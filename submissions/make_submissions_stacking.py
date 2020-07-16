@@ -30,7 +30,7 @@ from sklearn.svm import SVC
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import classifier_probas, sigmoid, parse_array
+from alaska2.submissions import parse_classifier_probas, sigmoid, parse_array
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
@@ -51,7 +51,7 @@ def get_x_y(predictions):
         X.append(pred_modification_type)
 
         X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
+        X.append(np.expand_dims(p["pred_modification_type"].apply(parse_classifier_probas).values, -1))
 
         if "pred_modification_type_tta" in p:
             X.append(p["pred_modification_type_tta"].apply(parse_array).tolist())
