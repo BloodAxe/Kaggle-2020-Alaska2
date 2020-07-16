@@ -72,15 +72,13 @@ def parse_array(x):
 
 
 def parse_and_softmax(x):
-    x = x.replace("[", "").replace("]", "").split(",")
-    x = [float(i) for i in x]
+    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
     x = torch.tensor(x).softmax(dim=0)
     return to_numpy(x)
 
 
 def classifier_probas(x):
-    x = x.replace("[", "").replace("]", "").split(",")
-    x = [float(i) for i in x]
+    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
     x = torch.tensor(x).softmax(dim=0)
     x = x[1:].sum()
     return float(x)
@@ -393,10 +391,16 @@ def make_classifier_predictions_calibrated(
 
 
 def get_x_y_for_stacking(
-    predictions: List[str], with_logits=False, tta_logits=False, tta_probas=False
+    predictions: List[str],
+    with_probas=True,
+    with_logits=False,
+    with_embeddings=False,
+    tta_logits=False,
+    tta_probas=False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Get X and Y for 2nd level stacking
+    Note: Y is class (4-classes), not binary label !!!
     """
     y = None
     X = []
@@ -404,22 +408,28 @@ def get_x_y_for_stacking(
     for p in predictions:
         p = pd.read_csv(p)
 
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
+        if "true_modification_type" in p:
+            y = p["true_modification_type"].values.astype(int)
 
-        X.append(np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1))
-        X.append(np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1))
-        X.append(
-            np.expand_dims(
-                p["pred_modification_type"].apply(classifier_probas).values
-                * p["pred_modification_flag"].apply(sigmoid).values,
-                -1,
-            )
-        )
+        if with_probas:
+            pred_modification_flag = np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1)
+            pred_modification_type = np.expand_dims(p["pred_modification_type"].apply(classifier_probas).values, -1)
+            X.append(pred_modification_flag)
+            X.append(pred_modification_type)
+            X.append(pred_modification_type * pred_modification_flag)
+            print("Added probas", pred_modification_flag.shape, pred_modification_flag.shape)
 
         if with_logits:
-            X.append(np.expand_dims(p["pred_modification_flag"].values, -1))
-            X.append(np.array(p["pred_modification_type"].apply(parse_array).tolist()))
+            pred_modification_flag = np.expand_dims(p["pred_modification_flag"].values, -1)
+            pred_modification_type = np.array(p["pred_modification_type"].apply(parse_array).tolist())
+            X.append(pred_modification_flag)
+            X.append(pred_modification_type)
+            print("Added logits", pred_modification_flag.shape, pred_modification_type.shape)
+
+        if with_embeddings:
+            embeddings_matrix = np.array(p[OUTPUT_PRED_EMBEDDING].apply(parse_array).tolist())
+            X.append(embeddings_matrix)
+            print("Added embeddings matrix", embeddings_matrix.shape)
 
         if "pred_modification_type_tta" in p:
 
@@ -436,12 +446,16 @@ def get_x_y_for_stacking(
                 return x.tolist()
 
             if tta_logits:
-                col = p["pred_modification_type_tta"].apply(parse_array)
-                X.append(col.tolist())
+                pred_modification_type_tta = np.array(p["pred_modification_type_tta"].apply(parse_array).tolist())
+                X.append(pred_modification_type_tta)
+                print("Added pred_modification_type_tta", pred_modification_type_tta.shape)
 
             if tta_probas:
-                col = p["pred_modification_type_tta"].apply(prase_tta_softmax)
-                X.append(col.tolist())
+                pred_modification_type_tta = np.array(
+                    p["pred_modification_type_tta"].apply(prase_tta_softmax).tolist()
+                )
+                X.append(pred_modification_type_tta)
+                print("Added pred_modification_type_tta", pred_modification_type_tta.shape)
 
         if "pred_modification_flag_tta" in p:
             if tta_logits:
@@ -455,30 +469,7 @@ def get_x_y_for_stacking(
                 )
                 X.append(col.tolist())
 
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
-    return X, y
-
-
-def get_x_y_embedding_for_stacking(predictions: List[str]) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Get X and Y for 2nd level stacking
-    """
-    y = None
-    X = []
-
-    for p in predictions:
-        p = pd.read_csv(p)
-
-        if "true_modification_flag" in p:
-            y = p["true_modification_flag"].values.astype(np.float32)
-
-        X.append(np.array(p[OUTPUT_PRED_EMBEDDING].apply(parse_array).tolist()))
-
-    X = np.column_stack(X).astype(np.float32)
-    if y is not None:
-        y = y.astype(int)
+    X = np.column_stack(X).astype(np.float32, copy=False)
     return X, y
 
 

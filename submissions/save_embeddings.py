@@ -9,12 +9,9 @@ from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
-from alaska2.submissions import get_x_y_embedding_for_stacking
+from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
-
-
-# Used to ignore warnings generated from StackingCVClassifier
 
 
 def main():
@@ -65,10 +62,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_embedding_for_stacking(holdout_predictions)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_embeddings=True)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_embedding_for_stacking(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_embeddings=True)
     print(x_test.shape)
 
     if False:
