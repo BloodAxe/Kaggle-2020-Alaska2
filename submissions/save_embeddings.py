@@ -50,8 +50,8 @@ def main():
     # holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
     # test_predictions = get_predictions_csv(experiments, "cauc", "test", "d4")
 
-    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", tta=None, need_embedding=True)
-    test_predictions = get_predictions_csv(experiments, "cauc", "test", tta=None, need_embedding=True)
+    holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", tta="d4", need_embedding=True)
+    test_predictions = get_predictions_csv(experiments, "cauc", "test", tta="d4", need_embedding=True)
     checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])

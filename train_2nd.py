@@ -32,13 +32,14 @@ class StackerDataset(Dataset):
 
     def __getitem__(self, item):
         x = self.x[item]
-        y = self.y[item]
+        result = {INPUT_EMBEDDING_KEY: x, INPUT_IMAGE_ID_KEY: int(item + 1)}
 
-        return {
-            INPUT_EMBEDDING_KEY: x,
-            INPUT_TRUE_MODIFICATION_FLAG: torch.tensor([y]).float(),
-            INPUT_TRUE_MODIFICATION_TYPE: int(y),
-        }
+        if self.y is not None:
+            y = self.y[item]
+            result[INPUT_TRUE_MODIFICATION_FLAG] = torch.tensor([y > 0]).float()
+            result[INPUT_TRUE_MODIFICATION_TYPE] = int(y)
+
+        return result
 
 
 def main():
@@ -152,12 +153,14 @@ def main():
         x_valid = np.load(f"embeddings_x_valid_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
         y_valid = np.load(f"embeddings_y_valid_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
 
+        print(x_train.shape, x_valid.shape)
+
         train_ds = StackerDataset(x_train, y_train)
         valid_ds = StackerDataset(x_valid, y_valid)
 
         criterions_dict, loss_callbacks = get_criterions(
             modification_flag=modification_flag_loss,
-            modification_type=None,
+            modification_type=modification_type_loss,
             embedding_loss=None,
             feature_maps_loss=None,
             mask_loss=None,
@@ -263,7 +266,7 @@ def main():
         print("  Bits           :", bits_loss)
 
         # model training
-        runner = SupervisedRunner(input_key=INPUT_EMBEDDING_KEY, output_key=None)
+        runner = SupervisedRunner(input_key=[INPUT_EMBEDDING_KEY], output_key=None)
         runner.train(
             fp16=fp16,
             model=model,
