@@ -260,6 +260,23 @@ class RandomCrop8(A.RandomCrop):
         return img
 
 
+class NonClippedRandomBrightness(A.RandomBrightnessContrast):
+    """
+    For use only with non-rounded input
+    """
+    def __init__(self, brightness_limit=0.2, brightness_by_max=True, always_apply=False, p=0.5):
+        super().__init__(brightness_limit, 0, brightness_by_max, always_apply, p)
+
+    def apply(self, img, alpha=1.0, beta=0.0, **params):
+        return self.content_adaptive_brightness_adjust(img,)
+
+    @staticmethod
+    def content_adaptive_brightness_adjust(img, beta=0):
+        if beta != 0:
+            img += beta * np.mean(img)
+        return img
+
+
 def get_obliterate_augs():
     """
     Get the augmentation that can obliterate the hidden signal.
@@ -333,14 +350,7 @@ def get_augmentations(augmentations_level: str, image_size: Tuple[int, int] = (5
                 maybe_crop,
                 DctRandomRotate90(p=1.0),
                 DctTranspose(p=0.5),
-                A.OneOf(
-                    [
-                        A.RandomGridShuffle(grid=(2, 2)),
-                        A.RandomGridShuffle(grid=(4, 4)),
-                        A.RandomGridShuffle(grid=(6, 6)),
-                    ],
-                    p=0.1,
-                ),
+                NonClippedRandomBrightness(),
                 A.CoarseDropout(max_holes=1, min_height=32, max_height=256, min_width=32, max_width=256, p=0.2),
             ],
             additional_targets=additional_targets,
