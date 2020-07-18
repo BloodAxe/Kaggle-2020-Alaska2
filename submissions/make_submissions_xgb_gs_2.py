@@ -126,7 +126,7 @@ def main():
         param_distributions=params,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         n_jobs=4,
-        n_iter=25,
+        n_iter=100,
         cv=group_kfold.split(x, y, groups=image_ids),
         verbose=3,
         random_state=42,
@@ -147,6 +147,7 @@ def main():
 
     test_pred = random_search.predict_proba(x_test)[:, 1]
 
+    checksum = "_".join(columns)
     submit_fname = os.path.join(output_dir, f"xgb_cls2_gs_{random_search.best_score_:.4f}_{checksum}_.csv")
 
     df = {}
