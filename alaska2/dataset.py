@@ -513,11 +513,13 @@ class PairedImageDataset(Dataset):
                     stego_target = 1
 
                 if INPUT_FEATURES_JPEG_FLOAT in cover_data and INPUT_FEATURES_JPEG_FLOAT in stego_data:
-                    cover_data[INPUT_FEATURES_JPEG_FLOAT], stego_data[
-                        INPUT_FEATURES_JPEG_FLOAT
-                    ], cover_target, stego_target, mask = bitmix(
-                        cover_data[INPUT_FEATURES_JPEG_FLOAT], stego_data[INPUT_FEATURES_JPEG_FLOAT], bitmix_p
-                    )
+                    (
+                        cover_data[INPUT_FEATURES_JPEG_FLOAT],
+                        stego_data[INPUT_FEATURES_JPEG_FLOAT],
+                        cover_target,
+                        stego_target,
+                        mask,
+                    ) = bitmix(cover_data[INPUT_FEATURES_JPEG_FLOAT], stego_data[INPUT_FEATURES_JPEG_FLOAT], bitmix_p)
 
                 # NOTE: Type loss is not compatible with bitmix
                 type_target = torch.tensor([0, self.target]).long()
@@ -798,6 +800,63 @@ def get_holdout(data_dir: str, features=None):
 
     print("Holdout", holdout_ds)
     return holdout_ds
+
+
+def get_train_except_holdout(data_dir: str, features=None):
+    valid_transform = A.NoOp()
+
+    data_folds = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "folds_v2.csv"))
+    unchanged = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "df_unchanged.csv"))
+
+    changed_bits = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "changed_bits.csv"))
+    changed_bits["key"] = (
+        changed_bits["file"] + "_" + changed_bits["method"].apply(lambda x: METHOD_TO_INDEX[x]).apply(str)
+    )
+    changed_bits_table = {}
+    for i, row in changed_bits.iterrows():
+        changed_bits_table[row["key"]] = row["nbits"]
+
+    # Take all but holdout fold
+    holdout_df = data_folds[data_folds[INPUT_FOLD_KEY] != HOLDOUT_FOLD]
+
+    holdout_images = holdout_df[INPUT_IMAGE_ID_KEY].tolist()
+    holdout_images = [os.path.join(data_dir, "Cover", x) for x in holdout_images]
+
+    valid_x = holdout_images.copy()
+    valid_y = [0] * len(holdout_images)
+    valid_qf = holdout_df["quality"].values.tolist()
+    valid_bits = [0] * len(holdout_images)
+
+    for method_index, method_name in enumerate(["JMiPOD", "JUNIWARD", "UERD"]):
+        # Filter images that does not have any alterations DCT (there are 250 of them)
+        unchanged_files = unchanged[unchanged["method"] == method_name].file.values
+        unchanged_files = list(map(fs.id_from_fname, unchanged_files))
+
+        for fname, qf in zip(holdout_images, holdout_df["quality"].values):
+            if fs.id_from_fname(fname) not in unchanged_files:
+                fname = fname.replace("Cover", method_name)
+                valid_x.append(fname)
+                valid_y.append(method_index + 1)
+                valid_qf.append(qf)
+
+                key = os.path.basename(fname) + "_" + str(method_index)
+                valid_bits.append(changed_bits_table[key])
+
+            else:
+                # print("Removed unchanged file from the holdout set", fname)
+                pass
+
+    train_ds = TrainingValidationDataset(
+        images=valid_x,
+        targets=valid_y,
+        quality=valid_qf,
+        bits=valid_bits,
+        transform=valid_transform,
+        features=features,
+    )
+
+    print("Train (all folds)", train_ds)
+    return train_ds
 
 
 def get_negatives_ds(data_dir, features, fold: int, local_rank=0, image_size=(512, 512), max_images=None):
