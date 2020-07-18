@@ -22,7 +22,7 @@ from alaska2.dataset import get_train_except_holdout
 
 
 @torch.no_grad()
-def compute_trn_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataFrame:
+def compute_trn_predictions(model, dataset, fp16=False, batch_size=1, workers=0) -> pd.DataFrame:
     df = defaultdict(list)
     for batch in tqdm(
         DataLoader(
@@ -30,6 +30,9 @@ def compute_trn_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
         )
     ):
         batch = any2device(batch, device="cuda")
+
+        if fp16 and INPUT_FEATURES_JPEG_FLOAT in batch:
+            batch[INPUT_FEATURES_JPEG_FLOAT] = batch[INPUT_FEATURES_JPEG_FLOAT].half()
 
         if INPUT_TRUE_MODIFICATION_FLAG in batch:
             y_trues = to_numpy(batch[INPUT_TRUE_MODIFICATION_FLAG]).flatten()
@@ -84,6 +87,7 @@ def main():
     parser.add_argument("-d4", "--d4-tta", action="store_true")
     parser.add_argument("-hv", "--hv-tta", action="store_true")
     parser.add_argument("-f", "--force-recompute", action="store_true")
+    parser.add_argument("-fp16", "--fp16", action="store_true")
 
     args = parser.parse_args()
 
@@ -91,7 +95,7 @@ def main():
     data_dir = args.data_dir
     batch_size = args.batch_size
     workers = args.workers
-
+    fp16 = args.fp16
     d4_tta = args.d4_tta
     force_recompute = args.force_recompute
     need_embedding = True
@@ -111,6 +115,9 @@ def main():
             model = nn.DataParallel(model)
         model = model.eval()
 
+        if fp16:
+            model = model.half()
+
         train_ds = get_train_except_holdout(data_dir, features=required_features)
         holdout_ds = get_holdout(data_dir, features=required_features)
         test_ds = get_test_dataset(data_dir, features=required_features)
@@ -126,7 +133,9 @@ def main():
             checkpoint_fname, f"_train_predictions{embedding_suffix}{tta_suffix}.pkl"
         )
         if force_recompute or not os.path.exists(trn_predictions_csv):
-            trn_predictions = compute_trn_predictions(model, train_ds, batch_size=batch_size, workers=workers)
+            trn_predictions = compute_trn_predictions(
+                model, train_ds, fp16=fp16, batch_size=batch_size, workers=workers
+            )
             trn_predictions.to_pickle(trn_predictions_csv)
 
         # Holdout
@@ -134,7 +143,9 @@ def main():
             checkpoint_fname, f"_holdout_predictions{embedding_suffix}{tta_suffix}.pkl"
         )
         if force_recompute or not os.path.exists(hld_predictions_csv):
-            hld_predictions = compute_trn_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
+            hld_predictions = compute_trn_predictions(
+                model, holdout_ds, fp16=fp16, batch_size=batch_size, workers=workers
+            )
             hld_predictions.to_pickle(hld_predictions_csv)
 
         # Test
@@ -142,7 +153,9 @@ def main():
             checkpoint_fname, f"_test_predictions{embedding_suffix}{tta_suffix}.pkl"
         )
         if force_recompute or not os.path.exists(tst_predictions_csv):
-            tst_predictions = compute_trn_predictions(model, test_ds, batch_size=batch_size, workers=workers)
+            tst_predictions = compute_trn_predictions(
+                model, test_ds, fp16=fp16, batch_size=batch_size, workers=workers
+            )
             tst_predictions.to_pickle(tst_predictions_csv)
 
 
