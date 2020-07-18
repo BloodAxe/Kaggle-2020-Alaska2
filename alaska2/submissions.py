@@ -88,6 +88,9 @@ def classifier_probas(x):
     x = x[1:].sum()
     return float(x)
 
+def just_probas(x):
+    return 1 - x[0]
+
 def noop(x):
     return x
 

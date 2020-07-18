@@ -6,11 +6,13 @@ from pytorch_toolbelt.inference.ensembling import Ensembler, ApplySigmoidTo, App
 from torch import nn
 
 
-from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits, unet
+from . import rgb_dct, rgb, dct, ela, rgb_ela_blur, timm, ycrcb, hpf_net, srnet, res, bit, timm_bits, unet, stacker
 from ..dataset import *
 from ..predict import *
 
+
 MODEL_REGISTRY = {
+    "stacker": stacker.StackingModel,
     # Unet
     "nr_rgb_unet": unet.nr_rgb_unet,
     # Big Transfer
@@ -130,12 +132,16 @@ def ensemble_from_checkpoints(
     tta=None,
     temperature=1,
     need_embedding=False,
+    model_name=None,
 ):
     if activation not in {None, "after_model", "after_tta", "after_ensemble"}:
         raise KeyError(activation)
 
     models, loaded_checkpoints = zip(
-        *[model_from_checkpoint(ck, need_embedding=need_embedding, strict=strict) for ck in checkpoints]
+        *[
+            model_from_checkpoint(ck, model_name=model_name, need_embedding=need_embedding, strict=strict)
+            for ck in checkpoints
+        ]
     )
 
     required_features = itertools.chain(*[m.required_features for m in models])
@@ -144,7 +150,8 @@ def ensemble_from_checkpoints(
     if activation == "after_model":
         models = [ApplySigmoidTo(m, output_key=OUTPUT_PRED_MODIFICATION_FLAG, temperature=temperature) for m in models]
         models = [ApplySoftmaxTo(m, output_key=OUTPUT_PRED_MODIFICATION_TYPE, temperature=temperature) for m in models]
-        print("Applying sigmoid activation to outputs", outputs, "after model")
+        print("Applying sigmoid activation to OUTPUT_PRED_MODIFICATION_FLAG", "after model")
+        print("Applying softmax activation to OUTPUT_PRED_MODIFICATION_TYPE", "after model")
 
     if len(models) > 1:
 
