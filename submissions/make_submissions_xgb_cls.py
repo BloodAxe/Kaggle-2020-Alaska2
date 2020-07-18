@@ -49,6 +49,8 @@ def main():
         #
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
         "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
+        #
+        "K_Jul17_17_09_nr_rgb_tf_efficientnet_b6_ns_mish_fold0_local_rank_0_fp16",
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")

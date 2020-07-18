@@ -416,7 +416,7 @@ def get_x_y_for_stacking(
         p = pd.read_csv(p)
 
         if "true_modification_type" in p:
-            y = p["true_modification_type"].values.astype(int)
+            y = (p["true_modification_type"].values > 0).astype(int)
 
         if with_probas:
             pred_modification_flag = np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1)

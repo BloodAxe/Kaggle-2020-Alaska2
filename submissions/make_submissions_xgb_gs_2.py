@@ -35,6 +35,7 @@ def get_x_y_for_stacking(fname, columns):
 def main():
     output_dir = os.path.dirname(__file__)
 
+    checksum = "DCTR_JRM_B4_B5_B6_MixNet_XL_SRNET"
     columns = [
         "DCTR",
         "JRM",
@@ -147,7 +148,6 @@ def main():
 
     test_pred = random_search.predict_proba(x_test)[:, 1]
 
-    checksum = "_".join(columns)
     submit_fname = os.path.join(output_dir, f"xgb_cls2_gs_{random_search.best_score_:.4f}_{checksum}_.csv")
 
     df = {}
