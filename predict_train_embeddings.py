@@ -117,20 +117,6 @@ def main():
 
         train_ds = get_train_except_holdout(data_dir, features=required_features)
 
-        trn_predictions_csv = fs.change_extension(checkpoint_fname, f"_trn_predictions.pkl")
-        if force_recompute or not os.path.exists(trn_predictions_csv):
-            trn_predictions = compute_trn_predictions(model, train_ds, batch_size=batch_size, workers=workers)
-            trn_predictions.to_pickle(trn_predictions_csv)
-
-        if hv_tta:
-            trn_predictions_csv = fs.change_extension(
-                checkpoint_fname, f"_trn_predictions{embedding_suffix}_flip_hv_tta.pkl"
-            )
-            if force_recompute or not os.path.exists(trn_predictions_csv):
-                tta_model = wrap_model_with_tta(model, "flip-hv", inputs=required_features, outputs=outputs).eval()
-                trn_predictions = compute_trn_predictions(tta_model, train_ds, batch_size=batch_size, workers=workers)
-                trn_predictions.to_pickle(trn_predictions_csv)
-
         if d4_tta:
             trn_predictions_csv = fs.change_extension(
                 checkpoint_fname, f"_trn_predictions{embedding_suffix}_d4_tta.pkl"
@@ -138,6 +124,11 @@ def main():
             if force_recompute or not os.path.exists(trn_predictions_csv):
                 tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
                 trn_predictions = compute_trn_predictions(tta_model, train_ds, batch_size=batch_size, workers=workers)
+                trn_predictions.to_pickle(trn_predictions_csv)
+        else:
+            trn_predictions_csv = fs.change_extension(checkpoint_fname, f"_trn_predictions.pkl")
+            if force_recompute or not os.path.exists(trn_predictions_csv):
+                trn_predictions = compute_trn_predictions(model, train_ds, batch_size=batch_size, workers=workers)
                 trn_predictions.to_pickle(trn_predictions_csv)
 
 
