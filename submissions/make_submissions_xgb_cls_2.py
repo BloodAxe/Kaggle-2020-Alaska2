@@ -34,6 +34,7 @@ def get_x_y_for_stacking(fname, columns):
 def main():
     output_dir = os.path.dirname(__file__)
 
+    checksum = "DCTR_JRM_B4_B5_B6_MixNet_XL_SRNET"
     columns = [
         "DCTR",
         "JRM",
@@ -120,18 +121,18 @@ def main():
             booster="gbtree",
             colsample_bylevel=1,
             colsample_bynode=1,
-            colsample_bytree=0.6,
-            gamma=0.5,
+            colsample_bytree=0.8,
+            gamma=2,
             gpu_id=-1,
             importance_type="gain",
             interaction_constraints="",
             learning_rate=0.01,
             max_delta_step=0,
-            max_depth=3,
-            min_child_weight=10,
+            max_depth=6,
+            min_child_weight=5,
             # missing=nan,
             monotone_constraints="()",
-            n_estimators=1000,
+            n_estimators=256,
             n_jobs=8,
             nthread=1,
             num_parallel_tree=1,
@@ -141,7 +142,7 @@ def main():
             reg_lambda=1,
             scale_pos_weight=1,
             silent=True,
-            subsample=0.8,
+            subsample=0.6,
             tree_method="exact",
             validate_parameters=1,
             verbosity=2,
@@ -162,13 +163,13 @@ def main():
         print(s)
     print(np.mean(cv_scores), np.std(cv_scores))
 
-    checksum = "_".join(columns)
     submit_fname = os.path.join(output_dir, f"xgb_cls_2_{np.mean(cv_scores):.4f}_{checksum}.csv")
-    df = pd.read_csv(test_predictions[0]).rename(columns={"image_id": "Id"})
-    df["Label"] = test_pred
-    df[["Id", "Label"]].to_csv(submit_fname, index=False)
-    print("Saved submission to ", submit_fname)
 
+    df = {}
+    df["Label"] = test_pred
+    df["Id"] = image_ids_test
+    pd.DataFrame.from_dict(df).to_csv(submit_fname, index=False)
+    print("Saved submission to ", submit_fname)
 
 if __name__ == "__main__":
     main()
