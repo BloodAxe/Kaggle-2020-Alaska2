@@ -69,7 +69,7 @@ def main():
 
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
-    x_test = np.load(f"embeddings_x_test_Gf0_Gf1_Gf2_Gf3_Hnrmishf2_Hnrmishf1.npy")
+    x_test = np.load(f"embeddings_x_test_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
     test_ds = StackerDataset(x_test, None)
 
     model, checkpoints, required_features = ensemble_from_checkpoints(
@@ -84,18 +84,18 @@ def main():
     model = model.eval()
 
     # Also compute test predictions
-    test_predictions_csv = f"2nd_level_stacking_test_raw_predictions.csv"
+    test_predictions_csv = f"2nd_level_stacking_test_raw_predictions_d4.csv"
 
     test_predictions = compute_predictions(model, test_ds, batch_size=batch_size, workers=workers)
     test_predictions.to_csv(test_predictions_csv, index=False)
 
     submission = test_predictions.copy().rename(columns={"image_id": "Id"})[["Id"]]
     submission["Id"] = submission["Id"].apply(lambda x: f"{x:04}.jpg")
-    submission["Label"] = test_predictions["pred_modification_type"].apply(just_probas).values
-    # submission["Label"] = (
-    #     test_predictions["pred_modification_flag"].values
-    #     * test_predictions["pred_modification_type"].apply(just_probas).values
-    # )
+    # submission["Label"] = test_predictions["pred_modification_type"].apply(just_probas).values
+    submission["Label"] = (
+        test_predictions["pred_modification_flag"].values
+        * test_predictions["pred_modification_type"].apply(just_probas).values
+    )
 
     submission.to_csv("2nd_level_stacking_embeddings_test_submission.csv", index=False)
 

@@ -48,13 +48,10 @@ def compute_trn_predictions(model, dataset, batch_size=1, workers=0) -> pd.DataF
             df[OUTPUT_PRED_MODIFICATION_FLAG].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_FLAG]).flatten())
 
         if OUTPUT_PRED_MODIFICATION_TYPE in outputs:
-            df[OUTPUT_PRED_MODIFICATION_TYPE].extend(to_numpy(outputs[OUTPUT_PRED_MODIFICATION_TYPE]).tolist())
+            df[OUTPUT_PRED_MODIFICATION_TYPE].extend(outputs[OUTPUT_PRED_MODIFICATION_TYPE].tolist())
 
         if OUTPUT_PRED_EMBEDDING in outputs:
-            df[OUTPUT_PRED_EMBEDDING].extend(to_numpy(outputs[OUTPUT_PRED_EMBEDDING]).tolist())
-
-        if OUTPUT_PRED_EMBEDDING_ARC_MARGIN in outputs:
-            df[OUTPUT_PRED_EMBEDDING_ARC_MARGIN].extend(to_numpy(outputs[OUTPUT_PRED_EMBEDDING_ARC_MARGIN]).tolist())
+            df[OUTPUT_PRED_EMBEDDING].extend(outputs[OUTPUT_PRED_EMBEDDING].tolist())
 
         # Save also TTA predictions for future use
         if OUTPUT_PRED_MODIFICATION_FLAG + "_tta" in outputs:
@@ -96,11 +93,10 @@ def main():
     workers = args.workers
 
     d4_tta = args.d4_tta
-    hv_tta = args.hv_tta
     force_recompute = args.force_recompute
     need_embedding = True
 
-    outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
+    outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE, OUTPUT_PRED_EMBEDDING]
     embedding_suffix = "_w_emb" if need_embedding else ""
 
     for checkpoint_fname in checkpoint_fnames:
@@ -116,20 +112,38 @@ def main():
         model = model.eval()
 
         train_ds = get_train_except_holdout(data_dir, features=required_features)
+        holdout_ds = get_holdout(data_dir, features=required_features)
+        test_ds = get_test_dataset(data_dir, features=required_features)
 
         if d4_tta:
-            trn_predictions_csv = fs.change_extension(
-                checkpoint_fname, f"_trn_predictions{embedding_suffix}_d4_tta.pkl"
-            )
-            if force_recompute or not os.path.exists(trn_predictions_csv):
-                tta_model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
-                trn_predictions = compute_trn_predictions(tta_model, train_ds, batch_size=batch_size, workers=workers)
-                trn_predictions.to_pickle(trn_predictions_csv)
+            model = wrap_model_with_tta(model, "d4", inputs=required_features, outputs=outputs).eval()
+            tta_suffix = "_d4_tta"
         else:
-            trn_predictions_csv = fs.change_extension(checkpoint_fname, f"_trn_predictions.pkl")
-            if force_recompute or not os.path.exists(trn_predictions_csv):
-                trn_predictions = compute_trn_predictions(model, train_ds, batch_size=batch_size, workers=workers)
-                trn_predictions.to_pickle(trn_predictions_csv)
+            tta_suffix = ""
+
+        # Train
+        trn_predictions_csv = fs.change_extension(
+            checkpoint_fname, f"_train_predictions{embedding_suffix}{tta_suffix}.pkl"
+        )
+        if force_recompute or not os.path.exists(trn_predictions_csv):
+            trn_predictions = compute_trn_predictions(model, train_ds, batch_size=batch_size, workers=workers)
+            trn_predictions.to_pickle(trn_predictions_csv)
+
+        # Holdout
+        hld_predictions_csv = fs.change_extension(
+            checkpoint_fname, f"_holdout_predictions{embedding_suffix}{tta_suffix}.pkl"
+        )
+        if force_recompute or not os.path.exists(hld_predictions_csv):
+            hld_predictions = compute_trn_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
+            hld_predictions.to_pickle(hld_predictions_csv)
+
+        # Test
+        tst_predictions_csv = fs.change_extension(
+            checkpoint_fname, f"_test_predictions{embedding_suffix}{tta_suffix}.pkl"
+        )
+        if force_recompute or not os.path.exists(tst_predictions_csv):
+            tst_predictions = compute_trn_predictions(model, test_ds, batch_size=batch_size, workers=workers)
+            tst_predictions.to_pickle(tst_predictions_csv)
 
 
 if __name__ == "__main__":

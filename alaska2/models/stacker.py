@@ -7,7 +7,7 @@ from alaska2.dataset import OUTPUT_PRED_MODIFICATION_TYPE, OUTPUT_PRED_MODIFICAT
 
 
 class StackingModel(nn.Module):
-    def __init__(self, num_features=14357, num_classes=4, dropout=0.5,
+    def __init__(self, num_features=9743, num_classes=4, dropout=0.5,
                  need_embedding=None,
                  pretrained=None,
                  required_features=None):
