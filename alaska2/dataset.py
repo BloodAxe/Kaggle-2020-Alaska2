@@ -53,7 +53,17 @@ OUTPUT_FEATURE_MAP_8 = "pred_fm_8"
 OUTPUT_FEATURE_MAP_16 = "pred_fm_16"
 OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
-METHOD_TO_INDEX = {"Cover": 0, "JMiPOD": 1, "JUNIWARD": 2, "j_uniward": 2, "UERD": 3, "uerd": 3, "nsf5": 4}
+METHOD_TO_INDEX = {
+    "Cover": 0,
+    "COVER": 0,
+    "JMiPOD": 1,
+    "JMIPOD": 1,
+    "JUNIWARD": 2,
+    "j_uniward": 2,
+    "UERD": 3,
+    "uerd": 3,
+    "nsf5": 4,
+}
 
 __all__ = [
     "HOLDOUT_FOLD",
