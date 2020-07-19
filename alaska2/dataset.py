@@ -53,6 +53,8 @@ OUTPUT_FEATURE_MAP_8 = "pred_fm_8"
 OUTPUT_FEATURE_MAP_16 = "pred_fm_16"
 OUTPUT_FEATURE_MAP_32 = "pred_fm_32"
 
+INDEX_TO_METHOD = {0: "Cover", 1: "JMiPOD", 2: "JUNIWARD", 3: "UERD"}
+
 METHOD_TO_INDEX = {
     "Cover": 0,
     "COVER": 0,
@@ -66,6 +68,7 @@ METHOD_TO_INDEX = {
 }
 
 __all__ = [
+    "INDEX_TO_METHOD",
     "HOLDOUT_FOLD",
     "OUTPUT_PRED_EMBEDDING_ARC_MARGIN",
     "INPUT_FEATURES_BLUR_KEY",

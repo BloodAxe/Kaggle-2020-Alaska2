@@ -37,8 +37,8 @@ def main():
 
     checksum = "DCTR_JRM_B4_B5_B6_MixNet_XL_SRNET"
     columns = [
-        "DCTR",
-        "JRM",
+        # "DCTR",
+        # "JRM",
         # "MixNet_xl_pc",
         # "MixNet_xl_pjm",
         # "MixNet_xl_pjuni",
@@ -105,14 +105,21 @@ def main():
         x_test = sc.transform(x_test)
 
     if True:
+        quality_h = F.one_hot(torch.tensor(quality_h).long(), 3).numpy().astype(np.float32)
+        quality_t = F.one_hot(torch.tensor(quality_t).long(), 3).numpy().astype(np.float32)
+
         x = np.column_stack([x, quality_h])
         x_test = np.column_stack([x_test, quality_t])
 
     group_kfold = GroupKFold(n_splits=5)
 
     params = {
+        "booster": ["gbtree","gblinear"],
         "min_child_weight": [1, 5, 10],
-        "gamma": [1e-3, 1e-2, 1e-2, 0.5, 2],
+        # L2 reg
+        "lambda": [0, 0.01, 0.1, 1],
+        # L1 reg
+        "alpha": [0, 0.01, 0.1, 1],
         "subsample": [0.6, 0.8, 1.0],
         "colsample_bytree": [0.6, 0.8, 1.0],
         "max_depth": [2, 3, 4, 5, 6],
@@ -120,7 +127,7 @@ def main():
         "learning_rate": [0.001, 0.01, 0.05, 0.2, 1],
     }
 
-    xgb = XGBClassifier(objective="binary:logistic", nthread=1)
+    xgb = XGBClassifier(objective="binary:logistic", gamma=1e-4, nthread=1)
 
     random_search = RandomizedSearchCV(
         xgb,
@@ -161,6 +168,8 @@ def main():
     with open(fs.change_extension(submit_fname, ".json"), "w") as f:
         json.dump(random_search.best_params_, f, indent=2)
 
+    print("Features importance")
+    print(random_search.best_estimator_.feature_importances_)
 
 if __name__ == "__main__":
     main()

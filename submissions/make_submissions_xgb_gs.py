@@ -1,28 +1,71 @@
 import os
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-
 # For reading, visualizing, and preprocessing data
+from typing import List
+
+import argparse
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from pytorch_toolbelt.utils import fs, to_numpy
+from pytorch_toolbelt.utils import fs
+from skimage.filters.rank import entropy
+from skimage.morphology import square
 from sklearn.metrics import make_scorer
-from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
+from sklearn.model_selection import GroupKFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier, XGBRanker
+from tqdm import tqdm
+from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
+from alaska2.dataset import decode_bgr_from_dct, INDEX_TO_METHOD
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import parse_classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
+from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 
+def compute_image_features(image_fnames: List[str]):
+    features = []
+
+    for image_fname in tqdm(image_fnames):
+        dct_file = fs.change_extension(image_fname, ".npz")
+        image = decode_bgr_from_dct(dct_file)
+
+        entropy_per_channel = [
+            entropy(image[..., 0], square(8)),
+            entropy(image[..., 1], square(8)),
+            entropy(image[..., 2], square(8)),
+        ]
+
+        f = [
+            image[..., 0].mean(0),
+            image[..., 1].mean(1),
+            image[..., 2].mean(2),
+            image[..., 0].std(0),
+            image[..., 1].std(1),
+            image[..., 2].std(2),
+            entropy_per_channel[0].mean(),
+            entropy_per_channel[1].mean(),
+            entropy_per_channel[2].mean(),
+            entropy_per_channel[0].std(),
+            entropy_per_channel[1].std(),
+            entropy_per_channel[2].std(),
+        ]
+        features.append(f)
+
+    features = np.column_stack(features)
+    return features
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("checkpoint", type=str, nargs="+")
+    parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
+    args = parser.parse_args()
+
     output_dir = os.path.dirname(__file__)
+    data_dir = args.data_dir
 
     experiments = [
         # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
@@ -61,8 +104,7 @@ def main():
     checksum = compute_checksum_v2(experiments)
 
     holdout_ds = get_holdout("", features=[INPUT_IMAGE_KEY])
-    image_ids = [fs.id_from_fname(x) for x in holdout_ds.images]
-
+    image_ids_h = [fs.id_from_fname(x) for x in holdout_ds.images]
     quality_h = F.one_hot(torch.tensor(holdout_ds.quality).long(), 3).numpy().astype(np.float32)
 
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
@@ -73,6 +115,20 @@ def main():
 
     x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
     print(x_test.shape)
+
+    if False:
+        image_fnames_h = [
+            os.path.join(data_dir, "train", INDEX_TO_METHOD[method], image_id)
+            for (image_id, method) in zip(image_ids_h, y)
+        ]
+
+        image_fnames_t = [os.path.join(data_dir, "test", image_id) for image_id in test_predictions[0].image_id]
+
+        entropy_h = compute_image_features(image_fnames_h)
+        entropy_t = compute_image_features(image_fnames_t)
+        x = np.column_stack([x, entropy_h])
+        x_test = np.column_stack([x, entropy_t])
+        print("Added image features")
 
     if True:
         sc = StandardScaler()
@@ -108,7 +164,7 @@ def main():
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
         n_jobs=4,
         n_iter=25,
-        cv=group_kfold.split(x, y, groups=image_ids),
+        cv=group_kfold.split(x, y, groups=image_ids_h),
         verbose=3,
         random_state=42,
     )
@@ -135,6 +191,7 @@ def main():
     print("Saved submission to ", submit_fname)
 
     import json
+
     with open(fs.change_extension(submit_fname, ".json"), "w") as f:
         json.dump(random_search.best_params_, f, indent=2)
 
