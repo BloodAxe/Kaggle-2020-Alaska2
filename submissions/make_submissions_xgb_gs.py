@@ -1,6 +1,7 @@
 import os
 
 # For reading, visualizing, and preprocessing data
+from multiprocessing import Pool
 from typing import List
 
 import argparse
@@ -9,7 +10,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from pytorch_toolbelt.utils import fs
-from skimage.filters.rank import entropy
+from scipy.stats import entropy
 from skimage.morphology import square
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GroupKFold, RandomizedSearchCV
@@ -25,42 +26,42 @@ from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
 
+def compute_features_proc(image_fname):
+    dct_file = fs.change_extension(image_fname, ".npz")
+    image = 2 * (decode_bgr_from_dct(dct_file) / 140 - 0.5)
+
+    entropy_per_channel = [
+        entropy(image[..., 0].flatten()),
+        entropy(image[..., 1].flatten()),
+        entropy(image[..., 2].flatten()),
+    ]
+
+    f = [
+        image[..., 0].mean(),
+        image[..., 1].mean(),
+        image[..., 2].mean(),
+        image[..., 0].std(),
+        image[..., 1].std(),
+        image[..., 2].std(),
+        entropy_per_channel[0],
+        entropy_per_channel[1],
+        entropy_per_channel[2],
+    ]
+    return f
+
+
 def compute_image_features(image_fnames: List[str]):
     features = []
+    with Pool(4) as wp:
+        for y in tqdm(wp.imap(compute_features_proc, image_fnames), total=len(image_fnames)):
+            features.append(y)
 
-    for image_fname in tqdm(image_fnames):
-        dct_file = fs.change_extension(image_fname, ".npz")
-        image = decode_bgr_from_dct(dct_file)
-
-        entropy_per_channel = [
-            entropy(image[..., 0], square(8)),
-            entropy(image[..., 1], square(8)),
-            entropy(image[..., 2], square(8)),
-        ]
-
-        f = [
-            image[..., 0].mean(0),
-            image[..., 1].mean(1),
-            image[..., 2].mean(2),
-            image[..., 0].std(0),
-            image[..., 1].std(1),
-            image[..., 2].std(2),
-            entropy_per_channel[0].mean(),
-            entropy_per_channel[1].mean(),
-            entropy_per_channel[2].mean(),
-            entropy_per_channel[0].std(),
-            entropy_per_channel[1].std(),
-            entropy_per_channel[2].std(),
-        ]
-        features.append(f)
-
-    features = np.column_stack(features)
+    features = np.array(features, dtype=np.float32)
     return features
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("checkpoint", type=str, nargs="+")
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))
     args = parser.parse_args()
 
@@ -116,19 +117,23 @@ def main():
     x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
     print(x_test.shape)
 
-    if False:
+    if True:
         image_fnames_h = [
-            os.path.join(data_dir, "train", INDEX_TO_METHOD[method], image_id)
+            os.path.join(data_dir, INDEX_TO_METHOD[method], f"{image_id}.jpg")
             for (image_id, method) in zip(image_ids_h, y)
         ]
+        test_image_ids = pd.read_csv(test_predictions[0]).image_id.tolist()
+        image_fnames_t = [os.path.join(data_dir, "Test", image_id) for image_id in test_image_ids]
 
-        image_fnames_t = [os.path.join(data_dir, "test", image_id) for image_id in test_predictions[0].image_id]
+        entropy_t = compute_image_features(image_fnames_t)
+        x_test = np.column_stack([x_test, entropy_t])
+
+        # entropy_h = entropy_t.copy()
+        # x = x_test.copy()
 
         entropy_h = compute_image_features(image_fnames_h)
-        entropy_t = compute_image_features(image_fnames_t)
         x = np.column_stack([x, entropy_h])
-        x_test = np.column_stack([x, entropy_t])
-        print("Added image features")
+        print("Added image features", entropy_h.shape, entropy_t.shape)
 
     if True:
         sc = StandardScaler()
