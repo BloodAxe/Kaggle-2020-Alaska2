@@ -1,22 +1,18 @@
 import os
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-
-# For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from pytorch_toolbelt.utils import fs, to_numpy
+from pytorch_toolbelt.utils import fs
 from sklearn.metrics import make_scorer
-from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
+from sklearn.model_selection import GroupKFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier, XGBRanker
+from xgboost import XGBClassifier
 
 from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
-from alaska2.submissions import parse_classifier_probas, sigmoid, parse_array, parse_and_softmax, get_x_y_for_stacking
+from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 
@@ -45,9 +41,9 @@ def main():
         #
         # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
         #
-        "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        # "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        # "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        # "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         #
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",

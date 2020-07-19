@@ -65,10 +65,10 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=True, tta_logits=True)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=False, tta_logits=False)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=False, tta_logits=False)
     print(x_test.shape)
 
     if True:
