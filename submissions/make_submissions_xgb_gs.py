@@ -69,10 +69,10 @@ def main():
     data_dir = args.data_dir
 
     experiments = [
-        # "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        # "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        # "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
+        "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
+        "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
+        "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
         # "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
         #
         "K_Jul17_17_09_nr_rgb_tf_efficientnet_b6_ns_mish_fold0_local_rank_0_fp16",
@@ -95,12 +95,12 @@ def main():
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
     with_logits = False
-    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=True, tta_logits=True)
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=with_logits, tta_logits=with_logits)
     # Force target to be binary
     y = (y > 0).astype(int)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=True, tta_logits=True)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=with_logits, tta_logits=with_logits)
     print(x_test.shape)
 
     if False:

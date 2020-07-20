@@ -2,6 +2,7 @@ import torch
 from catalyst.utils import any2device
 from torch import nn
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 
 def moving_average(net1, net2, alpha=1):
@@ -56,7 +57,7 @@ def bn_update(loader: DataLoader, model: nn.Module):
     model.apply(lambda module: _get_momenta(module, momenta))
     n = 0
 
-    for batch in loader:
+    for batch in tqdm(loader, desc="AdaBN"):
         batch = any2device(batch, device="cuda")
         # input_var = torch.autograd.Variable(input)
         b = loader.batch_size

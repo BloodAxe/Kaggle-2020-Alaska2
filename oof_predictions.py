@@ -30,8 +30,8 @@ def update_bn(model: nn.Module, dataset: Dataset, batch_size=1, workers=0):
     :param model: model being update
     :return: None
     """
-    loader = DataLoader(dataset, batch_size=batch_size, workers=workers, shuffle=True, drop_last=True, pin_memory=True)
-    bn_update(tqdm(loader, desc="Computing AdaBN"), model)
+    loader = DataLoader(dataset, batch_size=batch_size, num_workers=workers, shuffle=True, drop_last=True, pin_memory=True)
+    bn_update(loader, model)
 
 
 @torch.no_grad()
@@ -173,15 +173,6 @@ def main():
             print(f"OOF score ({suffix})")
             score_predictions(oof_predictions_csv)
 
-        # Also compute test predictions
-        test_ds = get_test_dataset(data_dir, features=required_features)
-        test_predictions_csv = fs.change_extension(checkpoint_fname, f"_test_predictions{suffix}.csv")
-        if force_recompute or not os.path.exists(test_predictions_csv):
-            if adabn:
-                update_bn(model, test_ds, batch_size=batch_size // torch.cuda.device_count(), workers=workers)
-            test_predictions = compute_oof_predictions(model, test_ds, batch_size=batch_size, workers=workers)
-            test_predictions.to_csv(test_predictions_csv, index=False)
-
         # Holdout
         holdout_ds = get_holdout(data_dir, features=required_features)
         holdout_predictions_csv = fs.change_extension(checkpoint_fname, f"_holdout_predictions{suffix}.csv")
@@ -192,6 +183,15 @@ def main():
             holdout_predictions.to_csv(holdout_predictions_csv, index=False)
         print(f"Holdout score ({suffix})")
         score_predictions(holdout_predictions_csv)
+
+        # Test
+        test_ds = get_test_dataset(data_dir, features=required_features)
+        test_predictions_csv = fs.change_extension(checkpoint_fname, f"_test_predictions{suffix}.csv")
+        if force_recompute or not os.path.exists(test_predictions_csv):
+            if adabn:
+                update_bn(model, test_ds, batch_size=batch_size // torch.cuda.device_count(), workers=workers)
+            test_predictions = compute_oof_predictions(model, test_ds, batch_size=batch_size, workers=workers)
+            test_predictions.to_csv(test_predictions_csv, index=False)
 
 
 if __name__ == "__main__":
