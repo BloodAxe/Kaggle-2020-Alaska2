@@ -187,7 +187,7 @@ def main():
         holdout_predictions_csv = fs.change_extension(checkpoint_fname, f"_holdout_predictions{suffix}.csv")
         if force_recompute or not os.path.exists(holdout_predictions_csv):
             if adabn:
-                update_bn(model, test_ds, batch_size=batch_size // torch.cuda.device_count(), workers=workers)
+                update_bn(model, holdout_ds, batch_size=batch_size // torch.cuda.device_count(), workers=workers)
             holdout_predictions = compute_oof_predictions(model, holdout_ds, batch_size=batch_size, workers=workers)
             holdout_predictions.to_csv(holdout_predictions_csv, index=False)
         print(f"Holdout score ({suffix})")
