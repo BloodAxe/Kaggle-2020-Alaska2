@@ -63,33 +63,52 @@ def temperature_scaling(x, t):
 
 
 def sigmoid(x):
-    return torch.sigmoid(torch.tensor(x)).item()
+    x = torch.sigmoid(torch.tensor(x))
+    if not torch.isfinite(x):
+        print("Detected Nan in model predictions. Setting probability of stego to 1.0", x)
+        x = 1
+    else:
+        x = x.item()
+    return x
 
 
 def parse_array(x):
-    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
-    return x.tolist()
+    if isinstance(x, str):
+        x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
+    if isinstance(x, np.ndarray):
+        x = x.tolist()
+    return x
 
 
 def parse_and_softmax(x):
-    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
+    if isinstance(x, str):
+        x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
     x = torch.tensor(x).softmax(dim=0)
     return to_numpy(x)
 
 
 def parse_classifier_probas(x):
-    x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
+    if isinstance(x, str):
+        x = np.fromstring(x[1:-1], dtype=np.float32, sep=",")
     x = torch.tensor(x).softmax(dim=0)
     x = x[1:].sum()
     return float(x)
 
+
 def classifier_probas(x):
-    x = torch.tensor(x).softmax(dim=0)
-    x = x[1:].sum()
-    return float(x)
+    y = torch.tensor(x).softmax(dim=0)
+    yp = y[1:].sum()
+    if not torch.isfinite(yp):
+        print("Detected Nan in model predictions. Setting probability of stego to 1.0")
+        print(x, y, yp)
+        yp = 1
+
+    return float(yp)
+
 
 def just_probas(x):
     return 1 - x[0]
+
 
 def noop(x):
     return x
@@ -210,9 +229,9 @@ def submit_from_average_classifier(preds: List[str]):
     preds_df = [pd.read_csv(x) for x in preds]
 
     submission = preds_df[0].copy().rename(columns={"image_id": "Id"})[["Id"]]
-    submission["Label"] = sum([df["pred_modification_type"].apply(parse_classifier_probas).values for df in preds_df]) / len(
-        preds_df
-    )
+    submission["Label"] = sum(
+        [df["pred_modification_type"].apply(parse_classifier_probas).values for df in preds_df]
+    ) / len(preds_df)
     return submission
 
 
@@ -413,14 +432,21 @@ def get_x_y_for_stacking(
     X = []
 
     for p in predictions:
-        p = pd.read_csv(p)
+        if p.endswith(".csv"):
+            p = pd.read_csv(p)
+        elif p.endswith(".pkl"):
+            p = pd.read_pickle(p)
+        else:
+            raise FileNotFoundError(p)
 
         if "true_modification_type" in p:
-            y = (p["true_modification_type"].values > 0).astype(int)
+            y = p["true_modification_type"].values.astype(int)
 
         if with_probas:
             pred_modification_flag = np.expand_dims(p["pred_modification_flag"].apply(sigmoid).values, -1)
-            pred_modification_type = np.expand_dims(p["pred_modification_type"].apply(parse_classifier_probas).values, -1)
+            pred_modification_type = np.expand_dims(
+                p["pred_modification_type"].apply(parse_classifier_probas).values, -1
+            )
             X.append(pred_modification_flag)
             X.append(pred_modification_type)
             X.append(pred_modification_type * pred_modification_flag)
@@ -434,7 +460,8 @@ def get_x_y_for_stacking(
             print("Added logits", pred_modification_flag.shape, pred_modification_type.shape)
 
         if with_embeddings:
-            embeddings_matrix = np.array(p[OUTPUT_PRED_EMBEDDING].apply(parse_array).tolist())
+            embeddings_matrix = p[OUTPUT_PRED_EMBEDDING].apply(parse_array).tolist()
+            embeddings_matrix = np.array(embeddings_matrix)
             X.append(embeddings_matrix)
             print("Added embeddings matrix", embeddings_matrix.shape)
 

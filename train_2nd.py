@@ -32,7 +32,11 @@ class StackerDataset(Dataset):
 
     def __getitem__(self, item):
         x = self.x[item]
-        result = {INPUT_EMBEDDING_KEY: x, INPUT_IMAGE_ID_KEY: int(item + 1)}
+        result = {
+            INPUT_EMBEDDING_KEY: x,
+            # Note: This is a hack, we assume image_ids are sequential (important for test predictions)
+            INPUT_IMAGE_ID_KEY: int(item + 1),
+        }
 
         if self.y is not None:
             y = self.y[item]
@@ -88,7 +92,7 @@ def main():
     parser.add_argument("--fold", default=None, type=int)
     parser.add_argument("-s", "--scheduler", default=None, type=str, help="")
     parser.add_argument("-x", "--experiment", default=None, type=str, help="")
-    parser.add_argument("-d", "--dropout", default=None, type=float, help="Dropout before head layer")
+    parser.add_argument("-d", "--dropout", default=0, type=float, help="Dropout before head layer")
     parser.add_argument(
         "--warmup", default=0, type=int, help="Number of warmup epochs with reduced LR on encoder parameters"
     )
@@ -146,154 +150,146 @@ def main():
     main_metric = "loss"
     main_metric_minimize = True
 
-    for fold_index in range(5):
-        x_train = np.load(f"embeddings_x_train_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
-        y_train = np.load(f"embeddings_y_train_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
+    x_train = np.load(f"embeddings_x_train_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.npy")
+    y_train = np.load(f"embeddings_y_train_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.npy")
 
-        x_valid = np.load(f"embeddings_x_valid_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
-        y_valid = np.load(f"embeddings_y_valid_{fold_index}_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
+    x_valid = np.load(f"embeddings_x_holdout_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.npy")
+    y_valid = np.load(f"embeddings_y_holdout_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.npy")
 
-        print(x_train.shape, x_valid.shape)
+    print(x_train.shape, x_valid.shape)
+    print(np.bincount(y_train), np.bincount(y_valid))
 
-        train_ds = StackerDataset(x_train, y_train)
-        valid_ds = StackerDataset(x_valid, y_valid)
+    train_ds = StackerDataset(x_train, y_train)
+    valid_ds = StackerDataset(x_valid, y_valid)
 
-        criterions_dict, loss_callbacks = get_criterions(
-            modification_flag=modification_flag_loss,
-            modification_type=modification_type_loss,
-            embedding_loss=None,
-            feature_maps_loss=None,
-            mask_loss=None,
-            bits_loss=None,
-            num_epochs=num_epochs,
-            mixup=mixup,
-            cutmix=None,
-            tsa=tsa,
-        )
+    criterions_dict, loss_callbacks = get_criterions(
+        modification_flag=modification_flag_loss,
+        modification_type=modification_type_loss,
+        embedding_loss=None,
+        feature_maps_loss=None,
+        mask_loss=None,
+        bits_loss=None,
+        num_epochs=num_epochs,
+        mixup=mixup,
+        cutmix=None,
+        tsa=tsa,
+    )
 
-        callbacks = loss_callbacks + [
-            OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
-            HyperParametersCallback(
-                hparam_dict={
-                    "scheduler": scheduler_name,
-                    "optimizer": optimizer_name,
-                    "augmentations": augmentations,
-                    "weight_decay": weight_decay,
-                }
-            ),
-        ]
+    callbacks = loss_callbacks + [
+        OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False),
+        HyperParametersCallback(
+            hparam_dict={
+                "scheduler": scheduler_name,
+                "optimizer": optimizer_name,
+                "augmentations": augmentations,
+                "weight_decay": weight_decay,
+            }
+        ),
+    ]
 
-        loaders = collections.OrderedDict()
-        loaders["train"] = DataLoader(
-            train_ds,
-            batch_size=train_batch_size,
-            num_workers=num_workers,
-            pin_memory=True,
-            drop_last=True,
-            shuffle=True,
-        )
+    loaders = collections.OrderedDict()
+    loaders["train"] = DataLoader(
+        train_ds, batch_size=train_batch_size, num_workers=num_workers, pin_memory=True, drop_last=True, shuffle=True
+    )
 
-        loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
+    loaders["valid"] = DataLoader(valid_ds, batch_size=valid_batch_size, num_workers=num_workers, pin_memory=True)
 
-        model: nn.Module = StackingModel(x_train.shape[1], dropout=0.25).cuda()
+    model: nn.Module = StackingModel(x_train.shape[1], dropout=dropout).cuda()
 
-        optimizer = get_optimizer(
-            optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
-        )
-        scheduler = get_scheduler(
-            scheduler_name, optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
-        )
-        if isinstance(scheduler, CyclicLR):
-            callbacks += [SchedulerCallback(mode="batch")]
+    optimizer = get_optimizer(
+        optimizer_name, get_optimizable_parameters(model), learning_rate=learning_rate, weight_decay=weight_decay
+    )
+    scheduler = get_scheduler(
+        scheduler_name, optimizer, lr=learning_rate, num_epochs=num_epochs, batches_in_epoch=len(loaders["train"])
+    )
+    if isinstance(scheduler, CyclicLR):
+        callbacks += [SchedulerCallback(mode="batch")]
 
-        checkpoint_prefix = f"{current_time}_stacking_fold{fold_index}"
+    checkpoint_prefix = f"{current_time}_stacking"
 
-        if fp16:
-            checkpoint_prefix += "_fp16"
+    if fp16:
+        checkpoint_prefix += "_fp16"
 
-        if fast:
-            checkpoint_prefix += "_fast"
+    if fast:
+        checkpoint_prefix += "_fast"
 
-        if mixup:
-            checkpoint_prefix += "_mixup"
+    if mixup:
+        checkpoint_prefix += "_mixup"
 
-        if cutmix:
-            checkpoint_prefix += "_cutmix"
+    if cutmix:
+        checkpoint_prefix += "_cutmix"
 
-        if experiment is not None:
-            checkpoint_prefix = experiment
+    if experiment is not None:
+        checkpoint_prefix = experiment
 
-        log_dir = os.path.join("runs", checkpoint_prefix)
-        os.makedirs(log_dir, exist_ok=False)
+    log_dir = os.path.join("runs", checkpoint_prefix)
+    os.makedirs(log_dir, exist_ok=False)
 
-        config_fname = os.path.join(log_dir, f"{checkpoint_prefix}.json")
-        with open(config_fname, "w") as f:
-            train_session_args = vars(args)
-            f.write(json.dumps(train_session_args, indent=2))
+    config_fname = os.path.join(log_dir, f"{checkpoint_prefix}.json")
+    with open(config_fname, "w") as f:
+        train_session_args = vars(args)
+        f.write(json.dumps(train_session_args, indent=2))
 
-        print("Train session    :", checkpoint_prefix)
-        print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
-        print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
-        print("  FP16 mode      :", fp16)
-        print("  Fast mode      :", args.fast)
-        print("  Epochs         :", num_epochs)
-        print("  Workers        :", num_workers)
-        print("  Data dir       :", data_dir)
-        print("  Log dir        :", log_dir)
-        print("  Cache          :", cache)
-        print("Data              ")
-        print("  Augmentations  :", augmentations)
-        print("  Obliterate (%) :", obliterate_p)
-        print("  Negative images:", negative_image_dir)
-        print("  Balance        :", balance)
-        print("  Mixup          :", mixup)
-        print("  CutMix         :", cutmix)
-        print("  TSA            :", tsa)
-        # print("Model            :", model_name)
-        print("  Parameters     :", count_parameters(model))
-        print("  Dropout        :", dropout)
-        print("Optimizer        :", optimizer_name)
-        print("  Learning rate  :", learning_rate)
-        print("  Weight decay   :", weight_decay)
-        print("  Scheduler      :", scheduler_name)
-        print("  Batch sizes    :", train_batch_size, valid_batch_size)
-        print("Losses            ")
-        print("  Flag           :", modification_flag_loss)
-        print("  Type           :", modification_type_loss)
-        print("  Embedding      :", embedding_loss)
-        print("  Feature maps   :", feature_maps_loss)
-        print("  Mask           :", mask_loss)
-        print("  Bits           :", bits_loss)
+    print("Train session    :", checkpoint_prefix)
+    print("  Train size     :", len(loaders["train"]), "batches", len(train_ds), "samples")
+    print("  Valid size     :", len(loaders["valid"]), "batches", len(valid_ds), "samples")
+    print("  FP16 mode      :", fp16)
+    print("  Fast mode      :", args.fast)
+    print("  Epochs         :", num_epochs)
+    print("  Workers        :", num_workers)
+    print("  Data dir       :", data_dir)
+    print("  Log dir        :", log_dir)
+    print("  Cache          :", cache)
+    print("Data              ")
+    print("  Augmentations  :", augmentations)
+    print("  Obliterate (%) :", obliterate_p)
+    print("  Negative images:", negative_image_dir)
+    print("  Balance        :", balance)
+    print("  Mixup          :", mixup)
+    print("  CutMix         :", cutmix)
+    print("  TSA            :", tsa)
+    # print("Model            :", model_name)
+    print("  Parameters     :", count_parameters(model))
+    print("  Dropout        :", dropout)
+    print("Optimizer        :", optimizer_name)
+    print("  Learning rate  :", learning_rate)
+    print("  Weight decay   :", weight_decay)
+    print("  Scheduler      :", scheduler_name)
+    print("  Batch sizes    :", train_batch_size, valid_batch_size)
+    print("Losses            ")
+    print("  Flag           :", modification_flag_loss)
+    print("  Type           :", modification_type_loss)
+    print("  Embedding      :", embedding_loss)
+    print("  Feature maps   :", feature_maps_loss)
+    print("  Mask           :", mask_loss)
+    print("  Bits           :", bits_loss)
 
-        # model training
-        runner = SupervisedRunner(input_key=[INPUT_EMBEDDING_KEY], output_key=None)
-        runner.train(
-            fp16=fp16,
-            model=model,
-            criterion=criterions_dict,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            callbacks=callbacks,
-            loaders=loaders,
-            logdir=os.path.join(log_dir, "main"),
-            num_epochs=num_epochs,
-            verbose=verbose,
-            main_metric=main_metric,
-            minimize_metric=main_metric_minimize,
-            checkpoint_data={"cmd_args": vars(args)},
-        )
+    # model training
+    runner = SupervisedRunner(input_key=[INPUT_EMBEDDING_KEY], output_key=None)
+    runner.train(
+        fp16=fp16,
+        model=model,
+        criterion=criterions_dict,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        callbacks=callbacks,
+        loaders=loaders,
+        logdir=os.path.join(log_dir, "main"),
+        num_epochs=num_epochs,
+        verbose=verbose,
+        main_metric=main_metric,
+        minimize_metric=main_metric_minimize,
+        checkpoint_data={"cmd_args": vars(args)},
+    )
 
-        del optimizer, loaders, runner, callbacks
+    del optimizer, loaders, runner, callbacks
 
-        best_checkpoint = os.path.join(log_dir, "main", "checkpoints", "best.pth")
-        model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}.pth")
+    best_checkpoint = os.path.join(log_dir, "main", "checkpoints", "best.pth")
+    model_checkpoint = os.path.join(log_dir, f"{checkpoint_prefix}.pth")
 
-        # Restore state of best model
-        clean_checkpoint(best_checkpoint, model_checkpoint)
-        # unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
-
-        torch.cuda.empty_cache()
-        gc.collect()
+    # Restore state of best model
+    clean_checkpoint(best_checkpoint, model_checkpoint)
+    # unpack_checkpoint(load_checkpoint(model_checkpoint), model=model)
 
 
 if __name__ == "__main__":

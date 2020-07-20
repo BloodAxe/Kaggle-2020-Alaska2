@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 
 import pandas as pd
+from pytorch_toolbelt.utils import fs
 
 from alaska2 import alaska_weighted_auc
 from alaska2.submissions import as_hv_tta, as_d4_tta, parse_classifier_probas, sigmoid, infer_fold
@@ -16,7 +17,7 @@ def get_predictions_csv(experiment, metric: str, type: str, tta: str = None, nee
 
     embedding_suffix = "_w_emb" if need_embedding else ""
 
-    assert type in {"test", "holdout", "oof"}
+    assert type in {"test", "holdout", "oof", "train"}
     assert metric in {"loss", "bauc", "cauc"}
     assert tta in {None, "d4", "hv"}
     checkpoints_dir = {"loss": "checkpoints", "bauc": "checkpoints_auc", "cauc": "checkpoints_auc_classifier"}[metric]
@@ -26,6 +27,10 @@ def get_predictions_csv(experiment, metric: str, type: str, tta: str = None, nee
         csv = as_d4_tta([csv])[0]
     elif tta == "hv":
         csv = as_hv_tta([csv])[0]
+
+    if need_embedding:
+        csv = fs.change_extension(csv, ".pkl")
+
     return csv
 
 

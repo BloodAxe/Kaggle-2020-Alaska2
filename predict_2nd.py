@@ -6,7 +6,6 @@ warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FutureWarning)
 
 import argparse
-import os
 import pandas as pd
 import numpy as np
 from torch import nn
@@ -15,12 +14,10 @@ from tqdm import tqdm
 
 from collections import defaultdict
 from catalyst.utils import any2device
-from pytorch_toolbelt.utils import to_numpy, fs
-from pytorch_toolbelt.utils.catalyst import report_checkpoint
+from pytorch_toolbelt.utils import to_numpy
 
 from alaska2 import *
-from alaska2.submissions import sigmoid, parse_classifier_probas, submit_from_average_binary, classifier_probas, \
-    just_probas
+from alaska2.submissions import just_probas, sigmoid, classifier_probas
 
 
 @torch.no_grad()
@@ -69,14 +66,14 @@ def main():
 
     outputs = [OUTPUT_PRED_MODIFICATION_FLAG, OUTPUT_PRED_MODIFICATION_TYPE]
 
-    x_test = np.load(f"embeddings_x_test_Gf0_Gf3_Hnrmishf2_Hnrmishf1.npy")
+    x_test = np.load(f"embeddings_x_test_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.npy")
     test_ds = StackerDataset(x_test, None)
 
     model, checkpoints, required_features = ensemble_from_checkpoints(
-        checkpoint_fnames,
-        model_name="stacker",
-        strict=True, outputs=outputs, activation="after_model", tta=None
+        checkpoint_fnames, model_name="stacker", strict=True, outputs=outputs, activation=None, tta=None
     )
+
+    cv = np.mean([c["valid_metrics"]["auc"] for c in checkpoints])
 
     model = model.cuda()
     if torch.cuda.device_count() > 1:
@@ -84,20 +81,22 @@ def main():
     model = model.eval()
 
     # Also compute test predictions
-    test_predictions_csv = f"2nd_level_stacking_test_raw_predictions_d4.csv"
+    test_predictions_csv = f"2nd_level_stacking_{cv:.4f}_test_raw_predictions_d4.csv"
 
     test_predictions = compute_predictions(model, test_ds, batch_size=batch_size, workers=workers)
     test_predictions.to_csv(test_predictions_csv, index=False)
 
     submission = test_predictions.copy().rename(columns={"image_id": "Id"})[["Id"]]
     submission["Id"] = submission["Id"].apply(lambda x: f"{x:04}.jpg")
-    # submission["Label"] = test_predictions["pred_modification_type"].apply(just_probas).values
-    submission["Label"] = (
-        test_predictions["pred_modification_flag"].values
-        * test_predictions["pred_modification_type"].apply(just_probas).values
-    )
+    # submission["Label"] = test_predictions["pred_modification_type"].apply(classifier_probas).values.astype(np.float32)
+    submission["Label"] = test_predictions["pred_modification_flag"].apply(sigmoid).values.astype(np.float32)
 
-    submission.to_csv("2nd_level_stacking_embeddings_test_submission.csv", index=False)
+    # submission["Label"] = (
+    #     test_predictions["pred_modification_flag"].apply(sigmoid).values
+    #     * test_predictions["pred_modification_type"].apply(classifier_probas).values
+    # )
+
+    submission.to_csv(f"2nd_level_stacking_{cv:.4f}_embeddings_test_submission_d4.csv", index=False)
 
 
 if __name__ == "__main__":
