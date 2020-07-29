@@ -264,11 +264,12 @@ class NonClippedRandomBrightness(A.RandomBrightnessContrast):
     """
     For use only with non-rounded input
     """
+
     def __init__(self, brightness_limit=0.2, brightness_by_max=True, always_apply=False, p=0.5):
         super().__init__(brightness_limit, 0, brightness_by_max, always_apply, p)
 
     def apply(self, img, alpha=1.0, beta=0.0, **params):
-        return self.content_adaptive_brightness_adjust(img,)
+        return self.content_adaptive_brightness_adjust(img)
 
     @staticmethod
     def content_adaptive_brightness_adjust(img, beta=0):

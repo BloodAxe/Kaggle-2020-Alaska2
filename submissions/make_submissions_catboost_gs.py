@@ -106,7 +106,7 @@ def main():
         verbose=True,
         iterations=2500,
         # use_best_model=True, eval_metric="AUC",
-        task_type="GPU"
+        task_type="GPU",
     )
 
     random_search = RandomizedSearchCV(

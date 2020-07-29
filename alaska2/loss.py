@@ -441,7 +441,6 @@ def get_loss(loss_name: str, tsa=False):
     if loss_name.lower() == "roc_auc_ce":
         return RocAucLossCE()
 
-
     if loss_name.lower() == "bce":
         return nn.BCEWithLogitsLoss(reduction="none" if tsa else "mean")
 
@@ -702,9 +701,7 @@ def get_criterions(
             # Metrics
             callbacks += [
                 CompetitionMetricCallbackFromMask(
-                    input_key=INPUT_TRUE_MODIFICATION_MASK,
-                    output_key=OUTPUT_PRED_MODIFICATION_MASK,
-                    prefix="auc_mask",
+                    input_key=INPUT_TRUE_MODIFICATION_MASK, output_key=OUTPUT_PRED_MODIFICATION_MASK, prefix="auc_mask"
                 ),
                 BestMetricCheckpointCallback(target_metric="auc_mask", target_metric_minimize=False, save_n_best=3),
             ]

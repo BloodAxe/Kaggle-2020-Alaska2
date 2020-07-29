@@ -24,18 +24,12 @@ def check_bn(model):
 
 def reset_bn(module):
     if issubclass(module.__class__, torch.nn.modules.batchnorm._BatchNorm):
-        module.running_mean = torch.zeros_like(module.running_mean)
-        module.running_var = torch.ones_like(module.running_var)
+        module.track_running_stats = False
 
 
-def _get_momenta(module, momenta):
+def fix_bn(module):
     if issubclass(module.__class__, torch.nn.modules.batchnorm._BatchNorm):
-        momenta[module] = module.momentum
-
-
-def _set_momenta(module, momenta):
-    if issubclass(module.__class__, torch.nn.modules.batchnorm._BatchNorm):
-        module.momentum = momenta[module]
+        module.track_running_stats = True
 
 
 def bn_update(loader: DataLoader, model: nn.Module):
@@ -52,21 +46,10 @@ def bn_update(loader: DataLoader, model: nn.Module):
     assert loader.drop_last
 
     model.train()
-    momenta = {}
     model.apply(reset_bn)
-    model.apply(lambda module: _get_momenta(module, momenta))
-    n = 0
 
     for batch in tqdm(loader, desc="AdaBN"):
         batch = any2device(batch, device="cuda")
-        # input_var = torch.autograd.Variable(input)
-        b = loader.batch_size
-
-        momentum = b / (n + b)
-        for module in momenta.keys():
-            module.momentum = momentum
-
         model(**batch)
-        n += b
 
-    model.apply(lambda module: _set_momenta(module, momenta))
+    model.apply(fix_bn)

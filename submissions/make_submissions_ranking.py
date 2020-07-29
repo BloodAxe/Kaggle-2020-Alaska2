@@ -7,9 +7,10 @@ from alaska2.submissions import (
     make_binary_predictions,
     make_binary_predictions_calibrated,
     blend_predictions_ranked,
-    compute_checksum_v2
+    compute_checksum_v2,
 )
 from submissions.eval_tta import get_predictions_csv
+
 
 def main():
     output_dir = os.path.dirname(__file__)

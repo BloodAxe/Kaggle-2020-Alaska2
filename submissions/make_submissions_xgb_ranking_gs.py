@@ -90,7 +90,7 @@ def main():
     cv_scores = []
 
     for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        x_train, x_valid, y_train, y_valid = (x[train_index], x[valid_index], y[train_index], y[valid_index])
 
         xgb = XGBRanker(nthread=1)
         groups = [1] * len(x_train)

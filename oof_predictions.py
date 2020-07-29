@@ -30,7 +30,9 @@ def update_bn(model: nn.Module, dataset: Dataset, batch_size=1, workers=0):
     :param model: model being update
     :return: None
     """
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=workers, shuffle=True, drop_last=True, pin_memory=True)
+    loader = DataLoader(
+        dataset, batch_size=batch_size, num_workers=workers, shuffle=True, drop_last=True, pin_memory=True
+    )
     bn_update(loader, model)
 
 

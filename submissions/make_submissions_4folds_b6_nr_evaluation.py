@@ -22,7 +22,6 @@ def main():
         "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
-
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
@@ -49,7 +48,9 @@ def main():
         bin_pred_d4_cal = make_binary_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
         cls_pred_d4_cal = make_classifier_predictions_calibrated(holdout_predictions_d4, oof_predictions_d4)
 
-        print("   ", "      ", "  ", "   OOF", "     OOF 5K", "     OOF 1K", "        HLD", "     HLD 5K", "     HLD 1K")
+        print(
+            "   ", "      ", "  ", "   OOF", "     OOF 5K", "     OOF 1K", "        HLD", "     HLD 5K", "     HLD 1K"
+        )
         print(
             metric,
             "Bin NC",

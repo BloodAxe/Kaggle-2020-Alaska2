@@ -16,7 +16,8 @@ from alaska2.dataset import (
     OUTPUT_PRED_MODIFICATION_FLAG,
     OUTPUT_PRED_MODIFICATION_TYPE,
     INPUT_FEATURES_JPEG_FLOAT,
-    OUTPUT_PRED_EMBEDDING, OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
+    OUTPUT_PRED_EMBEDDING,
+    OUTPUT_PRED_EMBEDDING_ARC_MARGIN,
 )
 
 __all__ = [
@@ -86,7 +87,7 @@ class TimmRgbModel(nn.Module):
         input_key=INPUT_IMAGE_KEY,
         need_embedding=False,
         pooling_module=GlobalAvgPool2d,
-        arc_margin=None
+        arc_margin=None,
     ):
         super().__init__()
         self.encoder = encoder
@@ -446,7 +447,7 @@ def nr_rgb_tf_efficientnet_b6_ns_mish_gep(num_classes=4, pretrained=True, dropou
         input_key=INPUT_FEATURES_JPEG_FLOAT,
         need_embedding=need_embedding,
         pooling_module=GeneralizedMeanPooling2d,
-        arc_margin=ArcMarginProduct(encoder.num_features, num_classes) if need_embedding else None
+        arc_margin=ArcMarginProduct(encoder.num_features, num_classes) if need_embedding else None,
     )
 
 

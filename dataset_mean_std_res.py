@@ -95,7 +95,7 @@ def compute_mean_std(dataset):
     for image_fname in dataset:
         dct_file = fs.change_extension(image_fname, ".npz")
         residual = compute_decoding_residual(cv2.imread(image_fname), dct_file)
-        s.update(torch.from_numpy(residual).permute(2,0,1))
+        s.update(torch.from_numpy(residual).permute(2, 0, 1))
 
     return s.mean, s.std
 

@@ -49,7 +49,6 @@ def main():
     ax.grid(True)
     plt.show()
 
-
     fig, ax = plt.subplots(figsize=(20, 8))
     m = errors[errors["method"] == "Cover"]
     ax.scatter(np.random.randint(0, 100, len(m)), m["error"].values, label="Cover", alpha=0.3, edgecolors="none")

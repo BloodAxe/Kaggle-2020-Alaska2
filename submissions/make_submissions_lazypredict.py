@@ -1,4 +1,5 @@
 import os
+
 # Used to ignore warnings generated from StackingCVClassifier
 import warnings
 
@@ -14,6 +15,7 @@ from alaska2 import get_holdout, INPUT_IMAGE_KEY, get_test_dataset
 from alaska2.metric import alaska_weighted_auc
 from alaska2.submissions import get_x_y_for_stacking
 from submissions.eval_tta import get_predictions_csv
+
 # Classifiers
 from submissions.make_submissions_averaging import compute_checksum_v2
 
@@ -78,7 +80,7 @@ def main():
     group_kfold = GroupKFold(n_splits=5)
 
     for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        x_train, x_valid, y_train, y_valid = (x[train_index], x[valid_index], y[train_index], y[valid_index])
 
         clf = LazyClassifier(verbose=True, ignore_warnings=False, custom_metric=alaska_weighted_auc, predictions=True)
         models, predictions = clf.fit(x_train, x_valid, y_train, y_valid)

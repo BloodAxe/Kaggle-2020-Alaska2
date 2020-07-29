@@ -24,7 +24,8 @@ from alaska2.dataset import (
     dct2spatial,
     dct2channels_last,
     decode_bgr_from_dct,
-    compute_ela_rich, compute_decoding_residual,
+    compute_ela_rich,
+    compute_decoding_residual,
 )
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data")
@@ -251,6 +252,7 @@ def test_bitmix():
     cv2.imshow("Stego", s)
     cv2.imshow("Mask", m * 255)
     cv2.waitKey(-1)
+
 
 def test_ela():
     image = cv2.imread(os.path.join(TEST_DATA_DIR, "Cover", "00001.jpg"))

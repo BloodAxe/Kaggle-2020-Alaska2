@@ -84,7 +84,7 @@ class DiffGrad(Optimizer):
                     # Previous gradient
                     state["previous_grad"] = torch.zeros_like(p.data)
 
-                exp_avg, exp_avg_sq, previous_grad = state["exp_avg"], state["exp_avg_sq"], state["previous_grad"]
+                exp_avg, exp_avg_sq, previous_grad = (state["exp_avg"], state["exp_avg_sq"], state["previous_grad"])
                 beta1, beta2 = group["betas"]
 
                 state["step"] += 1

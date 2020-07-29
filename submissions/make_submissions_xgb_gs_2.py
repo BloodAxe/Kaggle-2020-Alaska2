@@ -114,7 +114,7 @@ def main():
     group_kfold = GroupKFold(n_splits=5)
 
     params = {
-        "booster": ["gbtree","gblinear"],
+        "booster": ["gbtree", "gblinear"],
         "min_child_weight": [1, 5, 10],
         # L2 reg
         "lambda": [0, 0.01, 0.1, 1],
@@ -170,6 +170,7 @@ def main():
 
     print("Features importance")
     print(random_search.best_estimator_.feature_importances_)
+
 
 if __name__ == "__main__":
     main()

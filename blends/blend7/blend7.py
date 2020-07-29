@@ -18,9 +18,7 @@ v26_dctr_jrm_srnet_mns_mnxlm_b2_b4m_b5m_srnetnopc70 = (
 
 mean_9415 = pd.read_csv("mean_0.9415_prod_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc.csv")
 
-xgb_cls_gs_09419 = pd.read_csv(
-    "xgb_cls_gs_0.9419_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc_.csv"
-)
+xgb_cls_gs_09419 = pd.read_csv("xgb_cls_gs_0.9419_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc_.csv")
 
 # Force 1.01 value of OOR values in my submission
 oor_mask = v25_xl_NR_moreTTA_b4mish.Label > 1.0
@@ -33,7 +31,7 @@ submissions = [
     v25_xl_NR_moreTTA_b4mish_b2mish_xlmish,
     # v26_dctr_jrm_srnet_mns_mnxlm_b2_b4m_b5m_srnetnopc70,
     xgb_cls_gs_09419,
-    mean_9415
+    mean_9415,
 ]
 
 cm = np.zeros((len(submissions), len(submissions)))
@@ -57,11 +55,17 @@ print(cm)
 
 #
 blend_7_ranked = blend_predictions_ranked([v25_xl_NR_moreTTA_b4mish_b2mish_xlmish, mean_9415])
-blend_7_ranked.to_csv("blend_7_ranked_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish_with_mean_0.9415_prod_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc.csv", index=False)
+blend_7_ranked.to_csv(
+    "blend_7_ranked_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish_with_mean_0.9415_prod_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc.csv",
+    index=False,
+)
 
 
 blend_7_ranked = blend_predictions_ranked([v25_xl_NR_moreTTA_b4mish_b2mish_xlmish, xgb_cls_gs_09419])
-blend_7_ranked.to_csv("blend_7_ranked_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish_with_xgb_cls_gs_0.9419_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc.csv", index=False)
+blend_7_ranked.to_csv(
+    "blend_7_ranked_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish_with_xgb_cls_gs_0.9419_Gf0cauc_Gf3cauc_Hnrmishf2cauc_nrmishf1cauc.csv",
+    index=False,
+)
 
 
 # blend_6_ranked = blend_predictions_ranked([v25_xl_NR_moreTTA_b4mish, xgb_cls_gs_09445])

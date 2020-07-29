@@ -178,9 +178,7 @@ def test_ela_wider_resnet38():
 def test_dct_seresnext50():
     model = dct_seresnext50().cuda()
 
-    input = {
-        INPUT_FEATURES_DCT_KEY: torch.randn((2, 64 * 3, 512 // 8, 512 // 8)).cuda(),
-    }
+    input = {INPUT_FEATURES_DCT_KEY: torch.randn((2, 64 * 3, 512 // 8, 512 // 8)).cuda()}
 
     print(count_parameters(model, keys=KNOWN_KEYS))
 
@@ -193,9 +191,7 @@ def test_dct_seresnext50():
 def test_dct_efficientnet_b6():
     model = dct_efficientnet_b6().cuda()
 
-    input = {
-        INPUT_FEATURES_DCT_KEY: torch.randn((2, 3, 512, 512)).cuda(),
-    }
+    input = {INPUT_FEATURES_DCT_KEY: torch.randn((2, 3, 512, 512)).cuda()}
 
     print(count_parameters(model, keys=KNOWN_KEYS))
 

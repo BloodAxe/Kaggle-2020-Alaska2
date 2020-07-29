@@ -21,7 +21,6 @@ def quality_factror_from_qm(qm):
         raise ValueError("Unknown quality factor" + str(qm[0, 0]))
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-dd", "--data-dir", type=str, default=os.environ.get("KAGGLE_2020_ALASKA2"))

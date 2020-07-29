@@ -9,7 +9,9 @@ v25_xl_NR_moreTTA_b4mish_b2mish_xlmish = (
 )
 
 xgb_cls_gs_09421 = pd.read_csv("xgb_cls_0.9421_Gf0_Gf1_Gf2_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0.csv")
-xgb_cls_gs_09421_image_f = pd.read_csv("xgb_cls_gs_0.9421_Gf0_Gf1_Gf2_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0_image_features.csv")
+xgb_cls_gs_09421_image_f = pd.read_csv(
+    "xgb_cls_gs_0.9421_Gf0_Gf1_Gf2_Gf3_Hnrmishf2_Hnrmishf1_Kmishf0_image_features.csv"
+)
 embeddings_09413 = pd.read_csv("2nd_level_stacking_0.9413_embeddings_test_submission_d4.csv")
 # print(embeddings_09413.describe())
 

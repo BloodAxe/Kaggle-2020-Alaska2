@@ -39,6 +39,7 @@ def compute_mask(cover, stego):
     m2 = (m > eps).any(axis=2)
     return m2
 
+
 def count_pixel_difference(cover, stego):
     return np.count_nonzero(compute_mask(cover, stego))
 

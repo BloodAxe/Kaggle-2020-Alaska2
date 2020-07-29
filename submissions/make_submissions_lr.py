@@ -93,7 +93,7 @@ def main():
     one_over_n = 1.0 / group_kfold.n_splits
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        x_train, x_valid, y_train, y_valid = (x[train_index], x[valid_index], y[train_index], y[valid_index])
 
         cls = LogisticRegression(max_iter=10000, tol=1e-5, C=1)
         cls.fit(x_train, y_train)

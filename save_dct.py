@@ -32,12 +32,14 @@ def extract_and_save_dct_jpegio(fname, output_dir):
 
     qm0 = np.tile(quant_tables[0], (512 // 8, 512 // 8))
     qm1 = np.tile(quant_tables[1], (512 // 8, 512 // 8))
-    np.savez_compressed(dct_fname,
-                        dct_y=(dct_matrix[0] * qm0).astype(np.int16),
-                        dct_cb=(dct_matrix[1] * qm1).astype(np.int16),
-                        dct_cr=(dct_matrix[2] * qm1).astype(np.int16),
-                        qm0=quant_tables[0].astype(np.int16),
-                        qm1=quant_tables[1].astype(np.int16))
+    np.savez_compressed(
+        dct_fname,
+        dct_y=(dct_matrix[0] * qm0).astype(np.int16),
+        dct_cb=(dct_matrix[1] * qm1).astype(np.int16),
+        dct_cr=(dct_matrix[2] * qm1).astype(np.int16),
+        qm0=quant_tables[0].astype(np.int16),
+        qm1=quant_tables[1].astype(np.int16),
+    )
 
     del jpegStruct
 
@@ -54,11 +56,11 @@ def main():
     data_dir = args.data_dir
     if args.folder is None:
         original_images = (
-                fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
-                + fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
-                + fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
-                + fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
-                + fs.find_images_in_dir(os.path.join(data_dir, "Test"))
+            fs.find_images_in_dir(os.path.join(data_dir, "Cover"))
+            + fs.find_images_in_dir(os.path.join(data_dir, "JMiPOD"))
+            + fs.find_images_in_dir(os.path.join(data_dir, "JUNIWARD"))
+            + fs.find_images_in_dir(os.path.join(data_dir, "UERD"))
+            + fs.find_images_in_dir(os.path.join(data_dir, "Test"))
         )
     else:
         original_images = fs.find_images_in_dir(os.path.join(data_dir, args.folder))

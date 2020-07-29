@@ -113,7 +113,7 @@ def main():
     one_over_n = 1.0 / group_kfold.n_splits
 
     for train_index, valid_index in group_kfold.split(x, y, groups=image_ids):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        x_train, x_valid, y_train, y_valid = (x[train_index], x[valid_index], y[train_index], y[valid_index])
         print(np.bincount(y_train), np.bincount(y_valid))
 
         cls = XGBClassifier(
@@ -170,6 +170,7 @@ def main():
     df["Id"] = image_ids_test
     pd.DataFrame.from_dict(df).to_csv(submit_fname, index=False)
     print("Saved submission to ", submit_fname)
+
 
 if __name__ == "__main__":
     main()

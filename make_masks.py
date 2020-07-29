@@ -44,5 +44,6 @@ def main():
         cv2.imwrite(fs.change_extension(juni_fname, ".png"), juni_mask * 255)
         cv2.imwrite(fs.change_extension(uerd_fname, ".png"), uerd_mask * 255)
 
+
 if __name__ == "__main__":
     main()

@@ -19,6 +19,7 @@ from submissions.eval_tta import get_predictions_csv
 from submissions.make_submissions_averaging import compute_checksum_v2
 import torch.nn.functional as F
 
+
 def xgb_weighted_auc(predt: np.ndarray, dtrain: xgb.DMatrix) -> Tuple[str, float]:
     y_true = dtrain.get_label()
     result = "wauc", alaska_weighted_auc(y_true.astype(int), predt)
@@ -126,7 +127,7 @@ def main():
     }
 
     for fold_index, (train_index, valid_index) in enumerate(group_kfold.split(x, y, groups=image_ids)):
-        x_train, x_valid, y_train, y_valid = x[train_index], x[valid_index], y[train_index], y[valid_index]
+        x_train, x_valid, y_train, y_valid = (x[train_index], x[valid_index], y[train_index], y[valid_index])
 
         train_dmatrix = xgb.DMatrix(x_train.copy(), y_train.copy())
         valid_dmatrix = xgb.DMatrix(x_valid.copy(), y_valid.copy())

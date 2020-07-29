@@ -1,8 +1,5 @@
 import os
 
-# Used to ignore warnings generated from StackingCVClassifier
-import warnings
-
 # For reading, visualizing, and preprocessing data
 import numpy as np
 import pandas as pd
@@ -31,33 +28,18 @@ def main():
     output_dir = os.path.dirname(__file__)
 
     experiments = [
-        # "A_May24_11_08_ela_skresnext50_32x4d_fold0_fp16",
-        # "A_May15_17_03_ela_skresnext50_32x4d_fold1_fp16",
-        # "A_May21_13_28_ela_skresnext50_32x4d_fold2_fp16",
-        # "A_May26_12_58_ela_skresnext50_32x4d_fold3_fp16",
-        #
-        # "B_Jun05_08_49_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "B_Jun09_16_38_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
-        # "B_Jun11_08_51_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
-        # "B_Jun11_18_38_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
-        #
-        # "C_Jun24_22_00_rgb_tf_efficientnet_b2_ns_fold2_local_rank_0_fp16",
-        #
-        # "D_Jun18_16_07_rgb_tf_efficientnet_b7_ns_fold1_local_rank_0_fp16",
-        # "D_Jun20_09_52_rgb_tf_efficientnet_b7_ns_fold2_local_rank_0_fp16",
-        #
-        # "E_Jun18_19_24_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
-        # "E_Jun21_10_48_rgb_tf_efficientnet_b6_ns_fold0_istego100k_local_rank_0_fp16",
-        #
-        # "F_Jun29_19_43_rgb_tf_efficientnet_b3_ns_fold0_local_rank_0_fp16",
-        #
         "G_Jul03_21_14_nr_rgb_tf_efficientnet_b6_ns_fold0_local_rank_0_fp16",
         "G_Jul05_00_24_nr_rgb_tf_efficientnet_b6_ns_fold1_local_rank_0_fp16",
         "G_Jul06_03_39_nr_rgb_tf_efficientnet_b6_ns_fold2_local_rank_0_fp16",
         "G_Jul07_06_38_nr_rgb_tf_efficientnet_b6_ns_fold3_local_rank_0_fp16",
+        # "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
         #
+        "K_Jul17_17_09_nr_rgb_tf_efficientnet_b6_ns_mish_fold0_local_rank_0_fp16",
+        "J_Jul19_20_10_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
         "H_Jul11_16_37_nr_rgb_tf_efficientnet_b7_ns_mish_fold2_local_rank_0_fp16",
-        "H_Jul12_18_42_nr_rgb_tf_efficientnet_b7_ns_mish_fold1_local_rank_0_fp16",
+        "K_Jul18_16_41_nr_rgb_tf_efficientnet_b6_ns_mish_fold3_local_rank_0_fp16"
+        #
+        #
     ]
 
     holdout_predictions = get_predictions_csv(experiments, "cauc", "holdout", "d4")
@@ -72,10 +54,14 @@ def main():
     test_ds = get_test_dataset("", features=[INPUT_IMAGE_KEY])
     quality_t = F.one_hot(torch.tensor(test_ds.quality).long(), 3).numpy().astype(np.float32)
 
-    x, y = get_x_y_for_stacking(holdout_predictions)
+    with_logits = True
+
+    x, y = get_x_y_for_stacking(holdout_predictions, with_logits=with_logits, tta_logits=with_logits)
+    # Force target to be binary
+    y = (y > 0).astype(int)
     print(x.shape, y.shape)
 
-    x_test, _ = get_x_y_for_stacking(test_predictions)
+    x_test, _ = get_x_y_for_stacking(test_predictions, with_logits=with_logits, tta_logits=with_logits)
     print(x_test.shape)
 
     if True:
@@ -95,27 +81,26 @@ def main():
     group_kfold = GroupKFold(n_splits=5)
 
     params = {
+        "boosting_type": ["gbdt", "dart", "rf", "goss"],
         "num_leaves": [16, 32, 64, 128],
         "reg_alpha": [0, 0.01, 0.1, 0.5],
         "reg_lambda": [0, 0.01, 0.1, 0.5],
-        "min_data_in_leaf": [30, 50, 100, 300],
-        "learning_rate": [0.01, 0.1, 0.5],
+        "learning_rate": [0.001, 0.01, 0.1, 0.5],
         "n_estimators": [32, 64, 126, 512],
-        "max_depth": [2, 4, 8, 10],
+        "max_depth": [2, 4, 8],
+        "min_child_samples": [20, 40, 80, 100],
     }
 
-    lgb_estimator = lgb.LGBMClassifier(
-        boosting_type="gbdt", min_child_samples="5", max_depth=10, objective="binary", silent=False
-    )
+    lgb_estimator = lgb.LGBMClassifier(objective="binary", silent=True)
 
     random_search = RandomizedSearchCV(
         lgb_estimator,
         param_distributions=params,
         scoring=make_scorer(alaska_weighted_auc, greater_is_better=True, needs_proba=True),
-        n_jobs=4,
-        n_iter=100,
+        n_jobs=3,
+        n_iter=50,
         cv=group_kfold.split(x, y, groups=image_ids),
-        verbose=3,
+        verbose=2,
         random_state=42,
     )
 
