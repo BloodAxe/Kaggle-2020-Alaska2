@@ -1,0 +1,15 @@
+Cython
+tqdm
+torch
+torchvision
+git+https://github.com/dwgoon/jpegio
+catalyst==20.5.1
+albumentations==0.4.5
+timm==0.1.26
+catboost
+scikit-optimize
+cv2
+horovod==0.19.1
+tensorflow-gpu==1.14.0
+git+https://github.com/mapillary/inplace_abn.git@v1.0.12
+oct2py
