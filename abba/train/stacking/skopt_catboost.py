@@ -42,7 +42,7 @@ def main():
     arg('--zoo-id', type=str, default='0805', help='zoo id (date in mmdd format)')
     arg('--train-dir', type=str, default='weights/catboost/', help='path to catboost train dir')
     arg('--n-splits', type=int, default=10 , help='num CV splits')
-    arg('--n-iter', type=int, default=60, help='num Bayes opt iters')    
+    arg('--n-iter', type=int, default=60, help='num Bayes opt iters') 
 
     args = parser.parse_args()
     
