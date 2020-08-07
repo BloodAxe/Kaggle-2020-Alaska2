@@ -20,23 +20,7 @@ import torch.nn.functional as F
 from catalyst.utils import any2device
 from pytorch_toolbelt.optimization.functional import get_optimizable_parameters
 from pytorch_toolbelt.utils import to_numpy
-from pytorch_toolbelt.utils.distributed import all_gather
 from torch.utils.data import DataLoader, Dataset
-import numpy as np
-import pandas as pd
-import cv2
-import matplotlib.pyplot as plt
-import operator
-from PIL import Image
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.metrics import roc_auc_score
-from torchvision.transforms import ToTensor, RandomHorizontalFlip, Resize
-from efficientnet_pytorch import EfficientNet
-from transformers import AdamW, get_cosine_schedule_with_warmup
-from albumentations import *
-from albumentations.pytorch import ToTensor
-from tqdm import tqdm
-import json
 import time
 
 
