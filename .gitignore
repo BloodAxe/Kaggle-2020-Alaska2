@@ -1,11 +1,9 @@
 /.idea/
 /runs/
 /tests/.pytest_cache/
-/models/
 alaska2/__pycache__/
 alaska2/models/__pycache__/
 /dataset_qf_qt.csv
 /features.csv
-.ipynb_checkpoints
-*/.ipynb_checkpoints/*
+.ipynb_checkpoints/
 __pycache__/
