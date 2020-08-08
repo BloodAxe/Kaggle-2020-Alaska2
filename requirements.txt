@@ -5,7 +5,7 @@ torchvision
 torch-optimizer==0.0.1a12
 pytorch-ranger==0.1.1
 git+https://github.com/dwgoon/jpegio
-catalyst==20.5.1
+catalyst==19.12.3
 albumentations==0.4.5
 timm==0.1.26
 catboost

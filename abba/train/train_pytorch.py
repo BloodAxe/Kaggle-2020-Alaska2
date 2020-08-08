@@ -1,5 +1,4 @@
 import argparse
-from catalyst.data.sampler import BalanceClassSampler
 from torch.utils.data.sampler import SequentialSampler
 import sys
 import numpy as np
@@ -149,7 +148,7 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        sampler=BalanceClassSampler(labels=train_dataset.get_labels(), mode="downsampling"),
+        shuffle=True,
         batch_size=TrainGlobalConfig.batch_size,
         pin_memory=False,
         drop_last=True,
