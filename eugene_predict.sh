@@ -27,14 +27,9 @@ python make_submissions_xgb_gs.py\
   K_Jul18_16_41_nr_rgb_tf_efficientnet_b6_ns_mish_fold3_local_rank_0_fp16\
   -o submits/xgb_cls_gs_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv
 
-# NOTE: Two following commands needs ABBA predictions to be already computed
+# NOTE: The folllowing command needs ABBA and Eugene's prediction files to be computed
 
 python blend.py\
-  submits/submission_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish.csv\
+  abba/submissions/submission_v26.csv\
   submits/xgb_cls_gs_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv\
-  -o submits/blend_10_ranked_v25_xl_NR_moreTTA_b4mish_b2mish_xlmish_with_xgb_cls_gs_0.9424_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv
-
-python blend.py\
-  submits/submission_v26_dctr_jrm_srnet_mns_mnxlm_b2_b4m_b5m_catboost_d5_VAL_saved.csv\
-  submits/xgb_cls_gs_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv\
-  -o submits/blend_10_ranked_v26_dctr_jrm_srnet_mns_mnxlm_b2_b4m_b5m_catboost_d5_with_xgb_cls_gs_0.9424_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv
+  -o submits/blend_10_ranked_v26_and_xgb_cls_gs_Gf0_Gf1_Gf2_Gf3_Kmishf0_Jnrmishf1_Hnrmishf2_Kmishf3_with_logits.csv

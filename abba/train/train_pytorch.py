@@ -21,7 +21,7 @@ def main():
     DATA_ROOT_PATH = os.environ.get('DATA_ROOT_PATH')
     parser = argparse.ArgumentParser("Train imagenet pretrained model using pytorch")
     arg = parser.add_argument
-    arg('--model', type=str, default='weights/', help='model name')
+    arg('--model', type=str, default='mixnet_s', help='model name')
     arg('--experiment', type=str, default='test', help='specific model experiment name')
     arg('--surgery', type=int, default=1, help='modification level')
     arg('--optimizer-name', type=str, default='adamw', help='optimizer name')
@@ -35,18 +35,19 @@ def main():
     arg('--random-seed', type=int, default=0, help='random seed')
     arg('--fp16', type=int, default=1, help='use AMP?')
     arg('--decoder', type=str, default='NR', help='jpeg decoder, R or NR')
-    arg('--device', type=str, default='cuda:0', help='device')
+    arg('--device', type=str, default='0', help='device id')
     
     
     args = parser.parse_args()
     
     
     os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device.split(':')[-1]
-    torch.cuda.set_device(int(args.device.split(':')[-1]))
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    
+    #torch.cuda.set_device(int(args.device.split(':')[-1]))
     
     seed_everything(args.random_seed)
-    device = torch.device(args.device)
+    device = 'cuda:0' #torch.device(args.device)
     QFs = ['75','90', '95']
     Classes = ['Cover', 'JMiPOD', 'JUNIWARD', 'UERD']
     IL_train = []

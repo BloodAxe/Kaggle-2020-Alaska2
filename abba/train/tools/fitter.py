@@ -30,9 +30,9 @@ class Fitter:
         self.validation_loader = validation_loader
 
 
-        self.optimizer = self.config.optimizer(self.model.parameters(), lr=config.lr, weight_decay=self.config.weight_decay)
+        self.optimizer = self.config.optimizer(self.model.parameters(), lr=self.config.lr, weight_decay=self.config.weight_decay)
         
-        self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+        self.scheduler = self.config.SchedulerClass(self.optimizer, **config.scheduler_params)
         self.criterion = LabelSmoothing().to(self.device)
         self.log(f'Fitter prepared. Device is {self.device}')
 
