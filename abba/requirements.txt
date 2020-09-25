@@ -10,6 +10,6 @@ catboost
 scikit-optimize
 cv2
 horovod==0.19.1
-tensorflow-gpu==1.14.0
+tensorflow-gpu==1.15.4
 git+https://github.com/mapillary/inplace_abn.git@v1.0.12
 oct2py
