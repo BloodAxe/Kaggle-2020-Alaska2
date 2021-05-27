@@ -23,7 +23,7 @@ See `./documentation/ABBA_McCandless_documentation.pdf` for the solution documen
 
 Eventually run: 
 ```bash
-bash system_requirements.sh
+bash requirements_system.sh
 ```
 
 And install pip requirements:
